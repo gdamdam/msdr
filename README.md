@@ -18,12 +18,13 @@ Every label in msdr shows its source: a DSP measurement, a decoded payload, a sc
 
 ## Quick start
 
-**Requirements:** Python 3.11+, SDRconnect 1.0.9+ (WebSocket API 1.0.3), macOS.
+**Requirements:** Python 3.11+, SDRconnect 1.0.9+ (WebSocket API 1.0.3), macOS. Windows and Linux are untested.
 
 1. In SDRconnect, enable **Primary SP “…” → Preferences → WebSocket Server** on port `5454`.
-2. Install and start msdr from this checkout:
+2. Clone, install and start msdr:
 
    ```sh
+   git clone https://github.com/gdamdam/msdr && cd msdr
    pip install .        # or: pipx install .
    msdr
    ```
@@ -72,7 +73,7 @@ A few things that are less common elsewhere:
 
 - Channel watch follows a list of frequencies and captures activity with a pre-roll IQ recorder, so the start of a burst is on disk before you press record.
 - Band scans keep a report of what was found and what was actually covered, so a quiet frequency and an unscanned one are not confused.
-- Any saved signal can be exported as an evidence ZIP: observations, claims, decoder versions, notes and a short IQ clip when one exists. Wi-Fi and BLE device history is off by default.
+- Any saved signal can be exported as an evidence ZIP: observations, claims, decoder versions, notes and a short IQ clip when one exists.
 
 The [user guide](docs/user-guide.md) covers every workspace in detail.
 
@@ -154,7 +155,7 @@ msdr's original code is licensed under [GPL-3.0-only](LICENSE). Third-party code
 - RF classifier architecture from TorchSig's XCiT model, with code derived from [timm](https://github.com/huggingface/pytorch-image-models) (Apache-2.0).
 
 **Separately installed tools (not bundled)**
-- Decoders: WSJT-X `jt9`, `multimon-ng`, `minimodem`, `direwolf`, `dsd-fme`, `dump1090`.
+- Decoders: WSJT-X `jt9`, `multimon-ng`, `minimodem`, `direwolf`, `dsd-fme`; FlightAware `dump1090-fa` as an alternative ADS-B backend in the code (the built-in decoder is the default).
 - Satellite passes: `nextpass`; IQ analysis: `iqscan`.
 - Passive Wi-Fi: the [rtl8812au-macos](https://github.com/xen-proc/rtl8812au-macos) userspace driver (GPL-2.0-only, derived from aircrack-ng/rtl8812au and Realtek code), run as its own program; msdr only reads its PCAP output.
 - Optional RF ML weights from TorchSig and TorchDSP, downloaded on request.
