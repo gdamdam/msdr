@@ -64,7 +64,7 @@ def _settings(tmp_path: Path) -> Settings:
             detect=False, ident=False, nearby=False, journal_passive=False,
             passes=False, scans=False, sky=False, tracking=False, catalog=False,
             telemetry=False, scanner=False, recorder=False, decoder=False,
-            survey=True, beacons=False, finds=False, ml_controls=False,
+            survey=True, beacons=False, finds=False,
         ),
     )
 

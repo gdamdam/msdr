@@ -575,26 +575,33 @@ async def test_candidate_evidence_carries_support_alternatives_next_action(monke
         assert "fm_fsk" in support
 
 
-async def test_ml_proposal_is_inspectable_without_promoting_identity():
+async def test_stored_removed_rfml_claim_loads_without_promoting_evidence():
+    """Databases written while the experimental RF ML feature existed still
+    hold survey.rfml / survey.rfml.detector claims; they must stay readable."""
+    from msdr.contracts.evidence import Claim
+
     async with running_app() as (app, client, _adapter):
         service = app.state.service
-        service.survey.ml_proposals = lambda: [{
-            "low_hz": 159994000, "high_hz": 160006000, "width_hz": 12000,
-            "rfml_detection": {"model_id": "test", "score": 0.8, "age_s": 2},
-            "rfml": {"classification": "FSK", "score": 0.8, "stale": False, "age_s": 1},
-        }]
-        response = await client.get('/api/signal-detail', params={'frequency_hz': 160000000})
+        service.obs_recorder.start_session("live:sdrconnect", "live", "127.0.0.1")
+        service.obs_recorder.on_scanner_hit(
+            {"ts": 100.0, "duration_s": 1.0, "frequency_hz": 160_000_000, "peak_snr_db": 12.0},
+            "find-1",
+        )
+        obs = service.observations.list(frequency_hz=160_000_000, limit=1)[0]
+        for producer, subject, value in (
+            ("survey.rfml", "modulation", "FSK"),
+            ("survey.rfml.detector", "presence", "ML signal proposal"),
+        ):
+            service.obs_recorder.repo.add_claim(Claim(
+                observation_id=obs.id, subject=subject, value=value,
+                evidence_type="iq_estimate", integrity="unknown", producer=producer,
+            ))
+        response = await client.get("/api/signal-detail", params={"frequency_hz": 160_000_000})
         assert response.status_code == 200
-        evidence = response.json()['evidence']
-        proposal = next(e for e in evidence if e['title'] == 'ML signal proposal · unvalidated')
-        assert proposal['state'] == 'none'
-        assert proposal['source_group'] == 'ml'
-        assert proposal['producer_role'] == 'detector'
-        assert proposal['score'] is None
-        assert any('uncalibrated' in item for item in proposal['support'])
-        classifier = next(e for e in evidence if e['title'] == 'ML FSK · tentative')
-        assert classifier['source_group'] == 'ml'
-        assert classifier['producer_role'] == 'classifier'
+        body = response.json()
+        producers = {c["producer"] for o in body["observations"] for c in o["claims"]}
+        assert {"survey.rfml", "survey.rfml.detector"} <= producers
+        assert all(e.get("source_group") != "ml" for e in body["evidence"])
 
 
 async def test_off_center_aircraft_frequency_has_allocation_context():

@@ -1,15 +1,6 @@
 import pytest
 
 
-@pytest.fixture
-def ml_available(monkeypatch):
-    """Switch dormant RF ML back on for tests that exercise its runtime
-    (msdr/rfml/__init__.py AVAILABLE)."""
-    from msdr import rfml
-
-    monkeypatch.setattr(rfml, "AVAILABLE", True)
-
-
 @pytest.fixture(autouse=True)
 def _isolate_wifi_helper_search(monkeypatch, tmp_path):
     """msdr.wifi.supervisor.find_helper also looks on PATH, beside the msdr

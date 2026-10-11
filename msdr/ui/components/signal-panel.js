@@ -24,7 +24,6 @@ import "./allocation-summary.js";
 const LIVE_REFRESH_TOLERANCE_HZ = 6000;
 const EVIDENCE_GROUPS = {
   dsp: { label: "DSP · measured signal", color: "#45d5e0" },
-  ml: { label: "ML · experimental predictions", color: "#bb9aff" },
   decoder: { label: "Protocol decoders", color: "#64ddbb" },
   memory: { label: "Saved memory · operator record", color: "#92afd5" },
   context: { label: "Frequency context · not identification", color: "#efc16b" },
@@ -67,7 +66,7 @@ const DOCK_QUERY = "(min-width: 1100px)";
  * identification in order decoder output → DSP measurement → saved memory,
  * with its source and state in words. Never invents a result. */
 function signalVerdict(groups) {
-  const real = (e) => e?.title && !/^No (DSP classification|classifier result)/.test(e.title);
+  const real = (e) => e?.title && !/^No DSP classification/.test(e.title);
   const decoded = (groups.decoder ?? []).find(real);
   if (decoded) {
     const verified = decoded.integrity === "passed" || !decoded.integrity && decoded.evidence_type === "validated_decode" && decoded.state === "validated";
@@ -626,7 +625,7 @@ export class SignalPanel extends LitElement {
 
   _evidenceSource(e) {
     if (EVIDENCE_GROUPS[e.source_group]) return e.source_group;
-    if (e.kind === "analyzer") return e.source === "analyzer" || !e.source && !e.title?.startsWith("ML ") ? "dsp" : "ml";
+    if (e.kind === "analyzer") return "dsp";
     return { decoded: "decoder", memory: "memory", bandplan: "context", scheduled: "context" }[e.kind] ?? "other";
   }
 
@@ -635,7 +634,7 @@ export class SignalPanel extends LitElement {
     const decoded = e.kind === "decoded";
     const verified = decoded && (e.integrity === "passed" || !e.integrity && e.evidence_type === "validated_decode" && e.state === "validated");
     const label = e._label ?? (decoded ? (verified ? "✓ Validated decode" : e.integrity === "failed" ? "⚠ Failed integrity check" : "Decoder output · unchecked")
-      : source === "dsp" ? "DSP analysis" : source === "ml" ? (e.producer_role === "detector" ? "ML detector" : "ML classifier")
+      : source === "dsp" ? "DSP analysis"
       : evidenceLabel(e.kind));
     const detailText = e.kind === "scheduled" ? withLocalWindow(e.detail ?? "", this.tz) : e.detail;
     const support = Array.isArray(e.support) ? e.support : [];
@@ -681,27 +680,6 @@ export class SignalPanel extends LitElement {
       groups.dsp[0] = {...first, _analysisState: dspState,
         _previous: dspState === "waiting" && groups.dsp.length > 0};
     }
-    const ml = d.ml_analysis_state;
-    if (ml) {
-      const state = ANALYSIS_STATE_LABELS[ml.state] ? ml.state : "not_analyzed";
-      const result = ml.result;
-      const index = groups.ml.findIndex(e => e.producer_role === "classifier" ||
-        !e.producer_role && !e.title?.includes("proposal"));
-      const original = index >= 0 ? groups.ml[index] : {};
-      const item = {...original, kind: "analyzer", source_group: "ml", producer_role: "classifier",
-        _analysisState: state,
-        title: result ? `${result.classification ?? "UNKNOWN"} · ${result.status ?? "unvalidated"}`
-          : state === "waiting" ? "No classifier result yet"
-            : ml.enabled === false ? "Classifier off" : "No classifier result",
-        at: result?.analyzed_at ?? original.at,
-        detail: result ? `Raw score ${Number.isFinite(result.score) ? result.score.toFixed(3) : "—"} · uncalibrated, not a probability. ${result.reason ?? ""}`
-          : ml.error || original.detail,
-      };
-      if (index >= 0) groups.ml[index] = item; else groups.ml.unshift(item);
-    }
-    // RF ML is dormant (0.70.0): a "Classifier off" card with no result is
-    // noise, so the group is left out until something real arrives.
-    if (ml && ml.enabled === false && !ml.result && groups.ml.every(e => e.producer_role === "classifier")) groups.ml = [];
     const previous = d.last_classification;
     const duplicate = previous && groups.dsp.some(e => e.title === previous.name);
     const hasHistory = previous && !duplicate;

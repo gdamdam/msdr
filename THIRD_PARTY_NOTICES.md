@@ -29,22 +29,6 @@ replace/remove the bundled data. Public availability alone is not a license.
 Python dependencies are installed separately and retain their upstream licenses.
 Their license notices must be preserved when redistributing those dependencies.
 
-## Optional RF classifier
-
-The optional pretrained narrowband RF classifier uses the TorchSig v0.6.1
-`XCiTClassifier` architecture and the `xcit_narrowband.ckpt` weights hosted by
-TorchSig. The TorchSig source repository is MIT-licensed. The XCiT backbone
-contains code derived from timm, copyright 2019 Ross Wightman, licensed under
-the Apache License, Version 2.0. The Apache-2.0 notice and license text are
-retained for the adapted model in `msdr/rfml/XCIT-LICENSE.txt` and
-available at [timm's repository](https://github.com/huggingface/pytorch-image-models/blob/main/LICENSE).
-
-The checkpoint is pinned by SHA-256 in `msdr/rfml/model.json` and is fetched
-only by the explicit `msdr-rfml download` command. The upstream example does
-not state a separate license for the hosted checkpoint; the TorchSig source
-license should not be interpreted as checkpoint redistribution permission.
-See [docs/rf-ml.md](docs/rf-ml.md) for installation and runtime details.
-
 ## RS41 and EOT payload parsing
 
 `msdr/decoder/payloads.py` adapts payload parsing and checksum logic
@@ -151,20 +135,6 @@ under the BSD 2-Clause license. Copyright 2010–2023 Volodymyr Agafonkin and
 2010–2011 CloudMade. The full notice is in `msdr/ui/vendor/LEAFLET-LICENSE.txt`.
 Upstream: https://leafletjs.com/ . Basemap tiles are supplied by OpenStreetMap
 with visible attribution; no tiles are bundled or prefetched.
-
-## Optional wideband RF detector
-
-The offline detector uses the explicitly downloaded TorchDSP/torchsig-models
-v1.0.0 `yolo11n_wideband_v1.0.0.pt` artifact. Its SHA-256, upstream release
-and experimental preprocessing contract are recorded in
-`msdr/rfml/detector.json`. No weights are bundled. The model repository lists
-MIT; a separate checkpoint-specific license/model card was not located.
-
-Inference uses the optional Ultralytics package, whose upstream offers
-AGPL-3.0 and commercial enterprise licensing. Those terms apply separately
-from TorchDSP's repository license. No Ultralytics implementation is copied
-into msdr. See https://github.com/ultralytics/ultralytics and
-https://github.com/TorchDSP/torchsig-models/releases/tag/v1.0.0 .
 
 ## DSC message semantics and FT8 runtime
 

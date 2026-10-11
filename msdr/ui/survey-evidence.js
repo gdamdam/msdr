@@ -50,7 +50,6 @@ export function compareEvidence(a, b, order = "strongest") {
 // represents probability; integrity and disagreement have separate symbols.
 export const EVIDENCE_SOURCES = {
   dsp: {text: "Measured", code: "DSP", color: "#45d5e0"},
-  ml: {text: "Experimental ML", code: "ML", color: "#bb9aff"},
   allocation: {text: "Allocation", code: "A", color: "#92afd5"},
   catalog: {text: "Scheduled", code: "S", color: "#efc16b"},
   decoded: {text: "Decoded", code: "D", color: "#64ddbb"},
@@ -63,40 +62,10 @@ export function evidenceBadges(label = {}) {
     ...EVIDENCE_SOURCES[source], source, symbol, title,
     ...(text ? {text} : {}),
   });
-  if (!label.ml_only && (Number.isFinite(label.snr_db) || Number.isFinite(label.width_hz) ||
+  if ((Number.isFinite(label.snr_db) || Number.isFinite(label.width_hz) ||
       label.family?.name || label.modulation?.kind || label.voice?.kind ||
       label.decoder_candidates?.some(c => c.evidence_kind === "iq_estimate"))) {
     add("dsp", "≈", "DSP measurements / estimates. Physical signal evidence; modulation and voice inferences remain tentative.");
-  }
-  // Keep detector proposals and classifier outputs distinct. These badges are
-  // advisory only: neither changes evidence ranking or establishes a signal.
-  const detection = label.rfml_detection;
-  const detectionEvidence = detection?.evidence ?? detection;
-  if (detection && Number.isFinite(detection.score)) {
-    const name = typeof detectionEvidence?.label === "string" && detectionEvidence.label.trim()
-      ? detectionEvidence.label.trim() : "signal proposal";
-    const score = detection.score.toFixed(3);
-    const historical = detection.stale === true || label._goneAt != null;
-    const age = label._goneAt == null && Number.isFinite(detection.age_s) ? ` · ${Math.round(detection.age_s)} s old` : "";
-    const freshness = historical ? `Historical result${age}` : `Current result${age}`;
-    const text = historical ? "ML detect · historical" : "ML detect · current";
-    add("ml", "?", `Experimental ML detector proposal (${name}). ${freshness}; raw score ${score} is uncalibrated, not a probability.`, text);
-  }
-  const classification = label.rfml;
-  const className = typeof classification?.classification === "string"
-    ? classification.classification.trim() : "";
-  if (classification?.status === "ok" && className && className.toLowerCase() !== "unknown") {
-    const score = Number.isFinite(classification.score) ? ` · ${classification.score.toFixed(3)}` : "";
-    const disagreement = classification.comparison === "disagreement";
-    const symbol = disagreement ? "⚠" : "?";
-    const disagreementNote = disagreement ? " Classifier disagrees with the DSP estimate." : "";
-    if (classification.stale === true || label._goneAt != null) {
-      const age = label._goneAt == null && Number.isFinite(classification.age_s) ? ` · ${Math.round(classification.age_s)} s old` : "";
-      add("ml", symbol, `Experimental ML classifier output: ${className}. Historical result${age}; raw score${score || " unavailable"} is uncalibrated, not a probability.${disagreementNote}`, `ML class · historical · ${className}`);
-    } else {
-      const age = label._goneAt == null && Number.isFinite(classification.age_s) ? ` · ${Math.round(classification.age_s)} s old` : "";
-      add("ml", symbol, `Experimental ML classifier output: ${className}. Current result${age}; raw score${score || " unavailable"} is uncalibrated, not a probability.${disagreementNote}`, `ML class · ${className}`);
-    }
   }
   if (label.allocation || label.bandplan?.name || label.decoder_candidates?.some(c => c.evidence_kind === "allocation"))
     add("allocation", "?", "Frequency allocation only; does not establish the received service or station.");
@@ -161,13 +130,4 @@ export function clusteredEvidenceMarkers(labels, lowHz, spanHz, widthPx, cellPx 
     markers[i].x = Math.min(markers[i].x, markers[i + 1].x - cellPx);
   }
   return markers;
-}
-
-export function mlWorkerPhase(worker, hasResult = false) {
-  if (!worker || ["disabled", "stopped"].includes(worker.state)) return "OFF";
-  if (["unavailable", "error"].includes(worker.state)) return "ERROR";
-  if (worker.state === "loading") return "LOADING";
-  if (worker.state === "analyzing" || worker.queue > 0) return "ANALYZING";
-  if (hasResult || (worker.completed > 0 && Number.isFinite(worker.last_result_age_s))) return "RESULT RECEIVED";
-  return "WAITING FOR IQ";
 }

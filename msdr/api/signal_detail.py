@@ -64,37 +64,6 @@ def _last_classification(observations: list[dict], current: dict | None) -> dict
     return max(results, key=lambda item: item["at"], default=None)
 
 
-def _ml_analysis_state(
-    service: AppService, frequency_hz: int, survey_label: dict | None
-) -> dict | None:
-    if survey_label is None:
-        return None
-    result = survey_label.get("rfml")
-    if result is not None:
-        state = "historical_result" if result.get("stale") else "current_result"
-        return {"state": state, "at": result.get("analyzed_at"), "result": result}
-    survey = getattr(service, "survey", None)
-    status = survey.status() if survey is not None else {}
-    if not (status.get("ml_config") or {}).get("classifier_enabled"):
-        return {"state": "not_analyzed", "enabled": False}
-    analyzer = status.get("analyzer") or {}
-    classifier = analyzer.get("rfml") or {}
-    if classifier.get("state") in {"disabled", "error", "unavailable", "stopped"}:
-        return {
-            "state": "not_analyzed",
-            "enabled": True,
-            "error": classifier.get("error"),
-        }
-    span = status.get("span") or {}
-    tolerance = max((span.get("sample_rate_hz") or 0) / 512, 6000)
-    eligible = analyzer.get("candidate_frequencies_hz", [])
-    if analyzer.get("active") and any(
-        abs(candidate_hz - frequency_hz) <= tolerance for candidate_hz in eligible
-    ):
-        return {"state": "waiting", "enabled": True}
-    return {"state": "not_analyzed", "enabled": True}
-
-
 def _rds_evidence(survey_label: dict | None) -> list[dict]:
     """PI (validated_decode/validated) and PS (decoder_output/estimated) are
     two separate claims, never merged into one confidence number (S2)."""
@@ -395,46 +364,6 @@ def build_signal_detail(
     if analyzer is not None:
         evidence.append(analyzer)
 
-    # ML evidence is advisory even when it overlaps a DSP track. Expose it
-    # to the same inspector used by listening, notes, recordings and decoders.
-    survey = getattr(service, "survey", None)
-    proposals = survey.ml_proposals() if survey and hasattr(survey, "ml_proposals") else []
-    for proposal in proposals:
-        if not proposal["low_hz"] <= frequency_hz <= proposal["high_hz"]:
-            continue
-        detection = proposal["rfml_detection"]
-        evidence.append({
-            "kind": "analyzer", "source_group": "ml", "producer_role": "detector",
-            "title": "ML signal proposal · unvalidated",
-            "evidence_type": "iq_estimate", "state": "none", "score": None,
-            "source": detection.get("model_id"), "at": None,
-            "support": [f"model {detection.get('model_id')}",
-                        f"raw score {detection.get('score')} (uncalibrated)",
-                        f"proposed width {proposal['width_hz']:g} Hz",
-                        f"age {detection.get('age_s')} seconds",
-                        "Tentative presence only; no station or protocol identification"],
-            "next_action": "Listen, capture IQ, compare DSP evidence, then try a supported decoder",
-        })
-    rfml = (survey_label or {}).get("rfml")
-    if not rfml:
-        matching = [p for p in proposals if p["low_hz"] <= frequency_hz <= p["high_hz"]
-                    and p.get("rfml")]
-        if matching:
-            nearest = min(matching, key=lambda p: abs(
-                (p["low_hz"] + p["high_hz"]) / 2 - frequency_hz))
-            rfml = nearest["rfml"]
-    if rfml:
-        evidence.append({
-            "kind": "analyzer", "source_group": "ml", "producer_role": "classifier",
-            "title": f"ML {rfml.get('classification', 'UNKNOWN')}" +
-                (" · stale" if rfml.get("stale") else " · tentative"),
-            "evidence_type": "iq_estimate", "state": "none", "score": None,
-            "source": rfml.get("model_id"), "at": rfml.get("analyzed_at"),
-            "support": [f"raw score {rfml.get('score')} (uncalibrated)",
-                        f"age {rfml.get('age_s')} seconds"],
-            "next_action": "Acquire fresh IQ and verify independently",
-        })
-
     for item in evidence:
         item.setdefault("source_group", {
             "analyzer": "dsp", "decoded": "decoder", "memory": "memory",
@@ -451,7 +380,6 @@ def build_signal_detail(
         "memory": memory.model_dump(mode="json") if memory is not None else None,
         "find": find,
         "survey_label": survey_label,
-        "ml_analysis_state": _ml_analysis_state(service, frequency_hz, survey_label),
         "observations": observations,
         "last_classification": _last_classification(
             observations, (survey_label or {}).get("last_classification")

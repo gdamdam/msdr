@@ -16,7 +16,6 @@ schedule are context, an IQ estimate names candidates, a keyed carrier is a
 
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -318,20 +317,9 @@ class ObservationRecorder:
 
     def _apply(self, tracked: _Tracked, label: dict, now: float, sample_index: int | None) -> None:
         base = self._claim_fields(tracked.obs.id, now, sample_index)
-        for slot, spec in self._claim_specs(label, tracked=tracked).items():
+        for slot, spec in self._claim_specs(label).items():
             current = tracked.slots.get(slot)
             signature = (spec["value"], spec["evidence_type"], spec["integrity"])
-            # RFML is its own shadow lane. A model or preprocessing change is
-            # a new analysis even when its top label happens to stay the same.
-            if slot in ("rfml", "rfml_detection"):
-                signature += (
-                    spec.get("producer_version", ""),
-                    tuple(spec.get("limitations", [])),
-                    # Sorted, not the ranked order: a runner-up reshuffle alone
-                    # (jittering scores) must not append a claim -- only a
-                    # change in which labels appear does.
-                    tuple(sorted(str(item) for item in spec.get("alternatives", []))),
-                )
             if current is not None and current[0] == signature:
                 continue  # unchanged dimension: no write
             claim = Claim(**base, **spec)
@@ -349,7 +337,7 @@ class ObservationRecorder:
             )
             self.repo.update(tracked.obs)
 
-    def _claim_specs(self, label: dict, *, tracked: _Tracked | None = None) -> dict[str, dict]:
+    def _claim_specs(self, label: dict) -> dict[str, dict]:
         """slot -> Claim kwargs (minus the observation/time fields). The
         slot's `value` is what the diff compares, so a jittering score alone
         never appends a claim."""
@@ -397,91 +385,7 @@ class ObservationRecorder:
                     "limitations": [_SCHEDULE_LIMITATION],
                 }
 
-        detection = label.get("rfml_detection")
-        if detection:
-            specs["rfml_detection"] = {
-                "subject": "presence", "value": "ML signal proposal",
-                "evidence_type": "iq_estimate", "integrity": "not_applicable",
-                "producer": "survey.rfml.detector",
-                "producer_version": str(detection.get("model_version") or ""),
-                "score": detection.get("score"),
-                "support": [json.dumps({k: v for k, v in detection.items() if k != "age_s"},
-                                       sort_keys=True)],
-                "limitations": ["Unvalidated shadow proposal; not confirmed reception",
-                                "Sampled IQ and partial frequency coverage"],
-                "next_action": "Listen, capture IQ, and verify with DSP or decoded payload",
-            }
-
         modulation = label.get("modulation") or {}
-        rfml = label.get("rfml") or {}
-        rfml_status = rfml.get("status")
-        if rfml_status == "ok":
-            classification = str(rfml.get("classification") or "UNKNOWN")
-            # UNKNOWN is a result label, not a positive modulation assertion.
-            if classification != "UNKNOWN":
-                prep = str(rfml.get("preprocessing_version") or "unknown preprocessing")
-                calibration = str(rfml.get("calibration") or "uncalibrated")
-                limitations = [
-                    "shadow ML output; RF accuracy is unvalidated",
-                    f"preprocessing: {prep}",
-                    f"score is {calibration}",
-                ]
-                if rfml.get("reason"):
-                    limitations.append(str(rfml["reason"]))
-                specs["rfml"] = {
-                    "subject": "modulation",
-                    "value": classification,
-                    "evidence_type": "iq_estimate",
-                    "integrity": "unknown",
-                    "producer": "survey.rfml",
-                    "producer_version": str(rfml.get("model_version") or ""),
-                    "support": [
-                        json.dumps(
-                            {
-                                k: rfml[k]
-                                for k in (
-                                    "model_id",
-                                    "backend",
-                                    "sample_rate_hz",
-                                    "analyzed_at",
-                                    "input",
-                                    "candidates",
-                                )
-                                if k in rfml
-                            },
-                            sort_keys=True,
-                        )
-                    ],
-                    "score": rfml.get("score"),
-                    "alternatives": [
-                        str(item.get("label"))
-                        for item in (rfml.get("candidates") or [])
-                        if item.get("label") and item.get("label") != classification
-                    ],
-                    "limitations": limitations,
-                    "next_action": "independent RF modulation validation",
-                }
-        elif rfml_status == "abstained" and tracked is not None and "rfml" in tracked.slots:
-            # Preserve append-only history while making the current shadow
-            # lane explicitly abstained. This is only emitted after a prior
-            # ML estimate; abstention alone is not positive evidence.
-            specs["rfml"] = {
-                "subject": "modulation",
-                "value": "UNKNOWN",
-                "evidence_type": "iq_estimate",
-                "integrity": "unknown",
-                "producer": "survey.rfml",
-                "producer_version": str(rfml.get("model_version") or ""),
-                "score": None,
-                "alternatives": [],
-                "limitations": [
-                    "shadow ML abstained; no modulation estimate",
-                    "preprocessing: "
-                    f"{rfml.get('preprocessing_version') or 'unknown preprocessing'}",
-                    str(rfml.get("reason") or "abstained"),
-                ],
-                "next_action": "independent RF modulation validation",
-            }
         family = label.get("family") or {}
         activity = label.get("activity") or {}
         rds = label.get("rds") or {}

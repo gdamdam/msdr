@@ -544,7 +544,6 @@ class BandScan:
                         "recognized",
                         "voice",
                         "rds",
-                        "rfml",
                         "decoding",
                         "decoder",
                         "decoders",

@@ -78,7 +78,6 @@ from msdr.api.schemas import (
     SurveyBandScanStartIn,
     SurveyDecodeIn,
     SurveyDimensionsIn,
-    SurveyMLIn,
     SurveyReplayControlIn,
     SurveyReplayIn,
     SurveySaveIn,
@@ -88,7 +87,6 @@ from msdr.api.schemas import (
     TagIn,
     TagPatch,
     TuneFrequencyIn,
-    ValidationCaptureIn,
     WifiStartIn,
     WifiSurveyIn,
     restore_report_to_dict,
@@ -1306,20 +1304,6 @@ def create_app(
         body: SurveyDimensionsIn, service: AppService = Depends(get_service)
     ):
         return service.survey_dimensions(body.dimensions)
-
-    @app.post("/api/survey/validation")
-    async def survey_validation(
-        body: ValidationCaptureIn,
-        service: AppService = Depends(get_service),
-    ):
-        try:
-            return await service.survey_validation(body.model_dump())
-        except (ValueError, OSError) as exc:
-            raise HTTPException(409, str(exc)) from exc
-
-    @app.post("/api/survey/ml")
-    async def survey_ml(body: SurveyMLIn, service: AppService = Depends(get_service)):
-        return await service.survey_ml(body.model_dump(exclude_unset=True))
 
     @app.post("/api/survey/decode")
     async def survey_decode(body: SurveyDecodeIn, service: AppService = Depends(get_service)):

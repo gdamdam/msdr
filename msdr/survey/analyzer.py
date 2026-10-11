@@ -292,9 +292,6 @@ class Analyzer:
         min_active_s: float = _DEFAULT_MIN_ACTIVE_S,
         want_rds: Callable[[], bool] | None = None,
         rds_dwell_s: float = 6.0,
-        ml_settings=None,
-        ml_context: Callable[[int], dict | None] | None = None,
-        on_ml_result: Callable[[dict, dict], None] | None = None,
     ) -> None:
         self._iq_stream_factory = iq_stream_factory
         # Replay's bound iq_stream method exposes its source. Subscribe to the
@@ -340,14 +337,12 @@ class Analyzer:
         self._current_residual_hz = 0.0
         self._accum: list[np.ndarray] = []
         self._accum_len = 0
-        self._accum_has_gap = False
         # Activity-gate state per target frequency, persisted across
         # round-robin visits -- see set_targets()/retune() for pruning.
         self._target_state: dict[int, _TargetState] = {}
 
         self._stream = None
         self._started = False
-        self._validation_request = None
         self._reader_task: asyncio.Task | None = None
         self._pump_task: asyncio.Task | None = None
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=_MAX_QUEUED_FRAMES)
@@ -372,42 +367,6 @@ class Analyzer:
         self._retune_gen = 0
         self._retune_blocked = False
         self._accept_after_epoch = 0.0
-        self._ml = None
-        self._ml_context = ml_context
-        self._on_ml_result = on_ml_result
-        self._ml_last_end = None
-        self._ml_seen_dropped = 0
-        if ml_settings is not None and ml_settings.enabled:
-            from msdr.rfml.runtime import RFMLWorker
-
-            classifier_worker = RFMLWorker(ml_settings, lambda metadata, result: (
-                self._accept_ml_result(metadata, result)
-                if self._ml is classifier_worker else None
-            ))
-            self._ml = classifier_worker
-
-        self._ml_detector = None
-        self._ml_detector_result = None
-        self._ml_detector_at = None
-        self._ml_detector_parts = []
-        self._ml_detector_samples = 0
-        self._ml_detector_capture_at = None
-        self._ml_detector_input_samples = 0
-        self._ml_detector_sampled_samples = 0
-        self._ml_detector_accepted_samples = 0
-        self._ml_detector_settings = getattr(ml_settings, "detector", None)
-        if self._ml_detector_settings is not None and self._ml_detector_settings.enabled:
-            from msdr.rfml.detector_runtime import RFMLDetectorWorker
-
-            detector_worker = RFMLDetectorWorker(
-                self._ml_detector_settings,
-                lambda metadata, result: (
-                    self._accept_detector_result(metadata, result)
-                    if self._ml_detector is detector_worker else None
-                ),
-            )
-            self._ml_detector = detector_worker
-
         # RDS: targets refreshed by Survey (set_rds_targets, a plain list
         # swap); all scheduling happens on the worker side in _process_rds.
         self._want_rds = want_rds if want_rds is not None else (lambda: False)
@@ -441,27 +400,11 @@ class Analyzer:
         await self._stream.start()
         await self._stream.enable(True)
         self._started = True
-        if self._ml is not None:
-            await self._ml.start()
-        if self._ml_detector is not None:
-            await self._ml_detector.start()
         self._reader_task = asyncio.create_task(self._read_frames())
         self._pump_task = asyncio.create_task(self._pump())
 
     async def stop(self) -> None:
         self._started = False
-        if self._validation_request is not None and not self._validation_request[1].done():
-            self._validation_request[1].set_exception(ValueError("Survey analysis stopped"))
-        # A failing ML stop must not skip the reader/pump/stream teardown
-        # below, or the IQ stream would keep running; re-raise it at the end.
-        ml_error: Exception | None = None
-        for ml in (self._ml_detector, self._ml):
-            if ml is None:
-                continue
-            try:
-                await ml.stop()
-            except Exception as exc:  # noqa: BLE001
-                ml_error = ml_error or exc
         if self._source is not None:
             self._source.remove_listener(self._on_source_event)
         for task in (self._reader_task, self._pump_task):
@@ -478,189 +421,12 @@ class Analyzer:
         self._last_frame_at = None
         self._rate_window_start = None
         self._iq_rate_hz = None
-        if ml_error is not None:
-            raise ml_error
-
-    async def capture_validation(self, kind: str, duration_s: int = 0) -> tuple:
-        """Capture a bounded contiguous window without enabling ML."""
-        if duration_s not in (0, 1, 3, 5) or (duration_s and kind != "wideband"):
-            raise ValueError("Timed captures require full span and a duration of 1, 3 or 5 seconds")
-        if not self._started:
-            raise ValueError("Start Survey IQ analysis before capturing an example")
-        if self._validation_request is not None:
-            raise ValueError("A validation capture is already pending")
-        future = asyncio.get_running_loop().create_future()
-        self._validation_request = (kind, future, self._retune_gen)
-        self._validation_capture = {"duration_s": duration_s, "buffer": None, "count": 0}
-        try:
-            return await asyncio.wait_for(future, timeout=30)
-        except TimeoutError as exc:
-            raise ValueError("No suitable IQ window arrived within 30 seconds") from exc
-        finally:
-            self._validation_request = None
-            self._validation_capture = None
-
-    def _capture_validation_window(self, kind, iq, rate, frequency, metadata):
-        request = self._validation_request
-        if request is None or request[0] != kind or request[1].done():
-            return
-        if request[2] != self._retune_gen:
-            request[1].set_exception(ValueError("Receiver changed during capture; retry"))
-            return
-        if iq.size < 4096:
-            return
-        capture = getattr(self, "_validation_capture", None)
-        if capture and capture["duration_s"]:
-            index = metadata.get("sample_index")
-            identity = (rate, frequency, metadata.get("source_generation"),
-                        metadata.get("run_index"))
-            if index is None:
-                request[1].set_exception(ValueError("Timed capture requires IQ sample indices"))
-                return
-            if capture["buffer"] is None:
-                total = int(rate * capture["duration_s"])
-                if not 4096 <= total <= 64_000_000:
-                    request[1].set_exception(ValueError("Capture exceeds the 512 MB IQ limit"))
-                    return
-                capture.update(buffer=np.empty(total, dtype=np.complex64),
-                               identity=identity, next_index=index, metadata=dict(metadata))
-            if identity != capture["identity"] or index != capture["next_index"]:
-                request[1].set_exception(ValueError(
-                    "IQ gap or receiver change during capture; retry at a lower sample rate"))
-                capture["buffer"] = None
-                return
-            count = min(iq.size, capture["buffer"].size - capture["count"])
-            capture["buffer"][capture["count"]:capture["count"] + count] = iq[:count]
-            capture["count"] += count
-            capture["next_index"] = index + iq.size
-            if capture["count"] == capture["buffer"].size:
-                request[1].set_result((capture["buffer"], rate, {
-                    **capture["metadata"], "kind": kind, "frequency_hz": frequency,
-                    "analyzer_epoch": self._retune_gen,
-                    "sample_coordinates": "contiguous source frames",
-                    "requested_duration_s": capture["duration_s"],
-                }))
-            return
-        limit = 1048576 if kind == "wideband" else 12288
-        request[1].set_result((iq[:limit].copy(), rate, {
-            **metadata, "kind": kind, "frequency_hz": frequency,
-            "analyzer_epoch": self._retune_gen,
-        }))
-
-    async def configure_ml(self, settings) -> None:
-        """Change shadow workers while preserving the IQ and DSP pipeline."""
-        classifier_on = bool(getattr(settings, "enabled", False))
-        detector_settings = getattr(settings, "detector", None)
-        detector_on = bool(getattr(detector_settings, "enabled", False))
-        if bool(self._ml is not None) != classifier_on:
-            old, self._ml = self._ml, None
-            self._ml_last_end = None
-            if old is not None:
-                old.invalidate()
-                await old.stop()
-            if classifier_on:
-                from msdr.rfml.runtime import RFMLWorker
-
-                classifier_worker = RFMLWorker(settings, lambda metadata, result: (
-                    self._accept_ml_result(metadata, result)
-                    if self._ml is classifier_worker else None
-                ))
-                self._ml = classifier_worker
-                if self._started:
-                    await classifier_worker.start()
-        if bool(self._ml_detector is not None) != detector_on:
-            old, self._ml_detector = self._ml_detector, None
-            if old is not None:
-                old.invalidate()
-                await old.stop()
-            self._ml_detector_settings = detector_settings
-            self._ml_detector_parts.clear()
-            self._ml_detector_samples = 0
-            self._ml_detector_capture_at = None
-            self._ml_detector_input_samples = 0
-            self._ml_detector_sampled_samples = 0
-            self._ml_detector_accepted_samples = 0
-            self._ml_detector_result = None
-            self._ml_detector_at = None
-            if detector_on:
-                from msdr.rfml.detector_runtime import RFMLDetectorWorker
-
-                detector_worker = RFMLDetectorWorker(detector_settings, lambda metadata, result: (
-                    self._accept_detector_result(metadata, result)
-                    if self._ml_detector is detector_worker else None
-                ))
-                self._ml_detector = detector_worker
-                if self._started:
-                    await detector_worker.start()
-        elif detector_on:
-            previous = self._ml_detector_settings
-            previous_values = self._settings_values(previous)
-            next_values = self._settings_values(detector_settings)
-            changed = {
-                key for key in previous_values.keys() | next_values.keys()
-                if previous_values.get(key) != next_values.get(key)
-            }
-            if changed:
-                self._ml_detector_settings = detector_settings
-                if changed <= {"interval_s", "window_duration_ms"}:
-                    # Admission settings are read on each submission. Keep
-                    # the worker and DSP pipeline alive. Start a fresh
-                    # coverage epoch for either change so old sampling rates
-                    # or window policy do not color the new status.
-                    self._ml_detector.settings = detector_settings
-                    self._reset_detector_capture()
-                else:
-                    # Model, device, or prediction settings are captured when
-                    # the backend loads, so replace just this shadow worker.
-                    old, self._ml_detector = self._ml_detector, None
-                    if old is not None:
-                        old.invalidate()
-                        await old.stop()
-                    self._reset_detector_capture()
-                    from msdr.rfml.detector_runtime import RFMLDetectorWorker
-
-                    detector_worker = RFMLDetectorWorker(
-                        detector_settings,
-                        lambda metadata, result: (
-                            self._accept_detector_result(metadata, result)
-                            if self._ml_detector is detector_worker else None
-                        ),
-                    )
-                    self._ml_detector = detector_worker
-                    if self._started:
-                        await detector_worker.start()
-        self._on_status()
-
-    @staticmethod
-    def _settings_values(settings) -> dict:
-        if settings is None:
-            return {}
-        dump = getattr(settings, "model_dump", None)
-        if callable(dump):
-            return dump()
-        try:
-            return vars(settings)
-        except TypeError:
-            return {}
-
-    def _reset_detector_capture(self) -> None:
-        if self._ml_detector is not None:
-            self._ml_detector.invalidate()
-        self._ml_detector_parts.clear()
-        self._ml_detector_samples = 0
-        self._ml_detector_capture_at = None
-        self._ml_detector_input_samples = 0
-        self._ml_detector_sampled_samples = 0
-        self._ml_detector_accepted_samples = 0
-        self._ml_detector_result = None
-        self._ml_detector_at = None
 
     def _invalidate_source_generation(self, generation: int) -> None:
         if self._source_generation is not None and generation <= self._source_generation:
             return
         self._source_generation = generation
         self._retune_gen += 1  # invalidate a worker result already in flight
-        self.invalidate_ml()
         while not self._queue.empty():
             self._queue.get_nowait()
 
@@ -672,7 +438,6 @@ class Analyzer:
         """Invalidate in-flight work immediately, before waiting for DSP."""
         self._retune_gen += 1
         self._retune_blocked = True
-        self.invalidate_ml()
         while not self._queue.empty():
             self._queue.get_nowait()
 
@@ -697,7 +462,6 @@ class Analyzer:
 
     def _retune_locked(self, center_hz: int, sample_rate_hz: int) -> None:
         self._retune_gen += 1
-        self.invalidate_ml()
         self._rds_pending = []
         self._center_hz = center_hz
         self._sample_rate_hz = sample_rate_hz
@@ -729,160 +493,13 @@ class Analyzer:
 
     # -- targets ------------------------------------------------------------
 
-    def invalidate_ml(self) -> None:
-        """Synchronous invalidation, including before an asynchronous span reset."""
-        if self._ml is not None:
-            self._ml.invalidate()
-        self._ml_last_end = None
-        if self._ml_detector is not None:
-            self._ml_detector.invalidate()
-        self._ml_detector_parts.clear()
-        self._ml_detector_samples = 0
-        self._ml_detector_capture_at = None
-        self._ml_detector_input_samples = 0
-        self._ml_detector_sampled_samples = 0
-        self._ml_detector_accepted_samples = 0
-        self._ml_detector_result = None
-        self._ml_detector_at = None
-
-    def _accept_detector_result(self, metadata: dict, result: dict) -> None:
-        if metadata.get("analyzer_epoch") != self._retune_gen:
-            return
-        self._ml_detector_result = {**result, "input": metadata}
-        self._ml_detector_at = metadata.get("capture_monotonic", self._clock())
-        self._on_status()
-
-    def _submit_detector_frame(self, iq: np.ndarray, frame) -> None:
-        if self._ml_detector is None:
-            return
-        self._ml_detector_input_samples += iq.size
-        can_accept = getattr(self._ml_detector, "can_accept", None)
-        if can_accept is not None and not can_accept():
-            self._ml_detector_parts.clear()
-            self._ml_detector_samples = 0
-            self._ml_detector_capture_at = None
-            return
-        window_duration_ms = float(getattr(self._ml_detector_settings, "window_duration_ms", 100.0))
-        size = max(1, int(round(self._sample_rate_hz * window_duration_ms / 1000.0)))
-        take = min(size - self._ml_detector_samples, iq.size)
-        if self._ml_detector_samples == 0:
-            capture_at = self._clock()
-            received_at = getattr(frame, "received_at", None)
-            if isinstance(received_at, (int, float)) and np.isfinite(received_at):
-                # IQFrame carries a wall-clock socket read time. Convert its
-                # elapsed age to the monotonic clock used by the worker.
-                capture_at -= max(0.0, time.time() - received_at)
-            self._ml_detector_capture_at = capture_at
-        self._ml_detector_parts.append(iq[:take].copy())
-        self._ml_detector_samples += take
-        self._ml_detector_sampled_samples += take
-        if self._ml_detector_samples < size:
-            return
-        window = np.concatenate(self._ml_detector_parts)
-        self._ml_detector_parts.clear()
-        self._ml_detector_samples = 0
-        metadata = {
-            "analyzer_epoch": self._retune_gen,
-            "center_frequency_hz": self._center_hz,
-            "source_generation": getattr(frame, "generation", None),
-            "run_index": getattr(frame, "run_index", 0),
-            "capture_monotonic": self._ml_detector_capture_at,
-            "capture_duration_s": size / self._sample_rate_hz,
-            "window_samples": size,
-            "focus_frequencies_hz": list(self._targets),
-            "sample_coordinates": "contiguous sampled window; times relative to window start",
-            "window_duration_ms": window_duration_ms,
-        }
-        self._ml_detector_capture_at = None
-        accepted = self._ml_detector.submit(window, self._sample_rate_hz, metadata)
-        if accepted is not False:
-            self._ml_detector_accepted_samples += size
-
-    def _fresh_detector_result(self) -> tuple[dict | None, float | None, bool]:
-        """(result, capture_age_s, stale).
-
-        max_job_age_s is the queue deadline, not the display lifetime: a slow
-        inference publishes a result whose capture is already older than it,
-        and expiring on that age made every slow result vanish immediately
-        (review 2026-09-28). The result stays visible for result_ttl_s and is
-        flagged stale once its capture age passes max_job_age_s."""
-        age = self._clock() - self._ml_detector_at if self._ml_detector_at is not None else None
-        settings = self._ml_detector_settings
-        retained = age is not None and age <= getattr(settings, "result_ttl_s", 30.0)
-        stale = age is None or age > settings.max_job_age_s
-        return (self._ml_detector_result if retained else None), age, stale
-
-    def detector_result(self) -> dict:
-        """Narrow accessor for Survey.ml_proposals(), called several times
-        per spectrum frame: just the detector's result and its age, without
-        status()'s classifier/RDS/per-target work and locking (review
-        2026-09-28)."""
-        if self._ml_detector is None:
-            return {}
-        result, age, stale = self._fresh_detector_result()
-        return {"result": result, "result_age_s": age, "result_stale": stale}
-
-    def _detector_status(self) -> dict:
-        if self._ml_detector is None:
-            return {"state": "disabled"}
-        result, age, stale = self._fresh_detector_result()
-        worker_status = self._ml_detector.status()
-        rate_hz = float(self._sample_rate_hz)
-        window_duration_ms = float(getattr(self._ml_detector_settings, "window_duration_ms", 100.0))
-        window_samples = max(1, int(round(rate_hz * window_duration_ms / 1000.0)))
-        sample_coverage = (
-            self._ml_detector_sampled_samples / self._ml_detector_input_samples
-            if self._ml_detector_input_samples else None
-        )
-        inferred_coverage = (
-            worker_status.get("inferred_samples", 0) / self._ml_detector_input_samples
-            if self._ml_detector_input_samples else None
-        )
-        return {
-            **worker_status,
-            "result_age_s": age,
-            "result_stale": stale,
-            "result": result,
-            "input_samples": self._ml_detector_input_samples,
-            "sampled_samples": self._ml_detector_sampled_samples,
-            "accepted_samples": self._ml_detector_accepted_samples,
-            "sample_coverage": sample_coverage,
-            "missed_temporal_fraction": (
-                1.0 - inferred_coverage if inferred_coverage is not None else None
-            ),
-            "skipped_input_fraction": (
-                1.0 - sample_coverage if sample_coverage is not None else None
-            ),
-            "inference_coverage": inferred_coverage,
-            "window_duration_ms": window_duration_ms,
-            "window_samples": window_samples,
-            "effective_window_s": window_samples / rate_hz if rate_hz > 0 else None,
-            "coverage_window": "since last detector invalidation; analyzer-delivered IQ only",
-        }
-
-    def _accept_ml_result(self, metadata: dict, result: dict) -> None:
-        if metadata.get("analyzer_epoch") != self._retune_gen:
-            return
-        frequency_hz = metadata.get("frequency_hz")
-        if (
-            frequency_hz not in self._candidate_targets
-            and not (
-                frequency_hz in self._target_state
-                and self._clock() - self._target_seen.get(frequency_hz, -1e9) <= _TARGET_GRACE_S
-            )
-        ):
-            return
-        if self._on_ml_result is not None:
-            self._on_ml_result(metadata, {**result, "input": metadata})
-        self._on_status()
-
     def set_targets(
         self, frequencies_hz: list[int], *, priority_frequency_hz: int | None = None
     ) -> None:
         """Refresh candidates without interrupting the current dwell.
 
         Only max_analyzed targets are active at once. The first is the tuned
-        VFO when supplied; the others page through eligible S2/ML candidates
+        VFO when supplied; the others page through eligible S2 candidates
         after completed dwells, never on a spectrum-frame refresh.
         """
         # Survey sends each label's *current* centroid, which jitters by a
@@ -1006,7 +623,6 @@ class Analyzer:
     def _reset_accum(self) -> None:
         self._accum = []
         self._accum_len = 0
-        self._accum_has_gap = False
 
     def _advance_target(self) -> None:
         self._reset_accum()
@@ -1067,8 +683,6 @@ class Analyzer:
             )
         return {
             "active": self._stream is not None,
-            "rfml_detector": self._detector_status(),
-            "rfml": self._ml.status() if self._ml is not None else {"state": "disabled"},
             "queue": queue,
             "analyzing": self._current_freq,
             "targets": targets_status,
@@ -1171,34 +785,6 @@ class Analyzer:
                         if frame_generation != self._processed_source_generation:
                             self._retune_locked(desc.center_hz, desc.sample_rate_hz)
                             self._processed_source_generation = frame_generation
-                    # Track continuity even with ML off for manual captures.
-                    index = getattr(frame, "sample_index", None)
-                    run = getattr(frame, "run_index", 0)
-                    key = (frame_generation, run, index)
-                    gap = self._dropped != self._ml_seen_dropped
-                    if index is not None and self._ml_last_end is not None:
-                        gap = gap or key != self._ml_last_end
-                    if gap:
-                        # Only the ML capture window/state is stale on a
-                        # dropped frame or sample-index gap; the DSP dwell
-                        # accumulator and narrow channel must keep running
-                        # exactly as when ML is disabled (review
-                        # 2026-09-28: resetting them here starved DSP
-                        # results whenever the queue overflowed).
-                        self._accum_has_gap = True
-                        self.invalidate_ml()
-                    self._ml_seen_dropped = self._dropped
-                    self._ml_last_end = (
-                        (frame_generation, run, index + iq.size) if index is not None else None
-                    )
-                    self._capture_validation_window(
-                        "wideband", iq, self._sample_rate_hz, self._center_hz,
-                        {"source_generation": frame_generation,
-                         "sample_index": getattr(frame, "sample_index", None),
-                         "run_index": getattr(frame, "run_index", None),
-                         "sample_coordinates": "single source frame", "dsp": None},
-                    )
-                    self._submit_detector_frame(iq, frame)
                     gen = self._retune_gen
                     t0 = time.perf_counter()
                     try:
@@ -1223,38 +809,6 @@ class Analyzer:
                         self._on_result(frequency_hz, {**fields, "_analyzer_epoch": gen})
                     if result is not None:
                         frequency_hz, fields = result
-                        ml_window = fields.pop("_ml_window", None)
-                        if ml_window is not None:
-                            self._capture_validation_window(
-                                "channel", ml_window[0], ml_window[1], frequency_hz,
-                                {"dsp": fields, "source_generation": frame_generation,
-                                 "sample_coordinates": "channel window; source index unknown"},
-                            )
-                        if self._ml is not None and ml_window is not None:
-                            samples, rate = ml_window
-                            context = self._ml_context(frequency_hz) if self._ml_context else {}
-                            if context is not None:
-                                self._ml.submit(
-                                    samples,
-                                    rate,
-                                    {
-                                        **context,
-                                        "frequency_hz": frequency_hz,
-                                        "dsp": fields,
-                                        "analyzer_epoch": gen,
-                                        "source_generation": frame_generation,
-                                        "run_index": getattr(frame, "run_index", 0),
-                                        "source_frame_end_sample": (
-                                            frame.sample_index + iq.size
-                                            if getattr(frame, "sample_index", None) is not None
-                                            else None
-                                        ),
-                                        "sample_coordinates": (
-                                            "channelized window; "
-                                            "source frame end is an upper bound"
-                                        ),
-                                    },
-                                )
                         self._on_result(frequency_hz, {**fields, "_analyzer_epoch": gen})
                         self._advance_target()
                     if result is not None or rds_results:
@@ -1291,15 +845,6 @@ class Analyzer:
 
         buf = np.concatenate(self._accum)[:needed]
         result = self._analyze_target(buf, out_rate)
-        if (self._ml is not None or self._validation_request is not None) and (
-            buf.size >= 4096 and not self._accum_has_gap
-        ):
-            # Select a complete contiguous window BEFORE activity stitching.
-            windows = buf[: (buf.size // 4096) * 4096].reshape(-1, 4096)
-            best = int(np.argmax(np.mean(np.abs(windows) ** 2, axis=1)))
-            count = min(3, len(windows))
-            start = min(max(0, best - count // 2), len(windows) - count)
-            result[1]["_ml_window"] = (windows[start:start + count].reshape(-1).copy(), out_rate)
         return result
 
     # -- RDS dwell (worker thread) ----------------------------------------

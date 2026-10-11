@@ -194,8 +194,4 @@ Phones and many gadgets rotate their BLE address about every 15 minutes, so thei
 
 **Setup → Integrations** shows messages from a running JS8Call, Pat (Winlink) or FreeDATA. msdr only reads; send from those applications. [More](integrations.md)
 
-## Optional RF ML
-
-The experimental signal classifier and detector are currently disabled. [Status](rf-ml.md)
-
 See also: [README](../README.md) · [Wi-Fi setup](wifi.md) · [BLE setup](ble.md) · [History](history.md) · [Catalog sources](catalogs.md) · [Allocations](allocations.md)

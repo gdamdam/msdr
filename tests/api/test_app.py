@@ -311,7 +311,10 @@ async def test_active_profile_is_only_the_applied_one_while_it_still_matches():
     async with running_app() as (app, client, adapter):
         props = (await client.get("/api/state")).json()["props"]
         created = await client.post("/api/profiles", json={
-            "name": "Two-field profile", "antenna": props["active_antenna"], "lna_state": props["lna_state"]})
+            "name": "Two-field profile",
+            "antenna": props["active_antenna"],
+            "lna_state": props["lna_state"],
+        })
         profile_id = created.json()["id"]
 
         # Matching settings alone no longer label the receiver with it.
@@ -320,8 +323,10 @@ async def test_active_profile_is_only_the_applied_one_while_it_still_matches():
         assert (await client.post(f"/api/profiles/{profile_id}/apply")).status_code == 200
         assert (await client.get("/api/state")).json()["active_profile_id"] == profile_id
 
-        other = next(a for a in ("Antenna A", "Antenna B", "Antenna C") if a != props["active_antenna"])
-        assert (await client.post("/api/receiver/antenna", json={"antenna": other})).status_code == 200
+        antennas = ("Antenna A", "Antenna B", "Antenna C")
+        other = next(a for a in antennas if a != props["active_antenna"])
+        resp = await client.post("/api/receiver/antenna", json={"antenna": other})
+        assert resp.status_code == 200
         assert (await client.get("/api/state")).json()["active_profile_id"] is None
 
 
@@ -1362,69 +1367,6 @@ async def test_survey_dimensions_route_accepts_iq_dimensions():
         )
         assert resp.status_code == 200
         assert fake.dimensions == ["modulation", "symbol_rate", "voice"]
-
-
-@pytest.mark.usefixtures("ml_available")
-async def test_survey_ml_partial_toggle_persists_and_validates(tmp_path):
-    settings = Settings(db_path=str(tmp_path / "db.sqlite"))
-    settings.survey.ml.model_path = "custom-classifier.ckpt"
-    settings.survey.ml.detector.model_path = "custom-detector.pt"
-    async with running_app(settings=settings) as (app, client, _adapter):
-        response = await client.post("/api/survey/ml", json={"classifier_enabled": True})
-        assert response.status_code == 200
-        assert response.json()["ml_config"] == {
-            "available": True, "classifier_enabled": True, "detector_enabled": False,
-            "detector_interval_s": 2.0,
-        }
-        response = await client.post("/api/survey/ml", json={"detector_enabled": True})
-        assert response.status_code == 200
-        assert response.json()["ml_config"] == {
-            "available": True, "classifier_enabled": True, "detector_enabled": True,
-            "detector_interval_s": 2.0,
-        }
-        response = await client.post("/api/survey/ml", json={"detector_interval_s": 4.5})
-        assert response.status_code == 200
-        assert response.json()["ml_config"]["detector_interval_s"] == 4.5
-        saved = Settings.load(app.state.service.settings_path)
-        assert app.state.service.settings.survey.ml.detector.interval_s == 4.5
-        assert saved.survey.ml.enabled is True
-        assert saved.survey.ml.detector.enabled is True
-        assert saved.survey.ml.detector.interval_s == 4.5
-        assert saved.survey.ml.model_path == "custom-classifier.ckpt"
-        assert saved.survey.ml.detector.model_path == "custom-detector.pt"
-        assert response.json()["analyzer"]["active"] is False
-        for value in (None, 1, "true"):
-            invalid = await client.post("/api/survey/ml", json={"classifier_enabled": value})
-            assert invalid.status_code == 422
-        for value in (None, True, "2", 0.24, 60.01):
-            invalid = await client.post("/api/survey/ml", json={"detector_interval_s": value})
-            assert invalid.status_code == 422
-        for value in ("NaN", "Infinity", "-Infinity"):
-            invalid = await client.post(
-                "/api/survey/ml",
-                content=f'{{"detector_interval_s":{value}}}',
-                headers={"content-type": "application/json"},
-            )
-            assert invalid.status_code == 422
-        for value in (0.25, 2, 60):
-            valid = await client.post("/api/survey/ml", json={"detector_interval_s": value})
-            assert valid.status_code == 200
-
-
-@pytest.mark.usefixtures("ml_available")
-async def test_survey_ml_save_failure_keeps_runtime_unchanged(tmp_path, monkeypatch):
-    settings = Settings(db_path=str(tmp_path / "db.sqlite"))
-    async with running_app(settings=settings) as (app, _client, _adapter):
-        service = app.state.service
-
-        def fail_save(_self, _path):
-            raise OSError("settings disk unavailable")
-
-        monkeypatch.setattr(Settings, "save", fail_save)
-        with pytest.raises(OSError, match="settings disk unavailable"):
-            await service.survey_ml({"classifier_enabled": True})
-        assert service.settings.survey.ml.enabled is False
-        assert service.survey.status()["ml_config"]["classifier_enabled"] is False
 
 
 async def test_build_survey_passes_iq_stream_factory(monkeypatch):
@@ -2588,51 +2530,6 @@ async def test_api_timezones_contains_utc_and_europe_rome():
         assert names == sorted(names)
 
 
-async def test_validation_capture_requires_active_analysis():
-    async with running_app() as (_app, client, _adapter):
-        response = await client.post("/api/survey/validation", json={"kind": "wideband"})
-        assert response.status_code in {409, 404}
-        invalid = await client.post("/api/survey/validation", json={"label": "model says FM"})
-        assert invalid.status_code == 422
-
-
-async def test_validation_capture_api_saves_iq_without_ml(tmp_path, monkeypatch):
-    from types import SimpleNamespace
-
-    import numpy as np
-
-    async def capture(kind, duration_s=0):
-        assert kind == "wideband"
-        assert duration_s == 5
-        return np.ones(4096, dtype=np.complex64), 50000, {
-            "frequency_hz": 144390000, "kind": kind,
-        }
-
-    async with running_app() as (app, client, _adapter):
-        service = app.state.service
-        service.settings.recorder_root = str(tmp_path / "recordings-root")
-        folder = await client.patch("/api/settings", json={
-            "validation_samples_dir": str(tmp_path / "samples-ssd"),
-        })
-        assert folder.status_code == 200
-        assert folder.json()["validation_samples_dir"] == str(tmp_path / "samples-ssd")
-        survey = service.survey
-        with monkeypatch.context() as patch:
-            patch.setattr(survey, "_analyzer", SimpleNamespace(capture_validation=capture))
-            patch.setattr(survey, "status", lambda: {"active": True, "labels": []})
-            response = await client.post("/api/survey/validation", json={
-                "label": "digital", "duration_s": 5,
-            })
-        assert response.status_code == 200
-        result = response.json()
-        assert str(tmp_path / "samples-ssd") in result["path"]
-        with np.load(result["path"], allow_pickle=False) as archive:
-            metadata = json.loads(str(archive["metadata"]))
-            assert metadata["input"]["session_id"]
-            assert metadata["ground_truth"] is None
-            assert metadata["operator_annotation"]["label"] == "digital"
-
-
 async def test_effective_location_readiness_includes_location_file(tmp_path):
     location_file = tmp_path / "location.json"
     location_file.write_text(json.dumps({"lat": 37.0, "lon": -122.0, "timezone": "UTC"}))
@@ -2708,28 +2605,6 @@ async def test_concurrent_runtime_toggles_start_each_engine_once():
             assert getattr(service, f"_{engine}_running") is True
             await getattr(service, stop_name)()
             assert getattr(service, f"_{engine}_running") is False
-
-
-async def test_dormant_ml_ignores_saved_config_and_refuses_toggle(tmp_path):
-    settings = Settings(db_path=str(tmp_path / "db.sqlite"))
-    settings.survey.ml.enabled = True
-    settings.survey.ml.detector.enabled = True
-    async with running_app(settings=settings) as (app, client, _adapter):
-        service = app.state.service
-        assert service.survey.status()["ml_config"]["available"] is False
-        assert service.survey.status()["ml_config"]["classifier_enabled"] is False
-        assert service.survey.status()["ml_config"]["detector_enabled"] is False
-        assert service.survey._ml_enabled() is False
-        assert service.survey._ml_settings() is None  # the analyzer gets no ML workers
-        response = await client.post("/api/survey/ml", json={"classifier_enabled": True})
-        assert response.status_code == 404
-        assert service.settings.survey.ml.enabled is True  # saved choice kept for a revival
-
-
-async def test_patch_relative_validation_folder_returns_422():
-    async with running_app() as (app, client, _adapter):
-        resp = await client.patch("/api/settings", json={"validation_samples_dir": "relative/dir"})
-        assert resp.status_code == 422
 
 
 async def test_concurrent_restores_while_doppler_stop_awaits_second_gets_restore_running():

@@ -115,7 +115,6 @@ export class MsdrApp extends LitElement {
   static properties = {
     state: { state: true },
     settings: { state: true },
-    _surveyMlBusy: { state: true },
     _surveyPeakBusy: { state: true },
     workspace: { state: true },
     discoverView: { state: true },
@@ -1229,7 +1228,7 @@ export class MsdrApp extends LitElement {
     const message =
       conflicts.message || `This will stop ${conflicts.interrupts.join(", ").toUpperCase()}. Continue?`;
     // A second prompt replaces the first: settle the earlier one as CANCEL so
-    // its caller (e.g. _doSurveyMl) isn't orphaned awaiting it forever.
+    // its caller (e.g. _doSurveyStart) isn't orphaned awaiting it forever.
     this._interruptConfirm?.resolve(false);
     return new Promise((resolve) => {
       this._interruptConfirm = {
@@ -1951,26 +1950,6 @@ export class MsdrApp extends LitElement {
     }, "survey", "survey");
   }
 
-  async _doSurveyMl(patch) {
-    if (this._surveyMlBusy) return;
-    this._surveyMlBusy = true;
-    try {
-      const startsIq = (patch.classifier_enabled === true || patch.detector_enabled === true) && this.state?.survey?.active &&
-        !this.state?.survey?.analyzer?.active && !this.state?.survey?.replay;
-      if (startsIq && !(await this.confirmInterrupt("analyzer"))) return;
-      await this._run(async () => {
-        const status = await api.setSurveyMl(patch);
-        this.state = { ...(this.state ?? {}), survey: status };
-        this._clearFailure("survey");
-        this._action("ML settings saved" + (status.active ? "" : " · start Survey to run ML"));
-      }, "survey", "survey");
-    } finally {
-      this._surveyMlBusy = false;
-      // Restore the controlled switches after cancellation or a failed request.
-      this.querySelector("survey-view")?.requestUpdate();
-    }
-  }
-
   /** S5 row action (survey-view.js's "→ DECODE" button): pins a band-decoder
    * channel on this label's frequency (POST /api/survey/decode), starting a
    * band session if none is active yet. `detail.decoders` is null to take the
@@ -2378,12 +2357,9 @@ export class MsdrApp extends LitElement {
           .favorites=${this.favorites}
           .failure=${this._failureFor("survey")}
           .wfSettings=${this.settings?.survey ?? null}
-          .showMlControls=${this.features.ml_controls}
           .bandScanDraft=${this._bandScanDraft}
           @band-scan-draft-change=${(ev) => this._updateBandScanDraft(ev.detail)}
-          .mlBusy=${!!this._surveyMlBusy}
           .peakBusy=${!!this._surveyPeakBusy}
-          @survey-ml=${(ev) => this._doSurveyMl(ev.detail)}
           @survey-start=${() => this._doSurveyStart()}
           @survey-stop=${() => this._doSurveyStop()}
           @survey-clear=${() => this._doSurveyClear()}

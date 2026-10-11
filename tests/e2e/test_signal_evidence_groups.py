@@ -25,12 +25,6 @@ def test_signal_inspector_groups_evidence_by_source_and_freshness(live_app, page
                 "name": "Speech-like NFM", "at": 1_799_999_000,
                 "source": "analyzer",
             },
-            "rfml": {"classification": "FM", "score": 0.91, "stale": False},
-        },
-        "ml_analysis_state": {
-            "state": "current_result", "enabled": True,
-            "at": 1_800_000_000,
-            "result": {"classification": "FM", "score": 0.91, "stale": False},
         },
         "last_classification": {
             "name": "Speech-like NFM", "at": 1_799_999_000,
@@ -43,22 +37,6 @@ def test_signal_inspector_groups_evidence_by_source_and_freshness(live_app, page
                 "state": "estimated", "score": 0.88, "source": "analyzer",
                 "source_group": "dsp", "producer_role": "analyzer",
                 "at": 1_800_000_000, "support": [],
-            },
-            {
-                "kind": "analyzer", "title": "ML FM",
-                "detail": "Current uncalibrated classifier output",
-                "evidence_type": "iq_estimate", "state": "none", "score": None,
-                "source": "torchsig-xcit-v0.6.1", "source_group": "ml",
-                "producer_role": "classifier", "at": 1_800_000_000,
-                "support": ["raw score 0.91 (uncalibrated)"],
-            },
-            {
-                "kind": "analyzer", "title": "ML PSK · stale",
-                "detail": "Older classifier output retained for review",
-                "evidence_type": "iq_estimate", "state": "none", "score": None,
-                "source": "torchsig-xcit-v0.6.1", "source_group": "ml",
-                "producer_role": "classifier", "at": 1_799_900_000,
-                "support": ["Historical estimate"],
             },
             {
                 "kind": "decoded", "title": "Decoded (nfm)",
@@ -164,12 +142,10 @@ def test_signal_inspector_groups_evidence_by_source_and_freshness(live_app, page
 
     inspector = page.locator("signal-panel")
     dsp = inspector.locator('[data-evidence-group="dsp"]')
-    ml = inspector.locator('[data-evidence-group="ml"]')
     decoder = inspector.locator('[data-evidence-group="decoder"]')
     memory = inspector.locator('[data-evidence-group="memory"]')
     context = inspector.locator('[data-evidence-group="context"]')
     expect(dsp).to_be_visible()
-    expect(ml).to_be_visible()
     expect(decoder).to_be_visible()
     expect(memory).to_be_visible()
     expect(context).to_be_visible()
@@ -177,12 +153,6 @@ def test_signal_inspector_groups_evidence_by_source_and_freshness(live_app, page
     # The current DSP value is represented once even when the survey's
     # historical summary contains the same classification.
     expect(dsp.get_by_text("Speech-like NFM", exact=True)).to_have_count(1)
-    expect(dsp).not_to_contain_text("ML FM")
-    expect(dsp).not_to_contain_text("ML PSK")
-    expect(ml).to_contain_text("ML classifier")
-    expect(ml).to_contain_text("FM")
-    expect(ml).to_contain_text("Current result")
-    expect(ml).to_contain_text("ML PSK · stale")
     expect(decoder).to_contain_text("Decoded (nfm)")
     expect(memory).to_contain_text("NOAA WX4")
     expect(context).to_contain_text("NOAA WX scheduled")
@@ -193,7 +163,6 @@ def test_signal_inspector_groups_evidence_by_source_and_freshness(live_app, page
 
     expected_colors = {
         "dsp": "rgb(69, 213, 224)",
-        "ml": "rgb(187, 154, 255)",
         "decoder": "rgb(100, 221, 187)",
         "memory": "rgb(146, 175, 213)",
         "context": "rgb(239, 193, 107)",

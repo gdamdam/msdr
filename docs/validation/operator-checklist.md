@@ -9,9 +9,9 @@ Use this document to test application behavior and collect evidence of RF correc
 ## Start here
 
 1. Run **A–C** first: setup, receiver controls and basic Survey.
-2. Run **D–F**: ML states, validation captures and recording/replay.
+2. Run **F**: recording/replay.
 3. Test available decoders in **G**, then maps and library workflows in **H–J**.
-4. Collect the real-recording corpus in **K** and evaluate it in **L**.
+4. Collect the real-recording corpus in **K**.
 5. Record failures with the template at the end. Do not mark an untested operation as passed.
 
 **Suggested sessions:** a short functional smoke test first; a longer VHF/UHF listening session next; independent held-out sessions later. HF and unavailable protocols can remain explicitly untested.
@@ -27,14 +27,13 @@ For each row, replace ☐ with a result and record its ID in your session notes.
 | Session ID / date / timezone | |
 | msdr version / commit | |
 | macOS / Mac chip / memory | |
-| Python / ML environment | |
+| Python environment | |
 | Browser / window size | |
 | SDRconnect version / receiver | |
 | Antenna / receiving location | |
 | Center frequency / VFO / sample rate | |
 | Demodulation / filter / gain / LNA / AGC | |
 | Recording output folder / free space | |
-| ML models / backend / thresholds | |
 | Development or held-out test session | |
 | Capture paths / reference decoder / screenshots | |
 
@@ -72,8 +71,6 @@ Record missing metadata as **unknown**. Preserve the original recordings; do not
 
 ## C. Survey and evidence
 
-Start with both ML switches **off**, so the DSP-only behavior is visible.
-
 | ID | Operation | Expected result | Result |
 |---|---|---|---|
 | C01 | Start, stop and restart Survey; clear its results. | Status reflects each action; no stale rows presented as a new session. | ☐ |
@@ -81,60 +78,11 @@ Start with both ML switches **off**, so the DSP-only behavior is visible.
 | C03 | Watch intermittent bursts across multiple dwells. | Activity accumulates sensibly; quiet periods and last-seen age are visible. | ☐ |
 | C04 | Observe a known digital signal that previously appeared as voice. | Record DSP family/voice output and audio evidence. A confident incorrect voice claim is a failure; “unknown” is acceptable uncertainty. | **Regression repaired on saved IQ:** 152.879 MHz stable DMR sections now read data; independent field checks remain. See reception log. |
 | C05 | Sort/filter by evidence, frequency and SNR. | Ordering/filtering is consistent; filtering does not accidentally change sorting. | ☐ |
-| C06 | Compare table evidence badges with spectrum markers and tooltips. | DSP, ML, allocation, schedule and decode evidence remain distinguishable. A catalog match does not prove reception. | ☐ |
+| C06 | Compare table evidence badges with spectrum markers and tooltips. | DSP, allocation, schedule and decode evidence remain distinguishable. A catalog match does not prove reception. | ☐ |
 | C07 | Inspect a signal; tune, save and open decoded output where available. | Actions refer to the selected signal and preserve observation/evidence context. | ☐ |
 | C08 | Change span/rate during analysis; compare SDRconnect sampling with observed IQ status. | New coordinates replace old ones; sample-rate/throughput warnings are understandable. Configured rate and delivered throughput need not be equal. | ☐ |
 | C09 | Watch quiet spectrum, an isolated FFT spike and a suspected DC/receiver spur. | Save false detections and ambiguous cases, not only successes. Do not call every narrow carrier a spur. | ☐ |
 | C10 | Run Scan frequencies and inspect a hit. | Scan controls work; result leads to its associated evidence/recording when one exists. | ☐ |
-
-## D. ML operation and truthful status
-
-Install optional dependencies/models once using [RF ML setup](../rf-ml.md). Record the actual backend shown; do not assume Metal is active.
-
-| ID | Operation | Expected result | Result |
-|---|---|---|---|
-| D01 | Both switches off. | DSP remains functional. ML is visibly off, with no fresh ML claims. | ☐ |
-| D02 | Classifier on, detector off. | Classifier progresses through available states and eventually produces a family or abstention on eligible channel IQ. | ☐ |
-| D03 | Detector on, classifier off. | Detector runs independently; proposals may appear. A successfully analyzed empty window is different from no inference. | ☐ |
-| D04 | Both on; then disable each separately. | Other worker and DSP continue. Switches persist across restart. | ☐ |
-| D05 | Set switches while Survey is stopped, then start Survey. | Settings save without pretending inference is already running; eligible workers start with analysis. | ☐ |
-| D06 | Inspect prediction details on steady and changing signals. | Up to three contiguous windows support classification; disagreement/low scores abstain. Scores are not labeled as calibrated reception probabilities. | ☐ |
-| D07 | Retune or seek replay while jobs are pending. | Old-band/source results do not attach to new signals. Age and stale status remain meaningful. | ☐ |
-| D08 | Watch IQ sampled, IQ inferred and span covered. | Values describe different coverage measures, not accuracy. Rotating search explores outside known DSP targets. | ☐ |
-| D09 | Inspect a narrow ML-only proposal, then wait for a classifier result. | Its evidence refreshes when available; small box jitter does not repeatedly create unrelated observations. | ☐ |
-| D10 | Observe errors or missing models in a disposable configuration/environment. | Error and setup instructions are visible; DSP continues. Do not delete working model files merely to run this test. | ☐ |
-| D11 | Compare normal listening with ML off, classifier only, detector only, and both. | Note CPU/memory, audio gaps, UI latency, inference latency and dropped jobs. No acquisition stalls attributable to ML. | ☐ |
-
-A result may be wrong even when D01–D11 pass. These checks establish integration, not RF accuracy.
-
-## E. Capture validation examples
-
-Open **Validation sample** below the ML strip. Enable a Survey IQ-analysis dimension first. ML itself may remain off.
-
-| ID | Operation | Expected result | Result |
-|---|---|---|---|
-| E01 | Choose Full visible span, add a label/note and save. | A local `.npz` is saved under `<output folder>/rfml-validation`; UI gives its path and actual duration. | ☐ |
-| E02 | Choose Analyzed signal and save. | Saves up to three 4096-sample windows. Recorded frequency is the next analyzed target, **not necessarily the VFO**. | ☐ |
-| E03 | Capture a voice example, digital example and uncertain/quiet example. | Operator descriptions are stored separately from model predictions. Ground truth is not automatically asserted. | ☐ |
-| E04 | Attempt capture with analysis stopped, then retry correctly. | Clear refusal/timeout; no bogus success. Valid retry succeeds. | ☐ |
-| E05 | During pending capture, retune or stop analysis. | Capture is rejected if source changes/stops; it is not mislabeled with another frequency. | ☐ |
-| E06 | Inspect the archive using the command below. | Complex IQ, spectrogram and metadata exist; rate, frequency, duration and session ID match the session. | ☐ |
-| E07 | Test quota rejection only in a disposable test folder/configuration. | Saving refuses at the 512 MiB example quota without deleting old examples. Do not fill your working disk to test this. | ☐ |
-
-From the same Python environment as msdr, replace the path with the one shown by the UI:
-
-```sh
-python - '/absolute/path/to/example.npz' <<'PY'
-import json, sys, numpy as np
-with np.load(sys.argv[1], allow_pickle=False) as a:
-    print('Arrays:', a.files)
-    print('IQ:', a['iq'].shape, a['iq'].dtype)
-    print('Spectrogram:', a['spectrogram'].shape)
-    print(json.dumps(json.loads(str(a['metadata'])), indent=2))
-PY
-```
-
-**A short wideband snapshot is not a long recording.** It cannot establish burst recall or false positives per minute on its own. Use the recorder for that.
 
 ## F. Recordings, replay and investigation
 
@@ -144,7 +92,7 @@ Use a disposable test recording for editing/clipping tests. Keep original corpus
 |---|---|---|---|
 | F01 | ARM, allow pre-roll, REC, then STOP. | State transitions are clear; recording appears under `<output folder>/recordings`. Check duration and metadata. | ☐ |
 | F02 | Open the saved recording and replay it. | Spectrum/timeline agree with recorded content; playback controls work. | ☐ |
-| F03 | Pause, resume, seek and loop a region. | Position is consistent; old ML/analyzer results are invalidated when appropriate. | ☐ |
+| F03 | Pause, resume, seek and loop a region. | Position is consistent; old analyzer results are invalidated when appropriate. | ☐ |
 | F04 | Listen/tune within replay where supported. | Replay operations do not retune the live receiver. Unsupported actions are explicit. | ☐ |
 | F05 | Start a replay-supported decoder on a known recording. | Messages correspond to the recorded interval. Raw-IQ-only live decoders are not expected to work in replay. | ☐ |
 | F06 | Add a note/bookmark and return to it after restart. | Timestamp, recording reference and note survive. | ☐ |
@@ -211,7 +159,7 @@ Use decoder help/readiness for its exact input requirements. Single-channel raw 
 | J01 | Set receiving location, refresh TLEs, inspect a pass. | Timezone, orbit-data age and azimuth/elevation are understandable; compare against nextpass for the same location, epoch and TLEs. | ☐ |
 | J02 | Start/stop tracking during an appropriate pass or test scenario. | Doppler changes apply as intended; stop ends automatic retuning. | ☐ |
 | J03 | Start/stop beacon monitoring when applicable. | Events identify the correct session/frequency; missing reception is not labeled a successful beacon decode. | ☐ |
-| J04 | Run your normal Survey + audio + decoder + optional ML combination for 30–60 minutes. | Record memory trend, CPU, dropped IQ/jobs, audio gaps and UI responsiveness. Memory/queues should not grow without bound. | ☐ |
+| J04 | Run your normal Survey + audio + decoder combination for 30–60 minutes. | Record memory trend, CPU, dropped IQ/jobs, audio gaps and UI responsiveness. Memory/queues should not grow without bound. | ☐ |
 | J05 | Restart msdr after the endurance session. | Library/settings/recordings survive; no duplicate runaway decoder processes or abandoned active state. | ☐ |
 
 ## K. Collect the RF evidence
@@ -228,38 +176,7 @@ Start with **20–30 short examples across several sessions**. This is a pilot d
 | Noise / suspected spurs | Quiet intervals, DC, adjacent-channel leakage, brief impulses | Independently review; a weak real signal must not be mislabeled noise. |
 | HF later | Broadcast/utility examples at varied SNR | Separate HF results from the VHF/UHF claim. |
 
-For detection evaluation, retain **longer wideband recordings** with complete frequency/time annotations, including negative intervals. Candidate exports alone omit missed signals and cannot measure recall.
-
 Keep development and held-out test recordings from genuinely separate sessions. Do not split adjacent windows from one transmission across those sets. Use a reference decoder on the **same recording**, not a different live reception. Note capture drops, gain, antenna, clipping and sample format. Store file hashes when assembling the corpus.
-
-## L. Honest baseline and the 8/10 gate
-
-The tools are implemented; a representative RF baseline has **not** yet been established.
-
-**You supply:** recordings, independently checked labels, session provenance and disputed-case review. **Implementation/evaluation work:** prepare aligned prediction exports, annotate detection regions, run comparisons and review errors. Do not type invented predictions into a manifest to make the gate pass.
-
-Follow the exact schemas in [RFML validation](../rfml-validation.md):
-
-```sh
-msdr-rfml baseline detection-manifest.json > detection-report.json
-msdr-rfml evaluate classification-corpus.jsonl --device cpu > classification-report.json
-msdr-rfml release-gate detection-manifest.json \
-  --classification-report classification-report.json > gate.json
-```
-
-`baseline` scores supplied predictions; it does not automatically run a recording through all three detectors. Explicit `combined` outputs must come from the proposed combined strategy. Current diagnostic fusion preserves unmatched DSP detections; it is not a validated false-positive rejection strategy.
-
-| Gate | Requirement |
-|---|---|
-| False detections | Combined strategy ≥30% fewer than DSP on held-out recordings |
-| Recall | At most 5 percentage points below DSP; additionally inspect weak/bursty subsets |
-| Accepted classification | ≥90% correct, ≥50% known-example acceptance coverage |
-| Detection support | ≥5 held-out sessions, ≥30 truth regions, ≥2 negative sessions totaling ≥10 minutes, ≥10 DSP false positives |
-| Development separation | ≥1 development session; recordings cannot overlap the test split |
-| Classification support | ≥30 accepted known examples, ≥10 rejection examples, zero inference errors, complete test-only provenance across ≥2 sessions |
-| Operational approval | Separately verify latency, acquisition continuity, coverage and endurance on your Mac |
-
-A provisional numerical pass does not automatically certify msdr or justify an 8/10 rating. Review corpus representativeness, annotation quality and the actual failures. Insufficient evidence must remain insufficient, not a pass.
 
 ## Failure / result template
 
@@ -273,8 +190,8 @@ Observed:
 Exact steps to reproduce:
 Frequency / center / sample rate / mode / bandwidth:
 Antenna / gain / source (live or replay):
-Decoder or model / backend / thresholds:
-Recording or validation-example path and time interval:
+Decoder / backend / thresholds:
+Recording path and time interval:
 Screenshot / log / crash-report path:
 Independent reference / confidence in the operator label:
 Reproducible after restart?:

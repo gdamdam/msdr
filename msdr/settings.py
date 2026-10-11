@@ -107,8 +107,6 @@ class Features(BaseModel):
     # Scanner finds log (S11): every hit recorded as a find when the scan's
     # log_finds option is on -- see msdr.api.service's on_find wiring.
     finds: bool = True
-    # Presentation only; model execution is controlled by survey.ml settings.
-    ml_controls: bool = True
 
 
 class DecoderSettings(BaseModel):
@@ -210,57 +208,6 @@ class SpanPreset(BaseModel):
     center_hz: int
 
 
-class RFMLDetectorSettings(BaseModel):
-    """Opt-in experimental live wideband detection; never vetoes DSP tracks."""
-
-    enabled: bool = False
-    model_path: str = "~/.cache/msdr/models/yolo-wideband.pt"
-    device: Literal["auto", "cpu", "mps"] = "auto"
-    score_threshold: float = Field(default=0.50, ge=0, le=1)
-    queue_size: int = Field(default=1, ge=1, le=4)
-    max_job_age_s: float = Field(default=5.0, gt=0, le=60)
-    # How long the last result stays visible; its capture age is always
-    # reported so old evidence never looks current (review 2026-09-28).
-    result_ttl_s: float = Field(default=30.0, gt=0, le=3600)
-    # Live windows are sized from the incoming IQ sample rate. This keeps the
-    # detector's temporal view stable when the operator changes survey span.
-    window_duration_ms: float = Field(default=100.0, ge=1.0, le=250.0)
-    interval_s: float = Field(default=2.0, ge=0.25, le=60)
-    target_bin_hz: float = Field(default=1500.0, ge=100, le=25000)
-    max_tiles: int = Field(default=4, ge=1, le=32)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _migrate_sample_window(cls, value):
-        """Migrate the old sample-count setting without retaining its cap.
-
-        The old sample count had no stable temporal meaning across rates, so
-        legacy values are discarded and the duration defaults to 100 ms.
-        """
-        if not isinstance(value, dict) or "window_samples" not in value:
-            return value
-        data = dict(value)
-        data.pop("window_samples")
-        return data
-
-
-class RFMLSettings(BaseModel):
-    """Optional shadow classification; scores are not calibrated probabilities."""
-
-    enabled: bool = False
-    model_path: str = "~/.cache/msdr/models/xcit_narrowband.ckpt"
-    device: Literal["auto", "cpu", "mps"] = "auto"
-    score_threshold: float = Field(default=0.70, ge=0, le=1)
-    result_ttl_s: float = Field(default=60.0, gt=0, le=3600)
-    queue_size: int = Field(default=2, ge=1, le=8)
-    max_job_age_s: float = Field(default=5.0, gt=0, le=60)
-    detector: RFMLDetectorSettings = Field(default_factory=RFMLDetectorSettings)
-    export_dir: str = ""
-    export_mode: Literal["disagreements", "all"] = "disagreements"
-    export_max_bytes: int = Field(default=64 * 1024 * 1024, ge=65536, le=2**30)
-    export_interval_s: float = Field(default=10.0, ge=0, le=3600)
-
-
 class SurveySettings(BaseModel):
     """Wide-view survey configuration (msdr.survey, S1) -- see
     docs/superpowers/specs/2026-09-25-wide-view-identification-design.md."""
@@ -284,7 +231,6 @@ class SurveySettings(BaseModel):
     max_analyzed: int = 6
     analyze_dwell_s: float = 2.0
     analyze_min_snr_db: float = 8.0
-    ml: RFMLSettings = Field(default_factory=RFMLSettings)
     # RDS: snap FM stations to the odd-tenth 200 kHz grid (88.1, 88.3, ...),
     # the Americas' allocation -- even-tenth "channels" there are HD Radio
     # sidebands/side peaks, each costing an RDS dwell. Off: the 100 kHz grid
@@ -683,7 +629,6 @@ class Settings(BaseModel):
     # SigMF -- iqscan reads it directly). `recorder_armed` is remembered
     # across restarts and re-applied once connected+started (AppService).
     recorder_root: str = "~/Library/Application Support/msdr"
-    validation_samples_dir: str = ""  # Empty: <recorder_root>/rfml-validation.
     recorder_preroll_minutes: float = Field(default=5, ge=1, le=30)
     recorder_min_free_gb: float = Field(default=20, ge=1)
     recorder_max_recording_minutes: float = Field(default=60, ge=1, le=600)

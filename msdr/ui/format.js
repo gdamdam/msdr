@@ -402,7 +402,6 @@ export const DEFAULT_FEATURES = {
   survey: true,
   beacons: true,
   finds: true,
-  ml_controls: true,
 };
 
 /** Merges partial/missing feature flags over the all-on default. */

@@ -1367,15 +1367,6 @@ class AppService(
             {k: v for k, v in patch.items() if v is not None or k in _NULLABLE_SETTINGS_FIELDS}
         )
         updated = Settings.model_validate(data)
-        if updated.validation_samples_dir:
-            sample_dir = Path(updated.validation_samples_dir).expanduser()
-            if not sample_dir.is_absolute() or (sample_dir.exists() and not sample_dir.is_dir()):
-                # HTTPException, not ValueError: the PATCH route doesn't map
-                # ValueError, so it would surface as a 500.
-                raise HTTPException(
-                    422, "Validation folder must be an absolute directory or ~/ path"
-                )
-            updated.validation_samples_dir = str(sample_dir)
         recorder_root_changed = updated.recorder_root != prior_recorder_root
         if recorder_root_changed:
             if self._wifi_session is not None:

@@ -174,7 +174,8 @@ _STATE_RANK: dict[EvidenceState, int] = {
 
 
 def claim_state(claim: Claim) -> EvidenceState:
-    # S1 RFML claims are inspectable shadow output, never promoted evidence.
+    # Historical claims from the removed experimental RF ML feature stay in
+    # existing databases; they remain inspectable but never count as evidence.
     if claim.producer in ("survey.rfml", "survey.rfml.detector"):
         return "none"
     if claim.evidence_type in ("allocation", "schedule"):

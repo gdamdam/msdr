@@ -8,11 +8,9 @@ import contextlib
 import types
 
 import numpy as np
-import pytest
 
 from msdr.contracts.source import SourceDescriptor
 from msdr.recorder.iq_stream import IQFrame
-from msdr.settings import RFMLSettings
 from msdr.source.base import SourceEvent
 from msdr.survey.analyzer import Analyzer, _TargetState
 
@@ -256,58 +254,10 @@ def _make_analyzer(factory, *, dwell_s=0.05, max_analyzed=6, want_voice=None, mi
     )
 
 
-async def test_both_ml_worker_callbacks_accept_current_results():
-    results = []
-    settings = RFMLSettings(enabled=True)
-    settings.detector.enabled = True
-    analyzer = Analyzer(
-        iq_stream_factory=lambda: FakeIQStream([], 0),
-        center_hz=0,
-        sample_rate_hz=_SAMPLE_RATE_HZ,
-        max_analyzed=1,
-        dwell_s=0.05,
-        min_snr_db=8.0,
-        on_result=lambda _freq, _fields: None,
-        on_status=lambda: None,
-        ml_settings=settings,
-        on_ml_result=lambda metadata, result: results.append((metadata, result)),
-    )
-    analyzer.set_targets([12_500])
-
-    def assert_callbacks():
-        metadata = {"analyzer_epoch": analyzer._retune_gen, "frequency_hz": 12_500}
-        analyzer._ml.on_result(metadata, {"class": "fm"})
-        analyzer._ml_detector.on_result(
-            {"analyzer_epoch": analyzer._retune_gen}, {"detections": [1]}
-        )
-        assert results[-1][1]["class"] == "fm"
-        assert analyzer._ml_detector_result["detections"] == [1]
-
-    assert_callbacks()  # constructor-created workers
-    await analyzer.configure_ml(RFMLSettings())
-    await analyzer.configure_ml(settings)
-    assert_callbacks()  # live-created workers
-
-
-class _MLStub:
-    """Stands in for RFMLWorker: just enough to flip the pump's ML branch
-    on without spinning up the real (heavy) worker."""
-
-    def invalidate(self) -> None:
-        pass
-
-    async def start(self) -> None:
-        pass
-
-    async def stop(self) -> None:
-        pass
-
-
-async def test_ml_gap_does_not_reset_dsp_accumulator():
-    # Review 2026-09-28: with an ML worker enabled, a dropped IQ frame reset
-    # the DSP dwell accumulator too, so under real (lossy) delivery rates the
-    # accumulator never reached `needed` and DSP results never completed.
-    # Only the ML capture window may be invalidated on a gap.
+async def test_dropped_frame_does_not_reset_dsp_accumulator():
+    # Review 2026-09-28: a dropped IQ frame once reset the DSP dwell
+    # accumulator, so under real (lossy) delivery rates the accumulator never
+    # reached `needed` and DSP results never completed.
     target = 12500
     chunk = 2048
     total_raw = 200_000  # ~1.0 s of signal, paced close to real time below
@@ -317,7 +267,6 @@ async def test_ml_gap_does_not_reset_dsp_accumulator():
         dwell_s=5.0,  # never completes within this test's ~1 s of signal
     )
     analyzer.set_targets([target])
-    analyzer._ml = _MLStub()  # enable the pump's "ML worker active" branch
 
     reset_calls = []
     real_reset_accum = analyzer._reset_accum
@@ -478,23 +427,6 @@ def test_vfo_change_interrupts_old_dwell_and_single_slot_still_rotates():
         visited.append(analyzer._current_freq)
         analyzer._advance_target()
     assert visited == [new_vfo, weak_a, new_vfo, weak_b, new_vfo, weak_a]
-
-
-def test_completed_ml_result_is_accepted_after_target_pages_out():
-    analyzer, _results, _statuses = _make_analyzer(
-        lambda: FakeIQStream([], 0.01), max_analyzed=1
-    )
-    received = []
-    analyzer._on_ml_result = lambda metadata, result: received.append((metadata, result))
-    first, second = -40_000, 40_000
-    analyzer.set_targets([first, second])
-    analyzer._advance_target()
-    assert first not in [t["frequency_hz"] for t in analyzer.status()["targets"]]
-    analyzer._accept_ml_result(
-        {"frequency_hz": first, "analyzer_epoch": analyzer._retune_gen},
-        {"classification": "FM"},
-    )
-    assert len(received) == 1
 
 
 def test_graceful_dwell_can_finish_after_all_candidates_disappear():
@@ -1111,98 +1043,6 @@ def test_noaa_like_analog_speech_keeps_voice_classification():
     assert fields["family"]["name"] == "speech-like NFM audio (tentative)"
 
 
-async def test_slow_detector_result_is_retained_and_flagged_stale():
-    # Review 2026-09-28: max_job_age_s is the queue deadline; expiring the
-    # displayed result on capture age made every slow inference vanish at
-    # once. The result now lives for detector.result_ttl_s with its capture
-    # age reported and a stale flag past max_job_age_s.
-    settings = RFMLSettings(enabled=False)
-    settings.detector.enabled = True
-    settings.detector.max_job_age_s = 5.0
-    settings.detector.result_ttl_s = 30.0
-    now = [1000.0]
-    analyzer = Analyzer(
-        iq_stream_factory=lambda: FakeIQStream([], 0),
-        center_hz=0,
-        sample_rate_hz=_SAMPLE_RATE_HZ,
-        max_analyzed=1,
-        dwell_s=0.05,
-        min_snr_db=8.0,
-        on_result=lambda _freq, _fields: None,
-        on_status=lambda: None,
-        ml_settings=settings,
-    )
-    analyzer._clock = lambda: now[0]
-    # Captured 6 s ago, published now: slower than the queue deadline.
-    analyzer._ml_detector.on_result(
-        {"analyzer_epoch": analyzer._retune_gen, "capture_monotonic": now[0] - 6.0},
-        {"candidates": [{"low_hz": 1.0, "high_hz": 2.0, "score": 0.9}]},
-    )
-    status = analyzer.detector_result()
-    assert status["result"] is not None
-    assert abs(status["result_age_s"] - 6.0) < 1e-6
-    assert status["result_stale"] is True
-
-    now[0] += 30.0  # past result_ttl_s: gone, age still reported
-    status = analyzer.detector_result()
-    assert status["result"] is None
-    assert abs(status["result_age_s"] - 36.0) < 1e-6
-
-
-async def test_validation_capture_without_ml_and_retune_guard():
-    analyzer, _, _ = _make_analyzer(lambda: FakeIQStream([], 0))
-    analyzer._started = True
-    pending = asyncio.create_task(analyzer.capture_validation("wideband"))
-    await asyncio.sleep(0)
-    with pytest.raises(ValueError, match="already pending"):
-        await analyzer.capture_validation("wideband")
-    iq = np.ones(4096, dtype=np.complex64)
-    analyzer._capture_validation_window("wideband", iq, 50000, 144390000, {})
-    samples, rate, metadata = await pending
-    assert rate == 50000 and metadata["frequency_hz"] == 144390000
-    assert samples is not iq and samples.size == 4096
-    pending = asyncio.create_task(analyzer.capture_validation("wideband"))
-    await asyncio.sleep(0)
-    analyzer._retune_gen += 1
-    analyzer._capture_validation_window("wideband", iq, 50000, 144390000, {})
-    with pytest.raises(ValueError, match="changed"):
-        await pending
-
-
-@pytest.mark.parametrize("duration", [1, 3, 5])
-async def test_timed_validation_capture_is_contiguous_and_exact(duration):
-    analyzer, _, _ = _make_analyzer(lambda: FakeIQStream([], 0))
-    analyzer._started = True
-    pending = asyncio.create_task(analyzer.capture_validation("wideband", duration))
-    await asyncio.sleep(0)
-    rate = 10000
-    for index in range(0, duration * rate, 4096):
-        analyzer._capture_validation_window(
-            "wideband", np.full(4096, index, dtype=np.complex64), rate, 160815000,
-            {"sample_index": index, "run_index": 0, "source_generation": 1},
-        )
-    samples, saved_rate, metadata = await pending
-    assert len(samples) == duration * rate
-    assert saved_rate == rate and metadata["sample_index"] == 0
-    assert samples[4096] == 4096
-    assert metadata["requested_duration_s"] == duration
-
-
-async def test_timed_validation_capture_rejects_gaps():
-    analyzer, _, _ = _make_analyzer(lambda: FakeIQStream([], 0))
-    analyzer._started = True
-    pending = asyncio.create_task(analyzer.capture_validation("wideband", 3))
-    await asyncio.sleep(0)
-    for index in (0, 8192):
-        analyzer._capture_validation_window(
-            "wideband", np.ones(4096, dtype=np.complex64), 10000, 160815000,
-            {"sample_index": index},
-        )
-    with pytest.raises(ValueError, match="gap"):
-        await pending
-    assert analyzer._validation_capture is None
-
-
 def test_narrow_morse_timing_overrides_noisy_fm_but_not_wide_signal(monkeypatch):
     import msdr.survey.analyzer as module
 
@@ -1223,24 +1063,3 @@ def test_narrow_morse_timing_overrides_noisy_fm_but_not_wide_signal(monkeypatch)
         432304000, samples, 25000, 0.5, 1, env_cv=0.1, gaps=10, on_runs=runs
     )
     assert fields["modulation"]["kind"] != "ook"
-
-
-async def test_stop_tears_down_stream_even_if_ml_stop_raises():
-    class _BadML(_MLStub):
-        async def stop(self) -> None:
-            raise RuntimeError("ml stop failed")
-
-    streams = []
-
-    def factory():
-        streams.append(FakeIQStream([], 0.01))
-        return streams[-1]
-
-    analyzer, _results, _statuses = _make_analyzer(factory)
-    analyzer.set_targets([12500])
-    analyzer._ml = _BadML()
-    await analyzer.start()
-    with pytest.raises(RuntimeError, match="ml stop failed"):
-        await analyzer.stop()
-    assert analyzer._reader_task is None and analyzer._pump_task is None
-    assert streams[0].started is False  # IQ stream was still stopped

@@ -5,7 +5,7 @@ import * as api from "../api.js";
 import { decoderValidation, groupDecoders } from "../decoder-info.js";
 import "./run-indicator.js";
 import { buildPalette, dbToIndex, binToDb } from "../waterfall-palette.js";
-import { EVIDENCE_SOURCES, evidenceBadges, clusteredEvidenceMarkers, mlWorkerPhase, surveyEvidence, matchesEvidenceFilter, compareEvidence } from "../survey-evidence.js";
+import { EVIDENCE_SOURCES, evidenceBadges, clusteredEvidenceMarkers, surveyEvidence, matchesEvidenceFilter, compareEvidence } from "../survey-evidence.js";
 import "./failure-note.js";
 import { signalActivity } from "../signal-activity.js";
 
@@ -150,25 +150,6 @@ function saveOptionsOpen(open) {
     localStorage.setItem(OPTIONS_STORAGE_KEY, open ? "1" : "0");
   } catch {
     // storage blocked (private window): the toggle just isn't remembered
-  }
-}
-
-// Experimental ML controls default collapsed and remember an explicit open.
-const ML_SECTION_STORAGE_KEY = "msdr.survey.ml_section_open";
-
-function loadMlSectionOpen() {
-  try {
-    return localStorage.getItem(ML_SECTION_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function saveMlSectionOpen(open) {
-  try {
-    localStorage.setItem(ML_SECTION_STORAGE_KEY, open ? "1" : "0");
-  } catch {
-    // Optional preference; the disclosure still works without storage.
   }
 }
 
@@ -332,13 +313,7 @@ export class SurveyView extends LitElement {
     favorites: { type: Array },
     failure: { type: Object },
     wfSettings: { type: Object },
-    mlBusy: { type: Boolean },
     peakBusy: { type: Boolean },
-    showMlControls: { type: Boolean },
-    _captureBusy: { state: true },
-    _captureMessage: { state: true },
-    _captureKind: { state: true },
-    _captureDuration: { state: true },
     // Receiver filter bandwidth for the VFO shaded band; this component only
     // tracks the survey span, so the caller passes the current demod
     // bandwidth in. Defaults to a typical NFM channel width.
@@ -381,7 +356,6 @@ export class SurveyView extends LitElement {
     _spectrumGripTop: { state: true },
     _waterfallHeight: { state: true },
     _historyOverride: { state: true },
-    _mlSectionOpen: { state: true }, // Entire ML area disclosure (localStorage-backed)
     _optionsOpen: { state: true }, // OPTIONS disclosure (localStorage-backed) -- see _renderOptionsToggle
     _shortcutsOpen: { state: true }, // "Signals in view" disclosure (localStorage-backed) -- see _renderBadgeLane
     _bandScan: { state: true },
@@ -440,7 +414,6 @@ export class SurveyView extends LitElement {
     this._snrMax = snr.max;
     this._resortSeq = 0;
     this._techOn = loadTechOn();
-    this._mlSectionOpen = loadMlSectionOpen();
     this._optionsOpen = loadOptionsOpen();
     this._shortcutsOpen = loadShortcutsOpen();
     this._bandScan = { state: "idle", history: [] };
@@ -1874,177 +1847,6 @@ export class SurveyView extends LitElement {
     </details>`;
   }
 
-  _proposalMatch(candidate) {
-    const labels = this.status?.labels ?? [];
-    const center = (candidate.low_hz + candidate.high_hz) / 2;
-    return labels.filter(label => {
-      const halfWidth = Math.max(0, Number(label.width_hz) || Number(this.status?.resolution_hz) || 0) / 2;
-      return label.frequency_hz + halfWidth >= candidate.low_hz && label.frequency_hz - halfWidth <= candidate.high_hz;
-    }).sort((a, b) => Math.abs(a.frequency_hz - center) - Math.abs(b.frequency_hz - center))[0] ?? null;
-  }
-
-  _renderMlProposals() {
-    const detector = this.status?.analyzer?.rfml_detector;
-    if (!detector || detector.state === "disabled") return "";
-    const result = detector.result;
-    const candidates = (this.status?.ml_proposals?.map(p => p.rfml_detection) ?? result?.candidates ?? []).filter(c =>
-      Number.isFinite(c.low_hz) && Number.isFinite(c.high_hz) && c.low_hz > 0 && c.high_hz > c.low_hz);
-    const age = Number.isFinite(detector.result_age_s)
-      ? `${Math.round(detector.result_age_s)} s old${detector.result_stale ? " · stale" : ""}`
-      : "age unavailable";
-    const sampled = Number.isFinite(detector.sample_coverage) ? `${(detector.sample_coverage * 100).toFixed(1)}% IQ sampled` : null;
-    const frequencyCoverage = Number.isFinite(result?.frequency_coverage) ? `${(result.frequency_coverage * 100).toFixed(1)}% of span analyzed` : null;
-    const resolution = Number.isFinite(result?.bin_width_hz) ? `${Math.round(result.bin_width_hz)} Hz/bin` : null;
-    return html`<details class="survey-ml-proposals">
-      <summary>ML proposals · ${candidates.length} · unvalidated</summary>
-      <div class="dim survey-ml-meta">Experimental detector · raw scores are uncalibrated, not identity probabilities · ${age}
-        ${sampled ? html` · ${sampled}` : ""}${frequencyCoverage ? html` · ${frequencyCoverage}` : ""}${resolution ? html` · ${resolution}` : ""}
-      </div>
-      ${candidates.length ? html`<div class="lib-table-wrap"><table class="lib-table mono survey-ml-table">
-        <thead><tr><th>RANGE MHz</th><th>PROPOSAL</th><th>WIDTH</th><th>RAW SCORE</th><th>DSP ROW</th><th>ACTIONS</th></tr></thead>
-        <tbody>${candidates.map(candidate => {
-          const center = (candidate.low_hz + candidate.high_hz) / 2;
-          const match = this._proposalMatch(candidate);
-          const label = candidate.evidence?.label ?? "signal";
-          return html`<tr>
-            <td>${(candidate.low_hz / 1e6).toFixed(3)}–${(candidate.high_hz / 1e6).toFixed(3)}</td>
-            <td title="Grouped frequency region; fragments do not imply continuous activity. No RF field validation.">${label} · unvalidated${candidate.member_count > 1 ? ` · ${candidate.member_count} fragments` : ""}</td>
-            <td>${Math.round(candidate.high_hz - candidate.low_hz)} Hz</td>
-            <td title="Uncalibrated source score, not a probability">${Number.isFinite(candidate.score) ? candidate.score.toFixed(3) : "—"}</td>
-            <td>${match ? html`<button title="Open overlapping measured signal" @click=${() => this._openSignal(match)}>${mhz(match.frequency_hz)} · measured</button>` : "—"}</td>
-            <td><button title="Inspect proposal in signal detail" @click=${() => this._openSignal(match ?? {frequency_hz: center})}>INSPECT</button>
-              <button title="Tune proposal center frequency" ?disabled=${!!this.status?.replay} @click=${() => this._onBadgeClick(center)}>TUNE</button></td>
-          </tr>`;
-        })}</tbody>
-      </table></div>` : html`<div class="dim survey-ml-meta">${result ? "No ML proposals in the latest window" : "No recent detector result"}</div>`}
-    </details>`;
-  }
-
-  _renderMlStatusStrip() {
-    const classifier = this.status?.analyzer?.rfml;
-    const detector = this.status?.analyzer?.rfml_detector;
-    const config = this.status?.ml_config ?? {};
-    const classifierResult = (this.status?.labels ?? []).some(label => label.rfml && label.rfml.status === "ok" && !label.rfml.stale);
-    const rows = [
-      ["Classifier", classifier, classifierResult, classifier?.last_result_age_s, "survey.ml.enabled", config.classifier_enabled],
-      ["Detector", detector, !!detector?.result, detector?.result_age_s, "survey.ml.detector.enabled", config.detector_enabled],
-    ];
-    return html`<p class="dim">Hiding these controls does not stop enabled models.</p><div class="survey-ml-status" role="status" aria-label="ML worker status">
-      ${rows.map(([name, worker, hasResult, ageSeconds, configKey, configured]) => {
-        const phase = mlWorkerPhase(worker, hasResult);
-        const details = [
-          worker?.model_id ? `model ${worker.model_id}` : null,
-          worker?.device ? `backend ${worker.device}` : null,
-          Number.isFinite(ageSeconds) ? `last result ${Math.round(ageSeconds)} s ago` : null,
-          Number.isFinite(worker?.sample_coverage) ? `${(worker.sample_coverage * 100).toFixed(1)}% IQ sampled` : null,
-          name === "Detector" && Number.isFinite(worker?.effective_window_s)
-            ? `${Math.round(worker.effective_window_s * 1000)} ms window` : null,
-          name === "Detector" && Number.isFinite(worker?.missed_temporal_fraction)
-            ? `${(worker.missed_temporal_fraction * 100).toFixed(1)}% IQ not inferred` : null,
-          name === "Detector" && Number.isFinite(worker?.processing_duty)
-            ? `${(worker.processing_duty * 100).toFixed(1)}% worker busy` : null,
-          name === "Detector" && Number.isFinite(worker?.latency_ms)
-            ? `${Math.round(worker.latency_ms)} ms processing` : null,
-          Number.isFinite(worker?.inference_coverage) ? `${(worker.inference_coverage * 100).toFixed(1)}% IQ inferred` : null,
-          name === "Detector" && Number.isFinite(worker?.result?.frequency_coverage)
-            ? `${(worker.result.frequency_coverage * 100).toFixed(1)}% span covered` : null,
-          name === "Detector" && Number.isFinite(worker?.result?.bin_width_hz)
-            ? `${Math.round(worker.result.bin_width_hz)} Hz/bin` : null,
-        ].filter(Boolean);
-        return html`<div class="survey-ml-worker" data-ml-worker=${name.toLowerCase()}>
-          <label class="survey-ml-toggle">
-            <input type="checkbox" role="switch" aria-label=${`Enable ML ${name.toLowerCase()}`}
-              .checked=${!!configured} ?disabled=${!!this.mlBusy || !this.status}
-              @change=${(event) => {
-                const enabled = event.target.checked;
-                event.target.checked = !!configured;
-                this.dispatchEvent(new CustomEvent("survey-ml", {
-                  detail: { [name === "Classifier" ? "classifier_enabled" : "detector_enabled"]: enabled },
-                }));
-              }} />
-            <strong>${name}</strong>
-          </label><span class=${`survey-ml-phase phase-${phase.toLowerCase().replaceAll(" ", "-")}`}>${phase}</span>
-          ${details.length ? html`<span class="dim">${details.join(" · ")}</span>` : ""}
-          ${worker?.device_note ? html`<span class="dim" title=${worker.device_note}>CPU safety fallback</span>` : ""}
-          ${phase === "ERROR" && worker?.error ? html`<span class="dim" title=${worker.error}>${worker.error}</span>` : ""}
-          ${phase === "OFF" ? html`<span class="dim">${configured ? "Enabled · start Survey to run ML" : "Switch on to enable"}</span>` : ""}
-        </div>`;
-      })}
-      <label class="survey-ml-help">Detector coverage
-        <select aria-label="Detector coverage" .value=${String(config.detector_interval_s ?? 2)}
-          ?disabled=${!!this.mlBusy || !this.status}
-          @change=${(event) => {
-            const interval = Number(event.target.value);
-            event.target.value = String(config.detector_interval_s ?? 2);
-            this.dispatchEvent(new CustomEvent("survey-ml", {detail: {detector_interval_s: interval}}));
-          }}>
-          <option value="2">Low CPU · 2 s interval</option>
-          <option value="0.5">Balanced · 0.5 s interval</option>
-          <option value="0.25">Higher coverage · 0.25 s interval</option>
-          ${![2, 0.5, 0.25].includes(config.detector_interval_s ?? 2)
-            ? html`<option value=${String(config.detector_interval_s)}>Custom · ${config.detector_interval_s} s interval</option>` : ""}
-        </select>
-      </label>
-      ${this.mlBusy ? html`<span class="dim" role="status">Saving ML settings…</span>` : ""}
-      <details class="survey-ml-help"><summary>ML setup and status details</summary>
-        <p>If a worker reports missing dependencies or weights, run these once from the msdr checkout, in the same Python environment as msdr:</p>
-        <pre>python -m pip install '.[ml,ml-detector]'
-msdr-rfml download
-msdr-rfml download-detector</pre>
-        <span>Classifier checks tracked narrowband signals; detector proposes wideband regions. Both are experimental and unvalidated. Scores are raw and uncalibrated. Use the switches to enable them independently. Changes are saved and applied immediately; no server restart is needed. Missing dependencies or model files appear as ERROR. Detector windows default to 100 ms. IQ sampled/inferred measures temporal coverage of IQ delivered to detector capture since the last reset; IQ not inferred includes skipped or pending samples and excludes upstream losses. Shorter coverage intervals use more CPU; actual coverage depends on capture time and processing speed. Settings apply immediately. Worker busy is processing wall time, not CPU utilization. Span covered measures frequency coverage of the latest result.</span>
-      </details>
-    </div>`;
-  }
-
-  async _captureValidation(event) {
-    event.preventDefault();
-    if (this._captureBusy) return;
-    const values = new FormData(event.target);
-    values.set("duration_s", this._captureKind === "channel" ? "0" : String(this._captureDuration ?? 0));
-    this._captureBusy = true;
-    this._captureMessage = "Waiting for a contiguous IQ window (up to 30 seconds)…";
-    try {
-      const saved = await api.captureValidation({ ...Object.fromEntries(values), duration_s: Number(values.get("duration_s")) });
-      this._captureMessage = `Saved ${saved.duration_s.toFixed(4)} s · ${saved.path}. Review labels before evaluation.`;
-    } catch (error) {
-      this._captureMessage = `Capture failed: ${error.message}`;
-    } finally {
-      this._captureBusy = false;
-    }
-  }
-
-  _renderValidationCapture() {
-    return html`<details class="survey-validation">
-      <summary><span class="survey-validation-title">◇ IQ validation sample</span><span class="survey-validation-purpose">${this._captureBusy ? "Capturing IQ…" : this._captureMessage || "Save IQ for DSP, ML, or decoder checks"}</span></summary>
-      <p class="survey-validation-help">Capture what the receiver sees now and record what you heard or observed. Review this sample later against DSP, ML, and protocol decoders.</p>
-      <form @submit=${event => this._captureValidation(event)}>
-        <label>Capture <select name="kind" aria-label="Validation input" @change=${e => { this._captureKind = e.target.value; }}>
-          <option value="wideband">Full visible span · next IQ frame</option>
-          <option value="channel">Analyzed signal · up to 3 windows</option>
-        </select></label>
-        <label>Duration <select aria-label="Validation duration" ?disabled=${this._captureKind === "channel"}
-          .value=${String(this._captureKind === "channel" ? 0 : this._captureDuration ?? 0)}
-          @change=${e => { this._captureDuration = Number(e.target.value); }}>
-          <option value="0">Quick snapshot</option><option value="1">1 second</option>
-          <option value="3">3 seconds</option><option value="5">5 seconds</option>
-        </select></label>
-        <label>Your observation <select name="label" aria-label="Validation label">
-          <option value="unlabeled">Not labeled yet</option><option value="voice">Voice</option>
-          <option value="digital">Digital</option><option value="noise">Suspected noise</option>
-          <option value="interference">Suspected interference</option>
-          <option value="uncertain">Uncertain</option>
-        </select></label>
-        <label class="survey-validation-notes">Notes <span class="dim">(optional)</span><input name="notes" maxlength="2000" placeholder="Frequency, signal, or uncertainty…"></label>
-        <button class="survey-validation-save" type="submit" ?disabled=${this._captureBusy || !this.status?.active}>
-          ${this._captureBusy ? "Capturing…" : "Save sample"}
-        </button>
-      </form>
-      ${this._captureDuration && this._captureKind !== "channel" ? html`<p class="dim survey-validation-note">About ${Math.ceil((this.status?.span?.sample_rate_hz ?? this.frame?.sample_rate_hz ?? 6000000) * this._captureDuration * 8 / 1000000)} MB of IQ before compression. Keep the receiver tuned until capture finishes.</p>` : ""}
-      <p class="dim survey-validation-note">IQ analysis must be running. Saves locally (512 MiB limit); brief captures may miss bursts.</p>
-      ${this._captureMessage ? html`<div class="survey-validation-result" role="status">${this._captureMessage}</div>` : ""}
-    </details>`;
-  }
-
   // --- span picker / controls ------------------------------------------------
 
   _toggle() {
@@ -2101,16 +1903,7 @@ msdr-rfml download-detector</pre>
         _markerOpacity: retained ? Math.max(.15, .65 * (1 - age / hold)) : 1,
       }];
     });
-    // RFML detector proposals with no tracked spectrum peak (ml_only) have no
-    // marker of their own -- surface them here too (table/_nearestLabel/
-    // _labelAtMarker share this list), skipping any that overlap a tracked
-    // label's frequency span so the same signal isn't shown twice.
-    const mlOnly = (this.status?.ml_proposals ?? []).filter(proposal => proposal.ml_only
-      && !tracked.some(label => {
-        const halfWidth = Math.max(0, Number(label.width_hz) || Number(this.status?.resolution_hz) || 0) / 2;
-        return label.frequency_hz + halfWidth >= proposal.low_hz && label.frequency_hz - halfWidth <= proposal.high_hz;
-      }));
-    return [...tracked, ...mlOnly];
+    return tracked;
   }
 
   _applySpan() {
@@ -2568,14 +2361,6 @@ msdr-rfml download-detector</pre>
     `;
   }
 
-  _mlStatusSummary() {
-    const classifier = mlWorkerPhase(this.status?.analyzer?.rfml,
-      (this.status?.labels ?? []).some(label => label.rfml?.status === "ok" && !label.rfml.stale));
-    const detector = mlWorkerPhase(this.status?.analyzer?.rfml_detector,
-      !!this.status?.analyzer?.rfml_detector?.result);
-    return ` · Classifier ${classifier} · Detector ${detector}`;
-  }
-
   _toggleDimension(id) {
     const selected = new Set(this.status?.dimensions ?? []);
     if (selected.has(id)) selected.delete(id);
@@ -2631,35 +2416,6 @@ msdr-rfml download-detector</pre>
     return html`<small class="survey-analysis-state dim" data-analysis-state=${state}
       title=${detail || ANALYSIS_STATE_LABELS[state]}>${ANALYSIS_STATE_LABELS[state]}
       ${detail ? html`<span class="survey-analysis-detail"> · ${detail}</span>` : ""}</small>`;
-  }
-
-  _mlClassificationState(label) {
-    if (label?.rfml) return label.rfml.stale ? "historical_result" : "current_result";
-    if (!this.status?.ml_config?.classifier_enabled) return "not_analyzed";
-    const analyzer = this.status?.analyzer ?? {};
-    if (["disabled", "error", "unavailable", "stopped"].includes(analyzer.rfml?.state)) {
-      return "not_analyzed";
-    }
-    const tolerance = Math.max(this._analyzerBinToleranceHz(), 6000);
-    const matches = (frequency) => frequency != null && Math.abs(frequency - label.frequency_hz) <= tolerance;
-    const eligible = [...(analyzer.candidate_frequencies_hz ?? []),
-      ...(analyzer.targets ?? []).map(target => target.frequency_hz)];
-    return eligible.some(matches) ? "waiting" : "not_analyzed";
-  }
-
-  _renderMlClassifications() {
-    const labels = this.status?.labels ?? [];
-    if (!labels.length) return html`<p class="dim">Not analyzed · no tracked signals.</p>`;
-    return labels.map(label => {
-      const state = this._mlClassificationState(label);
-      const result = label.rfml;
-      const detail = result
-        ? `${result.classification ?? "UNKNOWN"} · ${result.status} · raw score ${Number.isFinite(result.score) ? result.score.toFixed(3) : "—"}`
-        : state === "waiting" ? "No classifier result yet" : "No classifier result";
-      return html`<div class="mono" data-analysis-state=${state}>
-        ${mhz(label.frequency_hz)} · ${ANALYSIS_STATE_LABELS[state]} · ${detail}
-      </div>`;
-    });
   }
 
   _renderDimensions() {
@@ -2860,26 +2616,7 @@ msdr-rfml download-detector</pre>
    * sorting/filtering reorders them. A changed span/reset starts a new list. */
   _tableView() {
     const measured = this.status?.labels ?? [];
-    const proposals = [];
-    for (const proposal of this.status?.ml_proposals ?? []) {
-      if (this._proposalMatch(proposal)) continue;
-      // One table row per frequency region, not per short time fragment.
-      if (proposals.some(other => {
-        const overlap = Math.max(0, Math.min(other.high_hz, proposal.high_hz) - Math.max(other.low_hz, proposal.low_hz));
-        const union = Math.max(other.high_hz, proposal.high_hz) - Math.min(other.low_hz, proposal.low_hz);
-        return union > 0 && overlap / union >= 0.5;
-      })) continue;
-      proposals.push(proposal);
-    }
-    const live = [
-      ...measured,
-      ...proposals.map(proposal => ({
-        ...proposal,
-        ml_only: true,
-        rfml_detection: proposal.rfml_detection,
-        rfml: proposal.rfml,
-      })),
-    ];
+    const live = measured;
     const span = this.status?.span;
     // A new span or a server-side reset (clear/restart: "generation"): nothing
     // from before is "just gone" -- start the table's memory clean.
@@ -3156,56 +2893,7 @@ msdr-rfml download-detector</pre>
     return catalog.length ? html`<span class=${evidenceClass("scheduled")}>${catalogText}</span>` : "--";
   }
 
-  _renderMlOnlyLabelRow(l, cols, highlightedId) {
-    const detection = l.rfml_detection ?? {};
-    const name = typeof detection.evidence?.label === "string" && detection.evidence.label.trim()
-      ? detection.evidence.label.trim() : "signal";
-    const historical = !!l._goneAt || detection.stale === true;
-    const age = !l._goneAt && Number.isFinite(detection.age_s) ? ` · ${Math.round(detection.age_s)} s old` : "";
-    const freshness = historical ? `Historical ML proposal${age}` : `Current ML proposal${age}`;
-    const center = Number.isFinite(l.frequency_hz) ? l.frequency_hz : (l.low_hz + l.high_hz) / 2;
-    const range = `${(l.low_hz / 1e6).toFixed(3)}–${(l.high_hz / 1e6).toFixed(3)} MHz`;
-    const rowClasses = [
-      "survey-ml-only-row",
-      historical ? "gone" : "",
-      l.id === highlightedId ? "selected" : "",
-    ].filter(Boolean).join(" ");
-    const showDecode = this.mode !== "listen";
-    return html`<tr class=${rowClasses} data-label-id=${l.id} aria-current=${l.id === highlightedId ? "true" : "false"}
-      title="Experimental detector proposal · no DSP activity or SNR measurement for this proposal"
-      style="cursor:pointer" @click=${(ev) => {
-        if (ev.target.closest("button")) return;
-        this._selectLabel(l.id);
-        this._openSignal(l);
-      }}>
-      <td title="${freshness} · proposed range ${range}">
-        ${l.id === highlightedId && !this.status?.replay && this.status?.span?.vfo_hz != null
-          ? html`<span class="survey-listening-mark" aria-label="Listening" title="Receiver is listening here">▶ </span>` : ""}${(center / 1e6).toFixed(3)}</td>
-      <td title="The detector's label is not a modulation or station classification.">ML proposal · ${name}<br>
-        <small class="survey-analysis-state dim" data-analysis-state=${historical ? "historical_result" : "current_result"}>${historical ? "Historical result" : "Current result"}</small></td>
-      <td title="No DSP activity measurement">—</td>
-      ${cols.snr ? html`<td title="No DSP SNR measurement">—</td>` : ""}
-      ${cols.bw_class ? html`<td title="No DSP bandwidth measurement">—</td>` : ""}
-      ${cols.modulation ? html`<td title="Detector output is not a modulation classification">—</td>` : ""}
-      ${cols.symbol_rate ? html`<td>—</td>` : ""}
-      ${cols.duty ? html`<td title="No DSP activity measurement">—</td>` : ""}
-      ${cols.family ? html`<td>—</td>` : ""}
-      ${cols.voice ? html`<td>—</td>` : ""}
-      ${cols.bandplan ? html`<td>—</td>` : ""}
-      ${cols.catalog ? html`<td>—</td>` : ""}
-      <td title="${freshness}; raw score ${Number.isFinite(detection.score) ? detection.score.toFixed(3) : "unavailable"} is uncalibrated, not a probability.">
-        <div class="survey-evidence-viewport" tabindex="0" aria-label="Signal evidence; scroll for more badges">${this._renderEvidenceBadges(l)}</div></td>
-      <td title=${freshness}>${historical ? "ML historical" : "ML current"}</td>
-      <td><button class="tune" title="Tune ML proposal center frequency" aria-label="tune ML proposal ${(center / 1e6).toFixed(3)} MHz"
-        style="font-size:0.8em;padding:2px 8px;min-height:28px" ?disabled=${!!this.status?.replay}
-        @click=${() => this._onBadgeClick(center)}>▸</button></td>
-      ${showDecode ? html`<td>—</td>` : ""}
-      <td>—</td>
-    </tr>`;
-  }
-
   _renderLabelRow(l, cols, analyzerActive, highlightedId) {
-    if (l.ml_only) return this._renderMlOnlyLabelRow(l, cols, highlightedId);
     const activity = l.activity ?? {};
     const duty = activity.duty != null ? `${Math.round(activity.duty * 100)}%` : null;
     const period = activity.period_s != null ? `${Math.round(activity.period_s)}s` : null;
@@ -4179,24 +3867,6 @@ ${!this.status?.replay ? this._renderKeepVfo() : ""}
                     `
                   : ""}
               </div>` : ""}
-        ${this._renderValidationCapture()}
-        ${this.showMlControls !== false && this.status?.ml_config?.available !== false ? html`
-          <details class="survey-ml-section" ?open=${this._mlSectionOpen}
-            @toggle=${(event) => {
-              if (event.target !== event.currentTarget) return;
-              this._mlSectionOpen = event.currentTarget.open;
-              saveMlSectionOpen(this._mlSectionOpen);
-            }}>
-            <summary>Experimental ML · unvalidated results${this._mlStatusSummary()}</summary>
-            <div class="survey-ml-section-content">
-              ${this._renderMlStatusStrip()}
-              ${this._renderMlProposals()}
-              <details class="survey-ml-classifications">
-                <summary>ML classifications · unvalidated</summary>
-                ${this._renderMlClassifications()}
-              </details>
-            </div>
-          </details>` : ""}
         </div>
       </div>
     `;

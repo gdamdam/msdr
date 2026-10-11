@@ -43,7 +43,9 @@ def test_receiver_does_not_repeat_band_allocation_as_detection(live_app, page: P
     # downlink") lives separately, in the context strip under the digits --
     # it is never shown as if it were a detection.
     expect(panel.locator(".frequency-allocation")).to_contain_text("Allocation")
-    expect(panel.locator(".frequency-allocation")).to_have_attribute("title", re.compile("MHz · US · AMATEUR"))
+    expect(panel.locator(".frequency-allocation")).to_have_attribute(
+        "title", re.compile("MHz · US · AMATEUR")
+    )
     hints = panel.locator(".frequency-context-strip .band-plan-hints")
     expect(hints).to_have_attribute("title", re.compile("ISS voice downlink"))
     expect(panel.locator(".detect-readout")).to_have_count(0)
@@ -60,7 +62,9 @@ def test_receiver_separates_catalog_reference_from_band_allocation(live_app, pag
     page.goto(live_app.base_url)
     panel = page.locator("instrument-panel")
     expect(panel.locator(".frequency-allocation")).to_contain_text("Allocation")
-    expect(panel.locator(".frequency-allocation")).to_have_attribute("title", re.compile("MHz · US · AMATEUR"))
+    expect(panel.locator(".frequency-allocation")).to_have_attribute(
+        "title", re.compile("MHz · US · AMATEUR")
+    )
     hints = panel.locator(".frequency-context-strip .band-plan-hints")
     expect(hints).to_have_attribute("title", re.compile("ISS voice downlink"))
     reference = panel.locator(".detect-readout")

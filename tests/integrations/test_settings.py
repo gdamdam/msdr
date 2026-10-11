@@ -94,3 +94,31 @@ def test_settings_save_tolerates_unsupported_directory_fsync(tmp_path, monkeypat
     path = tmp_path / "settings.json"
     Settings(region="EU").save(path)
     assert Settings.load(path).region == "EU"
+
+
+def test_settings_with_removed_rfml_section_still_load(tmp_path):
+    """The experimental RF ML feature was removed; settings.json files written
+    while it existed (survey.ml, features.ml_controls, validation_samples_dir)
+    must keep loading with every other setting intact."""
+    import json
+
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps({
+        "region": "EU",
+        "validation_samples_dir": "/tmp/rfml-validation",
+        "features": {"survey": False, "ml_controls": False},
+        "survey": {
+            "threshold_db": 9.5,
+            "ml": {
+                "enabled": True,
+                "model_path": "~/.cache/msdr/models/xcit_narrowband.ckpt",
+                "detector": {"enabled": True, "window_samples": 4096},
+            },
+        },
+    }))
+    loaded = Settings.load(path)
+    assert loaded.region == "EU"
+    assert loaded.survey.threshold_db == 9.5
+    assert loaded.features.survey is False
+    assert "ml" not in loaded.survey.model_dump()
+    assert "ml_controls" not in loaded.features.model_dump()

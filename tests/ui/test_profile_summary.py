@@ -18,9 +18,15 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 const src = fs.readFileSync(process.argv[1], 'utf8').replace(/^export function /gm, 'function ');
 const { profileSummary } = vm.runInNewContext(src + '\n({ profileSummary })', {});
-assert.equal(profileSummary({ antenna: 'A', lna_state: 0, audio_agc_enabled: true }), 'Antenna A · LNA 0 · AGC on');
+assert.equal(
+  profileSummary({ antenna: 'A', lna_state: 0, audio_agc_enabled: true }),
+  'Antenna A · LNA 0 · AGC on',
+);
 assert.equal(profileSummary({ antenna: 'Antenna B', lna_state: 3 }), 'Antenna B · LNA 3');
-assert.equal(profileSummary({ squelch_enabled: false, sample_rate_hz: 2000000 }), '2 MS/s · Squelch off');
+assert.equal(
+  profileSummary({ squelch_enabled: false, sample_rate_hz: 2000000 }),
+  '2 MS/s · Squelch off',
+);
 assert.equal(profileSummary({ antenna: null }), '');
 """
     result = subprocess.run(

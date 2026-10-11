@@ -281,7 +281,6 @@ export const clearSurvey = () => fetchJson("/api/survey/clear", { method: "POST"
 export const setSurveySpan = (body) => fetchJson("/api/survey/span", { method: "POST", body });
 // S2: dimension filter (activity/bandwidth/bandplan/catalog; needs_iq ones
 // rejected by the server until S3) -- see survey-view.js's dimension toggles.
-export const setSurveyMl = (body) => fetchJson("/api/survey/ml", { method: "POST", body });
 export const setSurveyDimensions = (dimensions) =>
   fetchJson("/api/survey/dimensions", { method: "POST", body: { dimensions } });
 // S5: decode handoff (pins a band-decoder channel on a label's frequency),
@@ -423,7 +422,6 @@ export const listReviewClips = (path) => fetchJson(`/api/review/clips${qs({ path
 // regardless of how clean the rest of the payload looks.
 export const getValidation = () => fetchJson("/api/validation");
 
-export const captureValidation = (body) => fetchJson("/api/survey/validation", { method: "POST", body });
 
 export const prepareDecoderReceiver = body => fetchJson('/api/decoder/prepare', { method: 'POST', body });
 export const restoreDecoderReceiver = token => fetchJson('/api/decoder/restore', { method: 'POST', body: { token } });

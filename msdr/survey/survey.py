@@ -8,12 +8,10 @@ on start()/stop(), a background pump while `start_survey()` is active.
 import asyncio
 import base64
 import logging
-import math
 import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
-from msdr import rfml
 from msdr.decoder.backends import reap_cancelled
 from msdr.decoder.registry import DECODERS
 from msdr.radio.protocol import SpectrumFrame
@@ -143,78 +141,6 @@ def _analysis_state_for_label(
 _ANALYZER_RESULT_GRACE_S = 30.0
 
 
-# Used to keep proposal ids stable across detector-box jitter of more than one
-# bin, and to group repeated fragments of one frequency region before the
-# survey's proposal cap is applied.
-_PROPOSAL_OVERLAP_MIN = 0.5
-
-
-def _box_overlap_ratio(low_a: float, high_a: float, low_b: float, high_b: float) -> float:
-    overlap = max(0.0, min(high_a, high_b) - max(low_a, low_b))
-    if overlap <= 0:
-        return 0.0
-    union = (high_a - low_a) + (high_b - low_b) - overlap
-    return overlap / union if union > 0 else 0.0
-
-
-def _aggregate_ml_frequency_regions(candidates: list[dict], *, limit: int = 16) -> list[dict]:
-    """Group repeated detector fragments while retaining their time evidence.
-
-    A group uses the strongest box as its frequency representative. Frequency
-    overlap IoU and a minimum width ratio prevent a broad box from swallowing
-    a distinct narrow channel. Member intervals remain separate; the group
-    never claims continuous activity between fragments.
-    """
-    groups: list[dict] = []
-    ordered = sorted(candidates, key=lambda c: c.get("score", 0), reverse=True)
-    for candidate in ordered:
-        low, high = candidate.get("low_hz"), candidate.get("high_hz")
-        if (not isinstance(low, (int, float)) or not isinstance(high, (int, float))
-                or not math.isfinite(low) or not math.isfinite(high) or not 0 < low < high):
-            continue
-        evidence = candidate.get("evidence") or {}
-        class_id = evidence.get("class_id") if isinstance(evidence, dict) else None
-        match = None
-        for group in groups:
-            representative = group["candidate"]
-            rep_low, rep_high = representative["low_hz"], representative["high_hz"]
-            rep_evidence = representative.get("evidence") or {}
-            rep_class = rep_evidence.get("class_id") if isinstance(rep_evidence, dict) else None
-            width_ratio = min(high - low, rep_high - rep_low) / max(high - low, rep_high - rep_low)
-            if class_id == rep_class and width_ratio >= 0.5 and _box_overlap_ratio(
-                low, high, rep_low, rep_high
-            ) >= _PROPOSAL_OVERLAP_MIN:
-                match = group
-                break
-        if match is None:
-            intervals = []
-            interval_count = 0
-            if isinstance(candidate.get("start_s"), (int, float)) and isinstance(
-                candidate.get("end_s"), (int, float)
-            ):
-                intervals = [{"start_s": candidate["start_s"], "end_s": candidate["end_s"]}]
-                interval_count = 1
-            groups.append({"candidate": candidate, "intervals": intervals,
-                           "interval_count": interval_count, "member_count": 1})
-            continue
-        match["member_count"] += 1
-        start, end = candidate.get("start_s"), candidate.get("end_s")
-        if isinstance(start, (int, float)) and isinstance(end, (int, float)):
-            match["interval_count"] += 1
-            # Bound live status evidence for pathological detector output.
-            if len(match["intervals"]) < 32:
-                match["intervals"].append({"start_s": start, "end_s": end})
-    selected = []
-    for group in groups[:limit]:
-        representative = dict(group["candidate"])
-        representative["member_count"] = group["member_count"]
-        representative["time_interval_count"] = group["interval_count"]
-        if group["intervals"]:
-            representative["time_intervals"] = group["intervals"]
-        selected.append(representative)
-    return selected
-
-
 def _label_id(track: TrackedPeak) -> str:
     """A label's id: "p" + the tracker's track number -- opaque and stable
     for the life of the signal (the "p" prefix kept from the old f"p{kHz}"
@@ -339,7 +265,6 @@ class Survey:
         self._analyzer: Analyzer | None = None
         self._analyzer_start_task: asyncio.Task | None = None
         self._analyzer_stop_tasks: set[asyncio.Task] = set()
-        self._ml_update_lock = asyncio.Lock()
         # [{"frequency_hz": int, "fields": {...}}, ...] -- pruned back to
         # only entries that matched a label on the last _build_labels() pass
         # (see _find_analyzer_result), which is what gives "cleared when a
@@ -383,19 +308,6 @@ class Survey:
         # per-label memory (sticky table rows) instead of showing all of it as
         # just-gone -- track ids restart at t0 after a reset, too.
         self._generation = 0
-        self._rfml_results: dict[str, dict] = {}
-        self._rfml_received: dict[str, float] = {}
-        self._last_detector_result = None
-        # ml_proposals(): id -> (low_hz, high_hz) of the last round's boxes,
-        # so a new detector box that overlaps one keeps its id instead of
-        # minting a fresh one on every bit of detector jitter (see
-        # _box_overlap_ratio). Plus a cache of the computed proposal list,
-        # keyed on the detector result object's identity -- ml_proposals()
-        # is called several times per spectrum frame for the same result.
-        self._ml_proposal_boxes: dict[str, tuple[float, float]] = {}
-        self._ml_proposal_seq = 0
-        self._ml_proposal_cache_key: int | None = None
-        self._ml_proposal_cache: list[dict] = []
         self._units_per_db = _BIN_LEVELS / 125.0
         settings = settings_getter()
         self._dimensions = list(getattr(settings, "dimensions", _DEFAULT_DIMENSIONS))
@@ -650,13 +562,6 @@ class Survey:
         self._flush_spectrum_queue()
         if not self._retune_blocked and self._replay is None:
             self._accept_after_mono = time.monotonic() + _RETUNE_SETTLE_S
-        self._rfml_results.clear()
-        self._rfml_received.clear()
-        self._last_detector_result = None
-        self._ml_proposal_boxes = {}
-        self._ml_proposal_seq = 0
-        self._ml_proposal_cache_key = None
-        self._ml_proposal_cache = []
         if self._analyzer is not None:
             self._analyzer.begin_retune()
         # Track ids restart at t0 with the tracker: an old confirm must not
@@ -905,19 +810,6 @@ class Survey:
         try:
             current = labels if labels is not None else self._build_labels()
             combined = [dict(label) for label in current]
-            for proposal in self.ml_proposals():
-                matches = [label for label in combined if not label.get("ml_only") and
-                           proposal["low_hz"] <= label["frequency_hz"] <= proposal["high_hz"]]
-                if matches:
-                    nearest = min(matches, key=lambda label: abs(
-                        label["frequency_hz"] - proposal["frequency_hz"]))
-                    # Proposals arrive strongest first. A weaker box covering
-                    # the same DSP label must not replace its best evidence.
-                    nearest.setdefault("rfml_detection", proposal["rfml_detection"])
-                    if proposal.get("rfml") is not None and nearest.get("rfml") is None:
-                        nearest["rfml"] = proposal["rfml"]
-                else:
-                    combined.append(proposal)
             callback(combined)
         except Exception:
             logger.exception("survey: on_labels_changed failed")
@@ -1087,7 +979,6 @@ class Survey:
         caller, so this just reconciles "should it be running" against "is
         it"."""
         wants_iq = self._active and any(_DIMENSION_NEEDS_IQ.get(d, False) for d in self._dimensions)
-        wants_iq = wants_iq or (self._active and self._ml_enabled())
         if wants_iq and self._analyzer is None and self._iq_factory() is not None:
             self._start_analyzer()
         elif not wants_iq and self._analyzer is not None:
@@ -1097,46 +988,6 @@ class Survey:
                 self._analyzer_targets(), priority_frequency_hz=self._tuned_analyzer_hz()
             )
             self._analyzer.set_rds_targets(self._rds_targets())
-
-    async def update_ml(self) -> dict:
-        async with self._ml_update_lock:
-            prior = self._analyzer
-            ml_settings = self._ml_settings()
-            if prior is not None:
-                if bool(prior._ml is not None) != bool(getattr(ml_settings, "enabled", False)):
-                    self._rfml_results.clear()
-                    self._rfml_received.clear()
-                if bool(prior._ml_detector is not None) != bool(
-                    getattr(getattr(ml_settings, "detector", None), "enabled", False)
-                ):
-                    self._last_detector_result = None
-            start_task = self._analyzer_start_task
-            if prior is not None and start_task is not None and start_task.done():
-                dead = start_task.cancelled() or start_task.exception() is not None
-                if dead:
-                    # The analyzer's own startup already failed before this
-                    # toggle -- awaiting it below would re-raise that stale
-                    # error into this unrelated ML request (settings already
-                    # persisted by the caller) and leave the dead analyzer
-                    # registered instead of applying the new settings (review
-                    # 2026-09-28). Discard it and let _sync_analyzer below
-                    # start a fresh one with the current settings.
-                    self._analyzer = None
-                    self._analyzer_start_task = None
-                    try:
-                        await prior.stop()
-                    except Exception:  # best-effort: it never finished starting
-                        pass
-            self._sync_analyzer()
-            analyzer = self._analyzer
-            if analyzer is not None:
-                start_task = self._analyzer_start_task
-                if start_task is not None:
-                    await asyncio.shield(start_task)
-                if analyzer is self._analyzer:
-                    await analyzer.configure_ml(ml_settings)
-            self._publish_survey(force=True)
-            return self.status()
 
     def _start_analyzer(self) -> None:
         if self._center_hz is None or self._sample_rate_hz is None:
@@ -1158,11 +1009,6 @@ class Survey:
             min_active_s=getattr(settings, "analyze_min_active_s", 0.6),
             want_rds=lambda: "rds" in self._dimensions,
             rds_dwell_s=getattr(settings, "rds_dwell_s", 6.0),
-            ml_settings=self._ml_settings(settings),
-            ml_context=self._ml_context,
-            on_ml_result=lambda metadata, result: (
-                self._on_ml_result(metadata, result) if self._analyzer is analyzer else None
-            ),
         )
         analyzer.set_targets(
             self._analyzer_targets(), priority_frequency_hz=self._tuned_analyzer_hz()
@@ -1177,11 +1023,6 @@ class Survey:
 
     def _stop_analyzer(self) -> None:
         analyzer, self._analyzer = self._analyzer, None
-        self._rfml_results.clear()
-        self._rfml_received.clear()
-        self._last_detector_result = None
-        if analyzer is not None:
-            analyzer.invalidate_ml()
         self._analyzer_results = []
         self._rds_results = []
         if analyzer is not None:
@@ -1259,167 +1100,8 @@ class Survey:
         })
         self._notify_labels_changed()
 
-    def _ml_settings(self, settings=None):
-        """Survey's ML settings, or None while ML is dormant (rfml.AVAILABLE):
-        with None the analyzer builds no workers, whatever the saved config says."""
-        if not rfml.AVAILABLE:
-            return None
-        settings = settings if settings is not None else self._settings_getter()
-        return getattr(settings, "ml", None)
-
-    def _ml_enabled(self) -> bool:
-        ml = self._ml_settings()
-        return bool(getattr(ml, "enabled", False) or
-                    getattr(getattr(ml, "detector", None), "enabled", False))
-
-    def _ml_context(self, frequency_hz: int) -> dict | None:
-        """Bind a delayed prediction to a track or fresh proposal in this generation."""
-        if self._sample_rate_hz is None or self._center_hz is None:
-            return None
-        resolution = self._sample_rate_hz / _BINS
-
-        def frequency(track):
-            return self._center_hz - self._sample_rate_hz / 2 + track.centroid_bin * resolution
-
-        track = min(self._latest_peaks, key=lambda t: abs(frequency(t) - frequency_hz),
-                    default=None)
-        tolerance = max(resolution, _ANALYZER_TARGET_MATCH_HZ)
-        proposals = [p for p in self.ml_proposals()
-                     if p["width_hz"] <= 25_000 and
-                     abs(p["frequency_hz"] - frequency_hz) <= tolerance]
-        proposal = min(proposals, key=lambda p: abs(p["frequency_hz"] - frequency_hz),
-                       default=None)
-        track_distance = abs(frequency(track) - frequency_hz) if track is not None else math.inf
-        proposal_distance = (abs(proposal["frequency_hz"] - frequency_hz)
-                             if proposal is not None else math.inf)
-        if (
-            track is not None
-            and track_distance <= tolerance
-            and track_distance <= proposal_distance
-        ):
-            candidate_id = _label_id(track)
-            display_snr_db = track.snr_units / self._units_per_db if self._units_per_db else None
-            bandwidth_hz = (track.bin_hi - track.bin_lo + 1) * resolution
-        else:
-            if proposal is None:
-                return None
-            candidate_id = proposal["id"]
-            display_snr_db = None
-            bandwidth_hz = proposal["width_hz"]
-        return {
-            "candidate_id": candidate_id,
-            "survey_generation": self._generation,
-            "display_snr_db": display_snr_db,
-            "spectrum_bandwidth_hz": bandwidth_hz,
-            "receiver_center_hz": self._center_hz,
-            "receiver_sample_rate_hz": self._sample_rate_hz,
-            "source_id": self._replay.source_id if self._replay else "live:sdrconnect",
-        }
-
-    def _on_ml_result(self, metadata: dict, result: dict) -> None:
-        if metadata.get("survey_generation") != self._generation:
-            return
-        valid = {_label_id(t) for t in self._latest_peaks}
-        valid.update(p["id"] for p in self.ml_proposals() if p["width_hz"] <= 25_000)
-        candidate = metadata.get("candidate_id")
-        if candidate not in valid:
-            return
-        self._rfml_results = {k: v for k, v in self._rfml_results.items() if k in valid}
-        self._rfml_results[candidate] = result
-        self._rfml_received = {k: v for k, v in self._rfml_received.items() if k in valid}
-        self._rfml_received[candidate] = time.monotonic()
-        self._notify_labels_changed()
-        self._publish_survey(force=True)
-
-    def _fresh_ml_result(self, label_id: str) -> dict | None:
-        result = getattr(self, "_rfml_results", {}).get(label_id)
-        if result is None:
-            return None
-        received = getattr(self, "_rfml_received", {}).get(label_id)
-        age = max(0.0, time.monotonic() - received) if received is not None else None
-        ttl = getattr(getattr(self._settings_getter(), "ml", None), "result_ttl_s", 60.0)
-        return {**result, "age_s": age, "stale": age is None or age > ttl}
-
     def _on_analyzer_status(self) -> None:
-        self._sync_detector_result()
         self._publish_survey(force=True)
-
-    def _sync_detector_result(self) -> None:
-        result = (self._analyzer.detector_result().get("result")
-                  if self._analyzer is not None else None)
-        if result is not getattr(self, "_last_detector_result", None):
-            self._last_detector_result = result
-            self._notify_labels_changed()
-
-    def ml_proposals(self) -> list[dict]:
-        """Bounded, fresh shadow proposals for inspector and observation history.
-
-        They never enter the DSP tracker or become a validated identity.
-        """
-        analyzer = getattr(self, "_analyzer", None)
-        status = analyzer.detector_result() if analyzer else {}
-        result = status.get("result") or {}
-        # Called several times per spectrum frame (_build_labels,
-        # _notify_labels_changed, _analyzer_targets, _sync_detector_result,
-        # _ml_context) for the same detector result -- free on a cache hit.
-        # Only geometry/ids are cached: a classifier result arriving between
-        # detector runs and the capture age must not be frozen with them
-        # (review 2026-09-28).
-        cache_key = id(result) if result else None
-        if cache_key is not None and cache_key == self._ml_proposal_cache_key:
-            return self._decorate_ml_proposals(self._ml_proposal_cache, status)
-        proposals = []
-        matched_ids: set[str] = set()
-        boxes: dict[str, tuple[float, float]] = {}
-        for candidate in _aggregate_ml_frequency_regions(result.get("candidates", [])):
-            low, high = candidate.get("low_hz"), candidate.get("high_hz")
-            if not isinstance(low, (int, float)) or not isinstance(high, (int, float)):
-                continue
-            if not math.isfinite(low) or not math.isfinite(high) or not 0 < low < high:
-                continue
-            center = int(round((low + high) / 2))
-            # Match this box to a still-live proposal from the last round by
-            # frequency overlap and keep its id -- grid-rounded ids churned
-            # on detector box jitter of more than one bin, opening/retiring
-            # an Observation every detector interval and orphaning
-            # classifier results stored under the old id (review 2026-09-28).
-            candidate_id = next(
-                (existing_id for existing_id, (elow, ehigh) in self._ml_proposal_boxes.items()
-                 if existing_id not in matched_ids
-                 and _box_overlap_ratio(low, high, elow, ehigh) >= _PROPOSAL_OVERLAP_MIN),
-                None,
-            )
-            if candidate_id is None:
-                self._ml_proposal_seq += 1
-                candidate_id = f"ml-{self._generation}-{self._ml_proposal_seq}"
-            matched_ids.add(candidate_id)
-            boxes[candidate_id] = (low, high)
-            details = {**candidate, "model_id": result.get("model_id"),
-                       "model_version": result.get("model_version"),
-                       "preprocessing_version": result.get("preprocessing_version"),
-                       "input": result.get("input"),
-                       "bin_width_hz": result.get("bin_width_hz"), "shadow": True}
-            proposals.append({"id": candidate_id,
-                              "ml_only": True, "frequency_hz": center,
-                              "width_hz": high - low, "low_hz": low, "high_hz": high,
-                              "rfml_detection": details})
-        self._ml_proposal_boxes = boxes
-        if cache_key is not None:
-            self._ml_proposal_cache_key = cache_key
-            self._ml_proposal_cache = proposals
-        return self._decorate_ml_proposals(proposals, status)
-
-    def _decorate_ml_proposals(self, cached: list[dict], status: dict) -> list[dict]:
-        """Attach the live parts to cached proposal geometry: the detector
-        capture age/staleness and the current classifier result for the id."""
-        age = status.get("result_age_s")
-        stale = status.get("result_stale")
-        return [
-            {**proposal,
-             "rfml_detection": {**proposal["rfml_detection"], "age_s": age, "stale": stale},
-             "rfml": self._fresh_ml_result(proposal["id"])}
-            for proposal in cached
-        ]
 
     def _tuned_analyzer_hz(self) -> int | None:
         """The live receiver's narrowband VFO, if its channel fits this span."""
@@ -1448,10 +1130,7 @@ class Survey:
         """
         if self._sample_rate_hz is None or self._center_hz is None:
             return []
-        if (
-            not any(d in self._dimensions for d in _NARROWBAND_DIMENSIONS)
-            and not self._ml_enabled()
-        ):
+        if not any(d in self._dimensions for d in _NARROWBAND_DIMENSIONS):
             return []
         settings = self._settings_getter()
         min_snr_db = getattr(settings, "analyze_min_snr_db", 8.0)
@@ -1488,17 +1167,6 @@ class Survey:
         for _, _, freq in candidates:
             if tuned is None or abs(freq - tuned) > _ANALYZER_TARGET_MATCH_HZ:
                 targets.append(freq)
-        if not getattr(getattr(settings, "ml", None), "enabled", False):
-            return targets
-        lower = self._center_hz - self._sample_rate_hz / 2
-        upper = lower + self._sample_rate_hz
-        for proposal in self.ml_proposals():
-            freq = proposal["frequency_hz"]
-            if (proposal["width_hz"] > 25_000 or not lower <= freq < upper or
-                any(abs(freq - existing) <= _ANALYZER_TARGET_MATCH_HZ
-                    for existing in targets)):
-                continue
-            targets.append(freq)
         return targets
 
     def _rds_targets(self) -> list[int]:
@@ -1708,22 +1376,7 @@ class Survey:
         fps = self._frames_total / elapsed if elapsed > 0 else 0.0
         presets = [_dump(p) for p in getattr(settings, "presets", [])]
         labels = self._build_labels()
-        # Preserve the detector's overlap-stable proposal IDs for the UI's
-        # retained table rows. These remain separate from measured labels.
-        ml_proposals = self.ml_proposals()
         return {
-            "ml_config": {
-                # False while ML is dormant; the UI hides every ML control.
-                "available": rfml.AVAILABLE,
-                "classifier_enabled": rfml.AVAILABLE and bool(
-                    getattr(getattr(settings, "ml", None), "enabled", False)),
-                "detector_enabled": rfml.AVAILABLE and bool(
-                    getattr(getattr(getattr(settings, "ml", None), "detector", None),
-                            "enabled", False)),
-                "detector_interval_s": getattr(
-                    getattr(getattr(settings, "ml", None), "detector", None),
-                    "interval_s", None),
-            },
             "active": self._active,
             "since": self._since,
             "generation": self._generation,
@@ -1750,7 +1403,6 @@ class Survey:
             "presets": presets,
             "sample_rates_hz": list(_DEFAULT_SAMPLE_RATES_HZ),
             "labels": labels,
-            "ml_proposals": ml_proposals,
             "dimensions": list(self._dimensions),
             "available_dimensions": AVAILABLE_DIMENSIONS,
             "resolution_hz": (self._sample_rate_hz / _BINS) if self._sample_rate_hz else 0.0,
@@ -1990,7 +1642,6 @@ class Survey:
                     "allocation": allocation,
                     "catalog": catalog,
                     "modulation": modulation,
-                    "rfml": self._fresh_ml_result(label_id),
                     "symbol_rate_hz": symbol_rate_field,
                     # Separate, explicitly qualified protocol suggestions;
                     # they do not alter family or modulation measurements.
@@ -2040,15 +1691,6 @@ class Survey:
         labels.sort(key=lambda item: (bool(item["active_now"]), item["snr_db"]), reverse=True)
         if limit is not None:
             labels = labels[:limit]
-        # Carry detector support into existing DSP rows without changing their
-        # measured boundaries, ranking, or identity. Proposals are score ordered.
-        for proposal in self.ml_proposals():
-            matches = [label for label in labels
-                       if proposal["low_hz"] <= label["frequency_hz"] <= proposal["high_hz"]]
-            if matches:
-                nearest = min(matches, key=lambda label: abs(
-                    label["frequency_hz"] - proposal["frequency_hz"]))
-                nearest.setdefault("rfml_detection", proposal["rfml_detection"])
         if self._identify_refreshed:
             # catalog/bandplan boundary: a label's identify cache was just
             # refreshed (not merely reused), which happens once per label per
@@ -2154,9 +1796,6 @@ class Survey:
         now = time.monotonic()
         if now - self._last_survey_publish_at < 1.0:
             return
-        # Expiry changes a detector result to None without a worker callback.
-        # Retire the shadow observation on the next ordinary status publish.
-        self._sync_detector_result()
         self._publish_survey()
 
     def _publish_survey(self, *, force: bool = False) -> None:

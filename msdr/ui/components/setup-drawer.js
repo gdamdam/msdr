@@ -139,7 +139,6 @@ const FEATURE_FLAGS = [
   ["survey", "WATCH SPECTRUM"],
   ["beacons", "BEACONS"],
   ["finds", "FINDS"],
-  ["ml_controls", "SHOW EXPERIMENTAL ML CONTROLS"],
 ];
 
 /** True when every key in both string dicts has the same value (missing =
@@ -159,7 +158,6 @@ function draftFromSettings(s) {
     evidencePanelStyle: s.evidence_panel_style ?? "tinted",
     host: s.host ?? "",
     recorderRoot: s.recorder_root ?? "",
-    validationSamplesDir: s.validation_samples_dir ?? "",
     port: s.port ?? "",
     dwellSeconds: s.dwell_seconds ?? "",
     nearbyKhz: s.nearby_hz != null ? s.nearby_hz / 1000 : "",
@@ -758,7 +756,6 @@ export class SetupDrawer extends LitElement {
 
     if (d.host !== (o.host ?? "")) patch.host = d.host;
     if (d.recorderRoot.trim() !== (o.recorder_root ?? "")) patch.recorder_root = d.recorderRoot.trim();
-    if (d.validationSamplesDir.trim() !== (o.validation_samples_dir ?? "")) patch.validation_samples_dir = d.validationSamplesDir.trim();
 
     const port = d.port === "" ? null : Number(d.port);
     if (port !== null && port !== (o.port ?? null)) patch.port = port;
@@ -1049,11 +1046,7 @@ export class SetupDrawer extends LitElement {
   }
 
   _featuresGroup(d) {
-    // The ML controls toggle is meaningless while RF ML is dormant
-    // (survey status ml_config.available === false, see msdr/rfml/__init__.py).
-    const mlDormant = this.state?.survey?.ml_config?.available === false;
-    const rows = FEATURE_FLAGS.filter(([key]) => !(key === "ml_controls" && mlDormant));
-    return html`<div>${rows.map(([key, label]) => this._featureRow(key, label, d))}</div>`;
+    return html`<div>${FEATURE_FLAGS.map(([key, label]) => this._featureRow(key, label, d))}</div>`;
   }
 
   _layoutRow(id, colIndex, idx, colLen, d) {
@@ -1670,14 +1663,8 @@ export class SetupDrawer extends LitElement {
         placeholder="~/Recordings/msdr"
         @input=${e => this._set("recorderRoot", e.target.value)} />`)}
       <p class="dim">Use an absolute path or ~/ on the msdr server. New IQ recordings go in
-        recordings/, validation examples in rfml-validation/, and default clips in clips/.
+        recordings/ and default clips in clips/.
         Disarm recording and stop replay before changing this folder. Existing files stay in their original location.</p>
-
-      ${this._field("Validation samples folder", html`<input
-        name="validation-samples-dir" type="text" .value=${d.validationSamplesDir}
-        placeholder="Default: recording output folder/rfml-validation"
-        @input=${e => this._set("validationSamplesDir", e.target.value)} />`)}
-      <p class="dim">Use an absolute path or ~/. Empty uses the recording folder. Existing samples stay where they are.</p>
       </details>
       <details class="setup-section" id="setup-decoder">
       ${this._sectionSummary("setup-decoder", "Decoder & validation")}

@@ -105,3 +105,11 @@ def test_percent_measurement_needs_denominator_and_window():
 def test_dbfs_dbm_db_are_distinct_units():
     units = {Measurement(name="p", value=-30.0, unit=u).unit for u in ("dBFS", "dBm", "dB")}
     assert units == {"dBFS", "dBm", "dB"}
+
+
+def test_historical_rfml_claims_never_count_as_evidence():
+    # The RF ML feature was removed, but databases keep its claims.
+    for producer in ("survey.rfml", "survey.rfml.detector"):
+        c = _claim("iq_estimate", subject="modulation").model_copy(update={"producer": producer})
+        assert claim_state(c) == "none"
+        assert evidence_state([c]) == "none"

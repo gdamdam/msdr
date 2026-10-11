@@ -54,7 +54,7 @@ def _signature(sample):
     activity = stable.get("activity")
     if isinstance(activity, dict):
         stable["activity"] = activity.get("kind") or activity.get("state")
-    for key in ("analysis_state", "last_classification", "family", "confirmed", "rds", "rfml"):
+    for key in ("analysis_state", "last_classification", "family", "confirmed", "rds"):
         value = stable.get(key)
         if isinstance(value, dict):
             stable[key] = {

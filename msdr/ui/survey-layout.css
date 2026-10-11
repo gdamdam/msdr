@@ -123,8 +123,6 @@ survey-view .survey-options-summary {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-survey-view .survey-validation,
-survey-view .survey-ml-section { margin-top: 7px; }
 survey-view [aria-label="Waterfall display controls"] { padding-right: 25px !important; }
 
 survey-view .survey-band-scan {

@@ -57,7 +57,6 @@ const HELP = [
   [".survey-toolbar-scroll", "Spectrum display controls for sensitivity, levels, averaging, and zoom."],
   [".survey-topbar", "Start, stop, clear, and configure the live spectrum survey."],
   [".survey-signal-shortcuts > summary", "Open the list of currently visible spectrum markers."],
-  [".survey-ml-section > summary", "Show optional experimental signal-classification controls."],
   [".survey-results", "Measured and proposed signals. Select a row to inspect its evidence."],
   ["survey-view .survey-visual", "Live spectrum and waterfall. Canvas gestures have their own interaction hints."],
 

@@ -8,7 +8,7 @@
   <a href="LICENSE"><img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-green"></a>
 </p>
 
-![msdr Discover workspace: live survey, decode panel and Listen favourites](docs/img/msdr.png)
+![msdr Listen workspace: live FM-band survey, AIS decode and favourites](docs/img/msdr.png)
 
 msdr runs alongside SDRconnect and connects through its WebSocket API. No build step.
 
@@ -127,7 +127,6 @@ Frequency input accepts `137.9`, `137900k`, or `14.230 MHz`.
 - [Catalog sources](docs/catalogs.md) · [Reference catalogs](docs/reference-catalogs.md) · [Frequency allocations](docs/allocations.md)
 - [Passive Wi-Fi](docs/wifi.md) · [Passive BLE](docs/ble.md) · [Device history and timeline](docs/history.md) · [Remote ID](docs/remote-id.md)
 - [Integrations: JS8Call, Winlink, FreeDATA](docs/integrations.md) · [Receiver DSP](docs/receiver-dsp.md) · [Discover map](docs/discover-map.md)
-- [Optional RF ML](docs/rf-ml.md) (currently disabled)
 
 ## Development
 
@@ -151,18 +150,16 @@ msdr's original code is licensed under [GPL-3.0-only](LICENSE). Third-party code
 
 **Receiver and platform**
 - SDRplay's SDRconnect WebSocket API (the receiver msdr drives).
-- Python dependencies: FastAPI, Uvicorn, websockets, Pydantic, Skyfield and NumPy; optional PyTorch, timm and Ultralytics for RF ML.
+- Python dependencies: FastAPI, Uvicorn, websockets, Pydantic, Skyfield and NumPy.
 
 **Bundled code**
 - [Lit](https://github.com/lit/lit) 3.2.1 (BSD-3-Clause) and [Leaflet](https://leafletjs.com/) 1.9.4 (BSD-2-Clause) in the UI.
 - Decoder and demodulator code adapted from [SDRangel](https://github.com/f4exb/sdrangel) and [gr-lora_sdr](https://github.com/tapparelj/gr-lora_sdr) (GPL-3.0); authors and details in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- RF classifier architecture from TorchSig's XCiT model, with code derived from [timm](https://github.com/huggingface/pytorch-image-models) (Apache-2.0).
 
 **Separately installed tools (not bundled)**
 - Decoders: WSJT-X `jt9`, `multimon-ng`, `minimodem`, `direwolf`, `dsd-fme`; FlightAware `dump1090-fa` as an alternative ADS-B backend in the code (the built-in decoder is the default).
 - Satellite passes: `nextpass`; IQ analysis: `iqscan`.
 - Passive Wi-Fi: the [rtl8812au-macos](https://github.com/xen-proc/rtl8812au-macos) userspace driver (GPL-2.0-only, derived from aircrack-ng/rtl8812au and Realtek code), run as its own program; msdr only reads its PCAP output.
-- Optional RF ML weights from TorchSig and TorchDSP, downloaded on request.
 
 **Data**
 - Orbital elements: [CelesTrak](https://celestrak.org/). Map tiles: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.

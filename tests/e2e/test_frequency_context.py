@@ -33,7 +33,9 @@ def test_saved_frequency_and_allocation_near_readout_and_inspector(live_app, pag
     allocation = page.locator('instrument-panel button.frequency-allocation')
     expect(allocation).to_have_attribute('title', re.compile('AERONAUTICAL RADIONAVIGATION'))
     hints = page.locator('instrument-panel .frequency-context-strip .band-plan-hints')
-    expect(hints).to_have_attribute('title', re.compile(re.escape('Aviation radionavigation (DME / transponders)')))
+    expect(hints).to_have_attribute(
+        'title', re.compile(re.escape('Aviation radionavigation (DME / transponders)'))
+    )
     # The same offline band plan is visible immediately below the inspector frequency.
     page.evaluate("document.querySelector('msdr-app').openSignal({frequency_hz:1089974844})")
     header = page.locator('.signal-panel-header')

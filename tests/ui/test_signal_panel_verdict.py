@@ -44,7 +44,7 @@ assert.equal(v.state, 'earlier DSP estimate');
 // Placeholder items are not an identification; memory is the last resort.
 v = signalVerdict({ dsp: [{ title: 'No DSP classification yet' }], memory: [{ title: 'DMR 152.878017 MHz' }] });
 assert.equal(v.source, 'memory'); assert.match(v.state, /not measured/);
-v = signalVerdict({ dsp: [{ title: 'No DSP classification yet' }], ml: [{ title: 'No classifier result' }] });
+v = signalVerdict({ dsp: [{ title: 'No DSP classification yet' }] });
 assert.equal(v.title, 'No identification yet'); assert.equal(v.source, null); assert.equal(v.state, null);
 console.log('ok');
 """

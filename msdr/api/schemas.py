@@ -7,7 +7,7 @@ framework bits, and these models are the wire contract for `msdr/ui` (Task 9).
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from msdr.contracts.evidence import ClaimSubject
 from msdr.engine.restore import ProfileStep, RestoreReport, SetStep, StepOutcome
@@ -153,7 +153,6 @@ class SettingsPatch(BaseModel):
     iqscan_bin: str | None = None
     iqscan_scan_root: str | None = None
     recorder_root: str | None = None
-    validation_samples_dir: str | None = None
     passes_days: int | None = Field(default=None, ge=1, le=14)
     passes_min_elevation: float | None = Field(default=None, ge=0, le=90)
     passes_horizon: float | None = Field(default=None, ge=0, le=45)
@@ -465,36 +464,6 @@ class SurveyDimensionsIn(BaseModel):
     dimensions: list[str]
 
 
-class SurveyMLIn(BaseModel):
-    classifier_enabled: StrictBool | None = None
-    detector_enabled: StrictBool | None = None
-    detector_interval_s: float | None = Field(default=None, ge=0.25, le=60)
-
-    @field_validator("detector_interval_s", mode="before")
-    @classmethod
-    def validate_detector_interval(cls, value):
-        import math
-
-        if value is None:
-            return value
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ValueError("detector_interval_s must be a finite number between 0.25 and 60")
-        if not math.isfinite(value):
-            # Python's JSON decoder accepts NaN/Infinity extensions. Replace
-            # them with a finite out-of-range value so FastAPI can serialize
-            # the resulting 422 detail as valid JSON.
-            return 0
-        if not 0.25 <= value <= 60:
-            raise ValueError("detector_interval_s must be a finite number between 0.25 and 60")
-        return value
-
-    @model_validator(mode="after")
-    def reject_null(self):
-        if any(getattr(self, field) is None for field in self.model_fields_set):
-            raise ValueError("ML values must not be null")
-        return self
-
-
 class SurveyDecodeIn(BaseModel):
     frequency_hz: int
     # None: let Survey.decode() fall back to the label's own
@@ -683,15 +652,6 @@ def restore_report_to_dict(report: RestoreReport) -> dict:
         "duration_s": report.duration_s,
         "detail": report.detail,
     }
-
-
-class ValidationCaptureIn(BaseModel):
-    kind: Literal["wideband", "channel"] = "wideband"
-    duration_s: Literal[0, 1, 3, 5] = 0
-    label: Literal["unlabeled", "voice", "digital", "noise", "interference", "uncertain"] = (
-        "unlabeled"
-    )
-    notes: str = Field(default="", max_length=2000)
 
 
 class LabelIn(BaseModel):

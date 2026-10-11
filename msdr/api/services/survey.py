@@ -4,7 +4,6 @@ AppService mixin: methods moved verbatim from msdr/api/service.py;
 all attributes they use are initialised in AppService.__init__.
 """
 
-import asyncio
 import logging
 from pathlib import Path
 
@@ -420,71 +419,6 @@ class SurveyServiceMixin:
         if str(self.settings.db_path) != ":memory:":
             self.settings.save(self.settings_path)
         return status
-
-    async def survey_validation(self, request: dict) -> dict:
-        self._require_survey()
-        analyzer = self.survey._analyzer
-        if analyzer is None or not self.survey.status().get("active"):
-            raise ValueError("Start Survey and enable an IQ analysis dimension before capture")
-        from msdr.rfml.validation_capture import save_capture
-
-        if getattr(self, "_validation_busy", False):
-            raise ValueError("A validation capture is already being saved")
-        self._validation_busy = True
-        try:
-            duration = request.get("duration_s", 0)
-            iq, rate, metadata = await analyzer.capture_validation(
-                request["kind"], **({"duration_s": duration} if duration else {})
-            )
-            metadata["survey"] = self.survey.status()
-            # One identifier per application session, never derived from predictions.
-            if not hasattr(self, "_validation_session"):
-                import uuid
-
-                self._validation_session = uuid.uuid4().hex
-            metadata["session_id"] = self._validation_session
-            directory = (
-                Path(self.settings.validation_samples_dir).expanduser()
-                if self.settings.validation_samples_dir
-                else Path(self.settings.recorder_root).expanduser() / "rfml-validation"
-            )
-            return await asyncio.to_thread(
-                save_capture,
-                directory,
-                iq,
-                rate,
-                metadata,
-                request["label"],
-                request["notes"],
-            )
-        finally:
-            self._validation_busy = False
-
-    async def survey_ml(self, patch: dict[str, bool | float]) -> dict:
-        self._require_survey()
-        from msdr import rfml
-
-        if not rfml.AVAILABLE:
-            raise HTTPException(404, "RF ML is not available in this build")
-        ml = self.settings.survey.ml
-        updated = ml.model_copy(deep=True)
-        if "classifier_enabled" in patch:
-            updated.enabled = patch["classifier_enabled"]
-        if "detector_enabled" in patch:
-            updated.detector.enabled = patch["detector_enabled"]
-        if "detector_interval_s" in patch:
-            updated.detector.interval_s = patch["detector_interval_s"]
-        if updated == ml:
-            return self.survey_status()
-        # Commit the durable choice before changing workers. A failed write
-        # must remain visible to the caller and leave runtime state untouched.
-        new_settings = self.settings.model_copy(deep=True)
-        new_settings.survey.ml = updated
-        if str(new_settings.db_path) != ":memory:":
-            new_settings.save(self.settings_path)
-        self.settings = new_settings
-        await self.survey.update_ml()
-        return self.survey_status()
 
     async def survey_decode(self, frequency_hz: int, decoders: list[str] | None = None) -> dict:
         self._require_survey()
