@@ -136,6 +136,10 @@ python3 -m venv .venv
 
 One Python process: a `RadioAdapter` boundary to the receiver, SQLite storage with numbered migrations, a FastAPI backend and a no-build Lit UI. Design notes live in `docs/`.
 
+## How it's built
+
+msdr is a free, non-commercial project, built out of love for radio. It was developed with AI coding tools; every change was designed, reviewed and tested by a human, on real hardware (RSPdx-R2).
+
 ## Credits and license
 
 msdr's original code is licensed under [GPL-3.0-only](LICENSE). Third-party code, models and data keep their own terms; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

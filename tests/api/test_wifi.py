@@ -459,7 +459,9 @@ async def test_live_feed_and_sorted_networks_over_http():
         desc = (await client.get("/api/wifi/networks",
                                  params={"sort": "bssid", "order": "desc"})).json()["items"]
         assert [r["bssid"] for r in asc] == sorted(r["bssid"] for r in asc)
-        assert [r["bssid"] for r in desc] == sorted((r["bssid"] for r in asc), reverse=True)
+        # The fake capture keeps emitting frames, so desc may already hold a
+        # network asc didn't: check desc's own order, not asc reversed.
+        assert [r["bssid"] for r in desc] == sorted((r["bssid"] for r in desc), reverse=True)
         assert (await client.get("/api/wifi/networks", params={"sort": "nope"})).status_code == 422
         await client.post("/api/wifi/stop")
 
