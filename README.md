@@ -8,7 +8,7 @@
   <a href="LICENSE"><img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-green"></a>
 </p>
 
-![msdr Listen workspace](docs/img/msdr-survey.png)
+![msdr Discover workspace: live survey, decode panel and Listen favourites](docs/img/msdr.png)
 
 msdr runs alongside SDRconnect and connects through its WebSocket API. No build step.
 
