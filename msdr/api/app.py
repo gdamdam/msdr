@@ -52,6 +52,7 @@ from msdr.api.schemas import (
     ListItemSkipPatch,
     ListOrderIn,
     ListPatch,
+    LnaIn,
     MergeIn,
     NativeAudioPatch,
     ObservationPatch,
@@ -1877,6 +1878,14 @@ def create_app(
     async def set_antenna(body: AntennaIn, service: AppService = Depends(get_service)):
         try:
             report = await service.set_antenna(body.antenna)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return restore_report_to_dict(report)
+
+    @app.post("/api/receiver/lna")
+    async def set_lna(body: LnaIn, service: AppService = Depends(get_service)):
+        try:
+            report = await service.set_lna(body.lna_state)
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         return restore_report_to_dict(report)

@@ -57,7 +57,7 @@ export class DiscoverMap extends LitElement {
     events: { type: Array }, signals: { type: Array }, location: { type: Object },
     view: { type: String }, canTune: { type: Boolean },
     _catalog: { state: true }, _error: { state: true }, _layer: { state: true },
-    _query: { state: true }, _selected: { state: true }, _tiles: { state: true },
+    _query: { state: true }, _selected: { state: true }, _tiles: { state: true }, _hideLabels: { state: true },
     _tick: { state: true }, _hiddenIds: { state: true }, _selectedSnapshot: { state: true },
     _trackEvents: { state: true }, _remoteId: { state: true },
   };
@@ -66,7 +66,7 @@ export class DiscoverMap extends LitElement {
     super();
     this.events = []; this.signals = []; this.location = null; this.view = "map";
     this.canTune = false; this._catalog = []; this._error = ""; this._layer = "";
-    this._query = ""; this._selected = selectedRowId; this._tiles = true; this._tick = 0;
+    this._query = ""; this._selected = selectedRowId; this._tiles = true; this._hideLabels = true; this._tick = 0;
     this._hiddenIds = hiddenMapIds;
     this._selectedSnapshot = selectedRowSnapshot;
     this._trackEvents = [];
@@ -554,7 +554,8 @@ export class DiscoverMap extends LitElement {
         marker.on("mouseout", () => this._scheduleVehicleHoverHide());
       }
       const tooltipOptions = directional ? {
-        permanent: true, interactive: true, direction: "right", offset: [14, 0], opacity: 1,
+        // Hidden labels fall back to showing on hover, so names stay reachable.
+        permanent: !this._hideLabels, interactive: true, direction: "right", offset: [14, 0], opacity: 1,
         className: `vehicle-map-label ${row.layer}-map-label`,
       } : {};
       marker.bindTooltip(label, tooltipOptions).on("click", () => this._select(row)).addTo(this._markers);
@@ -684,7 +685,8 @@ export class DiscoverMap extends LitElement {
         ${this.view === "map" ? html`<button title="Hide current map points; new live positions can still appear" @click=${() => this._clearMap()}>Clear map</button>
           <button title="Reload decoded messages, saved stations, and catalog positions" @click=${() => this._refreshMap()}>Refresh map</button>
           <button @click=${() => this._fit()}>Fit positions</button>
-          <label><input type="checkbox" .checked=${this._tiles} @change=${e => this._tiles = e.target.checked}>Online basemap</label>` : ""}
+          <label><input type="checkbox" .checked=${this._tiles} @change=${e => this._tiles = e.target.checked}>Online basemap</label>
+          <label title="Hide aircraft and vessel name labels; they still show on hover"><input type="checkbox" .checked=${this._hideLabels} @change=${e => this._hideLabels = e.target.checked}>Hide labels</label>` : ""}
       </div>
       <p class="dim geo-summary">${mapped.length} positioned / ${rows.length} rows
         <span class="help-mark" tabindex="0" role="note" aria-label="What this shows"

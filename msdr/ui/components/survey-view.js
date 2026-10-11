@@ -1360,9 +1360,15 @@ export class SurveyView extends LitElement {
   }
 
   _onCanvasWheel(ev) {
+    // Only pinch (which browsers report as ctrl+wheel) zooms; a plain
+    // two-finger scroll falls through so the page scrolls normally.
+    if (!ev.ctrlKey) return;
     ev.preventDefault();
     const unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? (ev.currentTarget.clientHeight || 360) : 1;
-    this._zoomAt(ev.clientX, ev.currentTarget, Math.exp(-ev.deltaY * unit * 0.002));
+    // Pinch deltas are small (~1-10px); clamp so a ctrl+mouse-wheel notch
+    // (~100px) doesn't jump several zoom levels at once.
+    const step = Math.max(-0.5, Math.min(0.5, ev.deltaY * unit * 0.01));
+    this._zoomAt(ev.clientX, ev.currentTarget, Math.exp(-step));
   }
 
   _canvasPointHz(clientX, canvas) {
@@ -3776,7 +3782,7 @@ ${!this.status?.replay ? this._renderKeepVfo() : ""}
             class="survey-canvas"
             role="application"
             tabindex="0"
-            aria-label="Spectrum and waterfall. Click to tune. Shift-click to inspect without tuning. Double-click opens inspection after the first click tunes. Drag the plot to pan; drag the tuning line to tune on release. Use the wheel to zoom, plus or minus to zoom, arrows to pan, Shift plus arrows to step the receiver, and Home to reset."
+            aria-label="Spectrum and waterfall. Click to tune. Shift-click to inspect without tuning. Double-click opens inspection after the first click tunes. Drag the plot to pan; drag the tuning line to tune on release. Pinch or Ctrl+wheel to zoom, plus or minus to zoom, arrows to pan, Shift plus arrows to step the receiver, and Home to reset."
             style="width:100%;display:block;background:var(--panel-well);cursor:grab;touch-action:none;user-select:none"
             @click=${(e) => this._queueCanvasClick(e)}
             @dblclick=${(e) => this._onCanvasDoubleClick(e)}

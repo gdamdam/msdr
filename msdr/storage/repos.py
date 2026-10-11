@@ -27,7 +27,7 @@ class JournalEntry(BaseModel):
     id: str = Field(default_factory=uuid7)
     at: str = Field(default_factory=now_iso)
     kind: Literal[
-        "capture", "tune", "back", "forward", "profile", "observed", "identified", "antenna"
+        "capture", "tune", "back", "forward", "profile", "observed", "identified", "antenna", "lna"
     ]
     state_id: str | None = None
     signal_id: str | None = None
@@ -93,6 +93,7 @@ def _signal_from_row(row, tag_ids: list[str]) -> Signal:
         color=row["color"],
         satellite=row["satellite"],
         antenna=row["antenna"],
+        lna_state=row["lna_state"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )
@@ -107,8 +108,8 @@ _SIGNAL_INSERT_SQL = (
     "id, name, status, frequency_hz, demodulator, filter_bandwidth_hz, profile_id, "
     "station, location, latitude, longitude, urls_json, notes, first_heard_at, last_heard_at, "
     "heard_count, origin_state_id, color, satellite, created_at, updated_at, decoders_json, "
-    "antenna, decoder_preset"
-    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "antenna, decoder_preset, lna_state"
+    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 
@@ -138,6 +139,7 @@ def _signal_insert_values(signal: Signal) -> tuple:
         json.dumps(signal.decoders),
         signal.antenna,
         signal.decoder_preset,
+        signal.lna_state,
     )
 
 
@@ -171,7 +173,7 @@ class SignalRepo:
                 "longitude=?, urls_json=?, "
                 "notes=?, first_heard_at=?, last_heard_at=?, heard_count=?, origin_state_id=?, "
                 "color=?, satellite=?, updated_at=?, decoders_json=?, antenna=?, "
-                "decoder_preset=? WHERE id=?",
+                "decoder_preset=?, lna_state=? WHERE id=?",
                 (
                     signal.name,
                     signal.status,
@@ -195,6 +197,7 @@ class SignalRepo:
                     json.dumps(signal.decoders),
                     signal.antenna,
                     signal.decoder_preset,
+                    signal.lna_state,
                     signal.id,
                 ),
             )

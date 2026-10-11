@@ -66,16 +66,22 @@ def test_band_adsb_has_working_single_channel_shortcut(live_app, page: Page):
     expect(dialog.get_by_role("heading", name="Single-channel decode")).to_be_visible()
     experimental = dialog.locator('#decode-channel-list section[aria-label="Experimental"]')
     expect(experimental.locator('input[data-decoder-id="adsb"]')).to_have_count(1)
+    single = dialog.locator('#decode-channel-list input[data-decoder-id="adsb"]')
+    single.check()
+    single.uncheck()
+    # Band decode lives in its own tab; the shortcut jumps back to Single-channel.
+    dialog.get_by_role("tab", name="Band decode").click()
+    expect(dialog.locator("#decode-channel-list")).to_have_count(0)
     expect(dialog.locator('#decode-band-list section[aria-label="Experimental"]')).to_contain_text(
         "ADS-B / Mode S"
     )
     expect(
         dialog.locator("#decode-band-list label", has_text="ADS-B / Mode S").locator("input")
     ).to_be_disabled()
-    single = dialog.locator('#decode-channel-list input[data-decoder-id="adsb"]')
-    single.check()
-    single.uncheck()
     dialog.get_by_role("button", name="Use ADS-B / Mode S in single-channel decode").click()
+    expect(dialog.get_by_role("tab", name="Single-channel decode")).to_have_attribute(
+        "aria-selected", "true"
+    )
     expect(dialog.locator('#decode-channel-list input[data-decoder-id="adsb"]')).to_be_checked()
     expect(dialog.get_by_role("status")).to_contain_text("1090 MHz")
     assert deck.evaluate("el => Array.from(el._selected)") == ["adsb"]

@@ -38,6 +38,7 @@ export class InstrumentPanel extends LitElement {
     currentFavorite: { type: Boolean },
     antennaLocked: { type: Boolean }, // settings.antenna_locked -- restores keep the current antenna
     modeLocked: { type: Boolean }, // settings.demodulator_locked -- restores keep the current mode
+    lnaLocked: { type: Boolean }, // settings.lna_locked -- restores keep the current LNA state
     savedFrequencyMatches: { type: Array },
     recorderStatus: { type: Object },
     scannerDeck: { attribute: false },
@@ -50,6 +51,7 @@ export class InstrumentPanel extends LitElement {
     interruptMessage: { type: String }, // U1: confirmInterrupt's pending strip text, or null
     _layoutMenuOpen: { state: true },
     _scannerOpen: { state: true }, // channel-scanner deck disclosure under the settings strip
+    _lnaRequested: { state: true }, // set-lna in flight, cleared like _antennaRequested
     _antennaRequested: { state: true }, // set-antenna in flight: the requested "Antenna X" value, until props.active_antenna echoes it back or .failure reports it didn't take
     _dspStatus: { state: true }, // per-property audio-dsp request state: {status: "pending"|"unsupported", value, reason}
     _dspDraft: { state: true }, // in-progress Levels popover edits, keyed by property, cleared once a request settles
@@ -80,6 +82,7 @@ export class InstrumentPanel extends LitElement {
     this.currentFavorite = false;
     this.antennaLocked = false;
     this.modeLocked = false;
+    this.lnaLocked = false;
     this.savedFrequencyMatches = [];
     this.recorderStatus = null;
     this.scannerDeck = null;
@@ -232,6 +235,13 @@ export class InstrumentPanel extends LitElement {
         this._antennaRequested = null;
       }
     }
+    if (this._lnaRequested != null) {
+      if (changed.has("state") && this.state?.props?.lna_state === this._lnaRequested) {
+        this._lnaRequested = null;
+      } else if (changed.has("failure") && this.failure) {
+        this._lnaRequested = null;
+      }
+    }
     // A fast SDRconnect echo (over the websocket) can beat the audio-dsp
     // POST's own response -- clear any pending entry as soon as props
     // confirm it rather than waiting on that response (see audio-dsp.js).
@@ -279,6 +289,20 @@ export class InstrumentPanel extends LitElement {
     if (!value || value === this._antennaRequested) return;
     this._antennaRequested = value;
     this.dispatchEvent(new CustomEvent("set-antenna", { detail: { antenna: value } }));
+  }
+
+  /** LNA field's change handler: out-of-range or unchanged values snap back
+   * to the confirmed state instead of sending a request. */
+  _onLnaChange(input, props) {
+    const value = Number(input.value);
+    const low = props.lna_state_min ?? 0;
+    const high = props.lna_state_max ?? 59;
+    if (!Number.isInteger(value) || value < low || value > high || value === props.lna_state) {
+      input.value = props.lna_state ?? "";
+      return;
+    }
+    this._lnaRequested = value;
+    this.dispatchEvent(new CustomEvent("set-lna", { detail: { lna_state: value } }));
   }
 
   /** Audio AGC / Noise reduction / Squelch toggles and their Levels popover
@@ -939,8 +963,15 @@ export class InstrumentPanel extends LitElement {
                   ${this._renderLock(this.antennaLocked, "antenna-lock", "antenna")}
                 </div>
                 <div class="readout">
-                  <span class="label">LNA</span>
-                  <span class="value mono strip-lna-value" title="LNA state (0–59, not dB)">${props.lna_state != null ? `${props.lna_state}` : "--"}</span>
+                  <label class="label" for="lna-input">LNA</label>
+                  <input id="lna-input" class="value mono strip-lna-value" type="number" style="width:4em"
+                    aria-label="LNA state" title="LNA state (device-specific, not dB)"
+                    min=${props.lna_state_min ?? 0} max=${props.lna_state_max ?? 59} step="1"
+                    placeholder="--"
+                    .value=${String(this._lnaRequested ?? props.lna_state ?? "")}
+                    ?disabled=${stopped || !complete || this.replayActive || this._lnaRequested != null || props.lna_state == null}
+                    @change=${(ev) => this._onLnaChange(ev.target, props)} />
+                  ${this._renderLock(this.lnaLocked, "lna-lock", "LNA")}
                 </div>
                 <div class="step-profile" title=${`Profile: ${this._profileName(s.active_profile_id)}`}>
                   <div class="readout">

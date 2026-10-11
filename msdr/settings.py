@@ -608,6 +608,9 @@ class Settings(BaseModel):
     # MODE lock, same idea: restores keep the current demodulator (e.g. SAM
     # over a memory saved as AM); only the MODE select changes it.
     demodulator_locked: bool = False
+    # LNA lock, same idea: restores keep the current LNA state; only the LNA
+    # field on the instrument panel changes it.
+    lna_locked: bool = False
     # None: AllocationStore's default (~/Library/Application Support/msdr/
     # allocations), where Settings -> Refresh writes the imported dataset.
     allocation_data_dir: Path | None = None

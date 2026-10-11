@@ -119,6 +119,9 @@ export const applyProfile = (id) => fetchJson(`/api/profiles/${id}/apply`, { met
 // SDRconnect confirms it.
 export const setAntenna = (antenna) =>
   fetchJson("/api/receiver/antenna", { method: "POST", body: { antenna } });
+// LNA field (instrument-panel.js): same RestoreReport shape as setAntenna.
+export const setLna = (lna_state) =>
+  fetchJson("/api/receiver/lna", { method: "POST", body: { lna_state } });
 export const back = () => fetchJson("/api/history/back", { method: "POST" });
 export const forward = () => fetchJson("/api/history/forward", { method: "POST" });
 export const listSignals = (params = {}) => fetchJson(`/api/signals${qs(params)}`);

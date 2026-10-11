@@ -250,3 +250,29 @@ assert.ok(state._pan > .5);
 """.replace("BODY", json.dumps(body))
     result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
+
+
+def test_canvas_wheel_zooms_only_on_pinch():
+    if not shutil.which("node"):
+        pytest.skip("node unavailable")
+    source = (Path(__file__).resolve().parents[2] / "msdr/ui/components/survey-view.js").read_text()
+    body = _method(source, "  _onCanvasWheel(ev) {", "\n  _canvasPointHz").rsplit("}", 1)[0]
+    script = """
+const assert = require('node:assert/strict');
+const handler = new Function('ev', BODY);
+const calls = [];
+const state = {_zoomAt(x, c, factor) { calls.push(factor); }};
+let prevented = false;
+const ev = (ctrlKey, deltaY) => ({ctrlKey, deltaY, deltaMode: 0, clientX: 0,
+  currentTarget: {clientHeight: 300}, preventDefault() { prevented = true; }});
+handler.call(state, ev(false, -40));
+assert.equal(prevented, false);
+assert.equal(calls.length, 0);
+handler.call(state, ev(true, -5));
+assert.equal(prevented, true);
+assert.ok(calls[0] > 1);
+handler.call(state, ev(true, 500));
+assert.ok(Math.abs(calls[1] - Math.exp(-0.5)) < 1e-9);
+""".replace("BODY", json.dumps(body))
+    result = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr

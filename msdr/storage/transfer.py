@@ -157,8 +157,8 @@ def _add_signal(db: Database, signal: Signal) -> None:
         "id, name, status, frequency_hz, demodulator, filter_bandwidth_hz, profile_id, "
         "station, location, latitude, longitude, urls_json, notes, first_heard_at, last_heard_at, "
         "heard_count, origin_state_id, color, satellite, created_at, updated_at, decoders_json, "
-        "antenna"
-        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "antenna, lna_state"
+        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             signal.id,
             signal.name,
@@ -183,6 +183,7 @@ def _add_signal(db: Database, signal: Signal) -> None:
             signal.updated_at,
             json.dumps(signal.decoders),
             signal.antenna,
+            signal.lna_state,
         ),
     )
     _replace_signal_tags(db, signal.id, signal.tag_ids)
@@ -195,7 +196,7 @@ def _replace_signal(db: Database, signal: Signal) -> None:
         "filter_bandwidth_hz=?, profile_id=?, station=?, location=?, latitude=?, "
         "longitude=?, urls_json=?, "
         "notes=?, first_heard_at=?, last_heard_at=?, heard_count=?, origin_state_id=?, "
-        "color=?, satellite=?, updated_at=?, decoders_json=?, antenna=? WHERE id=?",
+        "color=?, satellite=?, updated_at=?, decoders_json=?, antenna=?, lna_state=? WHERE id=?",
         (
             signal.name,
             signal.status,
@@ -218,6 +219,7 @@ def _replace_signal(db: Database, signal: Signal) -> None:
             signal.updated_at,
             json.dumps(signal.decoders),
             signal.antenna,
+            signal.lna_state,
             signal.id,
         ),
     )

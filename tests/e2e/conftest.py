@@ -51,8 +51,10 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 def browser_type_launch_args(browser_type_launch_args: dict) -> dict:
     # Only the headless-shell Chromium build is installed under
     # PLAYWRIGHT_BROWSERS_PATH here -- pick that channel by default so a bare
-    # `--e2e` run works without also having to pass --browser-channel.
-    return {**browser_type_launch_args, "channel": "chromium-headless-shell"}
+    # `--e2e` run works without also having to pass --browser-channel. An
+    # explicit --browser-channel (e.g. `chrome` for the system install) wins,
+    # for machines where the headless-shell download isn't available.
+    return {"channel": "chromium-headless-shell", **browser_type_launch_args}
 
 
 class LiveApp:

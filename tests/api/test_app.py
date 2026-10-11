@@ -242,6 +242,52 @@ async def test_antenna_lock_keeps_antenna_on_tune_but_ant_select_still_switches(
         assert adapter.state["active_antenna"] == "Antenna C"
 
 
+async def test_lna_lock_keeps_lna_on_profile_but_lna_field_still_sets():
+    async with running_app() as (app, client, adapter):
+        resp = await client.post("/api/receiver/lna", json={"lna_state": 5})
+        assert resp.json()["status"] == "confirmed"
+        assert adapter.state["lna_state"] == 5
+        resp = await client.patch("/api/settings", json={"lna_locked": True})
+        assert resp.json()["lna_locked"] is True
+        profile_id = (
+            await client.post("/api/profiles", json={"name": "Hot LNA", "lna_state": 20})
+        ).json()["id"]
+
+        resp = await client.post(f"/api/profiles/{profile_id}/apply")
+        assert resp.json()["status"] == "confirmed"
+        assert adapter.state["lna_state"] == 5
+
+        resp = await client.post("/api/receiver/lna", json={"lna_state": 9})
+        assert resp.json()["status"] == "confirmed"
+        assert adapter.state["lna_state"] == 9
+        resp = await client.post("/api/receiver/lna", json={"lna_state": 60})
+        assert resp.status_code == 422
+
+
+async def test_signal_lna_state_applies_on_tune_unless_locked():
+    async with running_app() as (app, client, adapter):
+        assert adapter.state["lna_state"] == 3
+        signal = (
+            await client.post(
+                "/api/signals",
+                json={"name": "Weak beacon", "frequency_hz": 146_520_000, "lna_state": 12},
+            )
+        ).json()
+        assert signal["lna_state"] == 12
+
+        resp = await client.post(f"/api/tune/signal/{signal['id']}")
+        assert resp.json()["status"] == "confirmed"
+        assert adapter.state["lna_state"] == 12
+
+        await client.post("/api/receiver/lna", json={"lna_state": 4})
+        await client.patch("/api/settings", json={"lna_locked": True})
+        await client.post(f"/api/tune/signal/{signal['id']}")
+        assert adapter.state["lna_state"] == 4
+
+        resp = await client.patch(f"/api/signals/{signal['id']}", json={"lna_state": None})
+        assert resp.json()["lna_state"] is None
+
+
 async def test_mode_lock_keeps_mode_on_tune_but_mode_select_still_switches():
     async with running_app() as (app, client, adapter):
         resp = await client.post(

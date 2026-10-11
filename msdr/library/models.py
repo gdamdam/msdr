@@ -131,6 +131,8 @@ class Signal(BaseModel):
     # ones never captured with an antenna reading). Staged before frequency
     # like ReceiverProfile.antenna -- see AppService.tune_signal.
     antenna: str | None = None
+    # None = leave the current LNA unchanged on tune, like `antenna` above.
+    lna_state: int | None = Field(default=None, ge=0, le=59)
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 

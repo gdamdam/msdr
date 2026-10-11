@@ -54,6 +54,7 @@ class SignalIn(BaseModel):
     decoders: list[str] = []
     decoder_preset: Literal["meshcore_us", "meshtastic_us_longfast"] | None = None
     antenna: str | None = None
+    lna_state: int | None = Field(default=None, ge=0, le=59)
 
     @model_validator(mode="after")
     def coordinates_are_paired(self):
@@ -84,6 +85,7 @@ class SignalPatch(BaseModel):
     decoders: list[str] | None = None
     decoder_preset: Literal["meshcore_us", "meshtastic_us_longfast"] | None = None
     antenna: str | None = None
+    lna_state: int | None = Field(default=None, ge=0, le=59)
 
 
 class ProfileIn(BaseModel):
@@ -142,6 +144,10 @@ class AntennaIn(BaseModel):
     antenna: str
 
 
+class LnaIn(BaseModel):
+    lna_state: int = Field(ge=0, le=59)
+
+
 class SettingsPatch(BaseModel):
     evidence_panel_style: Literal["outline", "tinted"] | None = None
     dwell_seconds: float | None = None
@@ -176,6 +182,7 @@ class SettingsPatch(BaseModel):
     allocation_jurisdiction: Literal["US", "ITU1", "ITU2", "ITU3"] | None = None
     antenna_locked: bool | None = None
     demodulator_locked: bool | None = None
+    lna_locked: bool | None = None
     allocation_data_dir: Path | None = None
     # `Layout | None`, but merged (not replaced wholesale) in
     # AppService.apply_settings, same as `features` above: a body like

@@ -1446,6 +1446,15 @@ export class MsdrApp extends LitElement {
     }, "instrument", antenna);
   }
 
+  /** LNA field (instrument-panel.js's _onLnaChange): same flow as
+   * _doSetAntenna. */
+  async _doSetLna(lnaState) {
+    await this._run(async () => {
+      const report = await api.setLna(lnaState);
+      this._reportStatus(report, `LNA ${lnaState}`, `LNA ${lnaState}`, "instrument");
+    }, "instrument", `LNA ${lnaState}`);
+  }
+
   /** Primary spectrum's tune-frequency while workspace is REVIEW and a
    * replay is running: tunes the *virtual* receiver (POST /api/review/tune)
    * instead of _doTuneFrequency's POST /api/tune/frequency -- the S3
@@ -3219,6 +3228,8 @@ export class MsdrApp extends LitElement {
         @antenna-lock=${(ev) => this._setReceiverLock("antenna_locked", "antenna", ev.detail.locked)}
         .modeLocked=${!!this.settings?.demodulator_locked}
         @mode-lock=${(ev) => this._setReceiverLock("demodulator_locked", "mode", ev.detail.locked)}
+        .lnaLocked=${!!this.settings?.lna_locked}
+        @lna-lock=${(ev) => this._setReceiverLock("lna_locked", "LNA", ev.detail.locked)}
         .currentFavorite=${this.favorites.some((s) =>
           Math.abs(s.frequency_hz - (this.state?.props?.device_vfo_frequency ?? 0)) <= 1 &&
           s.demodulator === this.state?.props?.demodulator)}
@@ -3274,6 +3285,7 @@ export class MsdrApp extends LitElement {
           ev.detail.direction, ev.detail.multiplier, ev.detail.fixedStepHz)}
         @cycle-step=${() => this._cycleStep()}
         @set-antenna=${(ev) => this._doSetAntenna(ev.detail.antenna)}
+        @set-lna=${(ev) => this._doSetLna(ev.detail.lna_state)}
         .frequencyDetailsOpen=${this._freqDetailsOpen}
         @frequency-details-toggle=${() => this.toggleFrequencyDetails()}
       ></instrument-panel>

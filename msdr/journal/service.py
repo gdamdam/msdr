@@ -21,7 +21,9 @@ class JournalService:
 
     def record_action(
         self,
-        kind: Literal["capture", "tune", "back", "forward", "profile", "identified", "antenna"],
+        kind: Literal[
+            "capture", "tune", "back", "forward", "profile", "identified", "antenna", "lna"
+        ],
         *,
         state: ReceiverState | None,
         signal_id: str | None = None,

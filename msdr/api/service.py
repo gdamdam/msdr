@@ -1135,6 +1135,7 @@ class AppService(
             last_heard_at=now_iso(),
             heard_count=1,
             antenna=state.antenna,
+            lna_state=state.lna_state,
         )
         self.signals.add(signal)
         self.library_undo.record(f"capture {signal.name}", [(signal.id, None)])
@@ -1161,6 +1162,11 @@ class AppService(
             # unchanged, see Signal.antenna.
             profile = (profile or ProfileSettings()).model_copy(
                 update={"antenna": signal.antenna}
+            )
+        if signal.lna_state is not None:
+            # Same override for LNA; settings.lna_locked still wins (_restore).
+            profile = (profile or ProfileSettings()).model_copy(
+                update={"lna_state": signal.lna_state}
             )
         steps, desired = plan_with_desired(
             confirmed=self.confirmed.props, profile=profile, recipe=signal.recipe()
@@ -1214,6 +1220,18 @@ class AppService(
             confirmed=self.confirmed.props, profile=ProfileSettings(antenna=antenna)
         )
         return await self._restore(steps, desired=desired, kind="antenna")
+
+    async def set_lna(self, lna_state: int) -> RestoreReport:
+        """POST /api/receiver/lna. Same staged restore path as set_antenna,
+        as its own `kind` so the LNA lock lets it through."""
+        low = self.confirmed.props.get("lna_state_min")
+        high = self.confirmed.props.get("lna_state_max")
+        if (low is not None and lna_state < low) or (high is not None and lna_state > high):
+            raise ValueError(f"invalid LNA state: {lna_state} (valid: {low}-{high})")
+        steps, desired = plan_with_desired(
+            confirmed=self.confirmed.props, profile=ProfileSettings(lna_state=lna_state)
+        )
+        return await self._restore(steps, desired=desired, kind="lna")
 
     async def apply_profile(self, profile_id: str) -> RestoreReport:
         profile = self.profiles.get(profile_id)
@@ -1562,9 +1580,10 @@ class AppService(
         if self._executor.running or self.scanner.is_tuning:
             raise RestoreRunning("restore running")
 
-        # ANT / MODE locks: memories, profiles and Back/Forward keep the
-        # current antenna/mode; only the ANT select (kind "antenna") and the
-        # MODE select (manual_mode) change them. Pinning `desired` to the
+        # ANT / MODE / LNA locks: memories, profiles and Back/Forward keep
+        # the current antenna/mode/LNA; only the ANT select (kind "antenna"),
+        # the MODE select (manual_mode) and the LNA field (kind "lna") change
+        # them. Pinning `desired` to the
         # current value (not just dropping the step) stops a native profile
         # switch from moving it either.
         locked = []
@@ -1572,6 +1591,8 @@ class AppService(
             locked.append("active_antenna")
         if self.settings.demodulator_locked and not manual_mode:
             locked.append("demodulator")
+        if self.settings.lna_locked and kind != "lna":
+            locked.append("lna_state")
         for prop in locked:
             steps = [s for s in steps if not (isinstance(s, SetStep) and s.property == prop)]
             current = self.confirmed.props.get(prop)

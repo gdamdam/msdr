@@ -45,6 +45,7 @@ function blankSignalDraft() {
     satellite: null,
     decoders: new Set(),
     antenna: null,
+    lnaState: "",
   };
 }
 
@@ -67,6 +68,7 @@ function signalDraftFrom(item) {
     satellite: item.satellite ?? null,
     decoders: new Set(item.decoders ?? []),
     antenna: item.antenna ?? null,
+    lnaState: item.lna_state ?? "",
   };
 }
 
@@ -309,6 +311,8 @@ export class Drawer extends LitElement {
       satellite: d.satellite ?? null,
       decoders: Array.from(d.decoders),
       antenna: d.antenna ?? null,
+      // Blank = keep the current LNA on tune (explicit null clears it).
+      lna_state: d.lnaState === "" ? null : Number(d.lnaState),
     };
     try {
       await patchSignal(this.selected.item.id, payload);
@@ -570,6 +574,12 @@ export class Drawer extends LitElement {
             (opt) => html`<option value=${opt.value} ?selected=${opt.value === d.antenna}>${opt.letter}</option>`
           )}
         </select>`
+      )}
+      ${this._field(
+        "lna state",
+        html`<input name="signal-lna-state" type="number" min="0" max="59" step="1"
+          aria-label="LNA state" placeholder="Keep current"
+          .value=${String(d.lnaState)} @input=${(e) => this._set("lnaState", e.target.value)} />`
       )}
       ${this._field(
         "profile",

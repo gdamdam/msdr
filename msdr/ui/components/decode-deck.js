@@ -69,6 +69,7 @@ export class DecodeDeck extends LitElement {
     canControl: { type: Boolean },
     failure: { type: Object },
     _setupOpen: { state: true },
+    _setupTab: { state: true }, // "single" | "band" tab of the ⚙ modal
     _decoderQuery: { state: true },
     _singleHint: { state: true },
     _selected: { state: true },
@@ -202,9 +203,11 @@ export class DecodeDeck extends LitElement {
     return words.every(word => text.includes(word));
   }
 
-  _openSetup() {
+  _openSetup(tab) {
     this._decoderQuery = "";
     const status = this.status ?? {};
+    // Open on the tab that's running, so its STOP is one click away.
+    this._setupTab = tab ?? (status.band?.active && !status.active ? "band" : "single");
     // Seed the checkbox list from whatever's currently running, else the
     // operator's last remembered choice (localStorage), else empty.
     this._selected = new Set(status.active ? (status.decoders ?? []).map((d) => d.id) : loadIds(SELECTION_KEY));
@@ -224,7 +227,7 @@ export class DecodeDeck extends LitElement {
   async _openPrepareForFailure() {
     const message = String(this.failure?.detail ?? "");
     const decoder = this.decoders.find(d => message.startsWith(`${d.label}:`));
-    this._openSetup();
+    this._openSetup("single");
     if (decoder) {
       this._selected = new Set([decoder.id]);
       saveIds(SELECTION_KEY, this._selected);
@@ -234,7 +237,7 @@ export class DecodeDeck extends LitElement {
   }
 
   async _openPrepare() {
-    this._openSetup();
+    this._openSetup("single");
     await this.updateComplete;
     if (this._selected.size === 1) {
       this._revealPreparation();
@@ -261,7 +264,8 @@ export class DecodeDeck extends LitElement {
     this._selected = new Set([d.id]);
     saveIds(SELECTION_KEY, this._selected);
     this._singleHint = `${d.label} selected for single-channel decoding.` +
-      (d.id === "adsb" ? " Tune to 1090 MHz with at least 2.4 MS/s, then press START." : " Press START above Band decode.");
+      (d.id === "adsb" ? " Tune to 1090 MHz with at least 2.4 MS/s, then press START." : " Press START.");
+    this._setupTab = "single";
     await this.updateComplete;
     const input = this.querySelector(`#decode-channel-list input[data-decoder-id="${d.id}"]`);
     input?.scrollIntoView({ block: "center" });
@@ -457,6 +461,18 @@ export class DecodeDeck extends LitElement {
                 @dismiss=${() => this.dispatchEvent(new CustomEvent("dismiss-failure"))}
               ></failure-note>`
             : ""}
+          <div class="decode-setup-tabs" role="tablist" aria-label="Decode mode" style="display:flex;gap:6px;margin-bottom:10px">
+            ${[["single", "Single-channel decode"], ["band", "Band decode"]].map(([id, label]) => html`<button role="tab"
+              aria-selected=${this._setupTab === id ? "true" : "false"} @click=${() => (this._setupTab = id)}>${label}</button>`)}
+          </div>
+          ${this._setupTab === "band" ? this._bandSection() : this._singleSection(active)}
+        </div>
+      </dialog>
+    `;
+  }
+
+  _singleSection(active) {
+    return html`
           <h2 style="font-size:1em">Single-channel decode</h2>
           <p class="dim">Decode the tuned frequency. IQ decoders use raw receiver samples automatically.</p>
           ${this._singleHint ? html`<p role="status">${this._singleHint}</p>` : ""}
@@ -531,9 +547,6 @@ export class DecodeDeck extends LitElement {
             .frequencyHz=${this.frequencyHz} .restoreToken=${this._restoreToken}
             @decoder-preset-applied=${e=>this._restoreToken=e.detail.token}
             @decoder-preset-restored=${()=>this._restoreToken=null}></decoder-prepare>` : ""}
-          ${this._bandSection()}
-        </div>
-      </dialog>
     `;
   }
 
@@ -549,7 +562,6 @@ export class DecodeDeck extends LitElement {
     const channels = band.channels ?? [];
     const candidates = (band.candidates ?? []).slice(0, 5);
     return html`
-      <hr style="margin:12px 0" />
       <h2 style="font-size:1em">Band decode</h2>
       <div class="list" id="decode-band-list">
         ${groupDecoders(this.decoders).map(({category, decoders}) => html`
@@ -575,9 +587,9 @@ export class DecodeDeck extends LitElement {
               ${!qualifies ? html`<button type="button" style="font-size:0.75em"
                 ?disabled=${!(d.readiness ? d.readiness.usable : d.available)}
                 aria-label=${`Use ${d.label} in single-channel decode`}
-                title=${d.available ? "Select in the single-channel list above" : d.install_hint}
+                title=${d.available ? "Select in the Single-channel decode tab" : d.install_hint}
                 @click=${(e) => { e.preventDefault(); e.stopPropagation(); this._selectSingle(d); }}
-              >Use single channel ↑</button>` : ""}
+              >Use single channel</button>` : ""}
             </label>
           `;
         })}

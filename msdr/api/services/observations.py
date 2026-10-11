@@ -111,6 +111,7 @@ class ObservationServiceMixin:
             # this snapshot or never had one (legacy import, recorder
             # bookmarks that only carry demodulator).
             antenna=receiver.get("active_antenna"),
+            lna_state=receiver.get("lna_state"),
             notes=obs.notes,
         )
         self.create_signal(signal)
