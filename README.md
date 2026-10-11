@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/gdamdam/msdr/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/gdamdam/msdr/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="version" src="https://img.shields.io/badge/version-1.0.0--rc.2-blue">
+  <img alt="version" src="https://img.shields.io/badge/version-1.0.0--rc.4-blue">
   <a href="LICENSE"><img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-green"></a>
 </p>
 

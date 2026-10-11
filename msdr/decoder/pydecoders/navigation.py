@@ -16,9 +16,19 @@ import time
 
 import numpy as np
 
-from msdr.decoder.backends import DecodeEvent, DecoderError
+from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
 from msdr.decoder.pydecoders.morse_ident import MorseIdentDecoder
 from msdr.decoder.pydecoders.rs41 import _StreamingResampler
+
+# Lock checks: a block is reported only when it looks like a real station,
+# not noise. These loose bounds were 0.005 depth / 10 Hz deviation, which
+# let unreceived stations (e.g. SAU at 2-10x below lock) produce random
+# radials, and the ILS decoder on a VOR channel report noise as DDM.
+# VOR standard: 30 Hz AM ~30% depth, 9960 Hz subcarrier deviation +/-480 Hz.
+_VOR_MIN_AM_DEPTH = 0.05
+_VOR_DEVIATION_HZ = (380.0, 580.0)
+# ILS localizer: 90 + 150 Hz tones ~20% each on course (~40% sum anywhere).
+_ILS_MIN_DEPTH_SUM = 0.1
 
 
 def _tone(x: np.ndarray, rate: float, hz: float) -> complex:
@@ -62,7 +72,7 @@ class NavigationIQDecoder:
         # Persistent across blocks: idents repeat every ~10-30 s, and the
         # two-repeat confirmation needs to remember the previous decode.
         self._morse = MorseIdentDecoder(self.rate)
-        self._events: asyncio.Queue[DecodeEvent | None] = asyncio.Queue()
+        self._events: asyncio.Queue[DecodeEvent | None] = LoopEventQueue()
         self._running = False
 
     async def start(self) -> None:
@@ -112,7 +122,7 @@ class NavigationIQDecoder:
             envelope = magnitude - np.mean(magnitude)
             d90 = abs(_tone(envelope, self.rate, 90)) / carrier
             d150 = abs(_tone(envelope, self.rate, 150)) / carrier
-            if max(d90, d150) < 0.005:
+            if d90 + d150 < _ILS_MIN_DEPTH_SUM:
                 return None
             ddm = d90 - d150
             fields = {
@@ -127,7 +137,7 @@ class NavigationIQDecoder:
             # subcarrier, whose frequency deviation carries the variable phase.
             envelope = magnitude - np.mean(magnitude)
             ref = _tone(envelope, self.rate, 30)
-            if abs(ref) / carrier < 0.005:
+            if abs(ref) / carrier < _VOR_MIN_AM_DEPTH:
                 return None
             n = len(envelope)
             tt = np.arange(n) / self.rate
@@ -139,11 +149,16 @@ class NavigationIQDecoder:
             subphase = np.unwrap(np.angle(smooth))
             deviation = np.diff(subphase) * self.rate / (2 * np.pi)
             var = _tone(deviation, self.rate, 30)
-            if abs(var) < 10:
+            low, high = _VOR_DEVIATION_HZ
+            if not low <= abs(var) <= high:
                 return None
-            # The reference phase is the zero-degree datum; FM frequency
-            # deviation has the opposite phase sign to its modulation phase.
-            radial = float((np.degrees(np.angle(ref) - np.angle(var))) % 360)
+            # Naming here is inverted vs. the VOR standard: `ref` is the 30 Hz
+            # AM (the station's *variable* signal) and `var` the 30 Hz FM on
+            # the subcarrier (its *reference*). The variable signal lags the
+            # reference by the radial, so radial = phase(FM) - phase(AM).
+            # The opposite order reported 360° minus the radial -- found
+            # off-air from a known location vs OAK VOR.
+            radial = float((np.degrees(np.angle(var) - np.angle(ref))) % 360)
             fields = {
                 "radial_deg": radial,
                 "reference_30_hz": float(abs(ref)),

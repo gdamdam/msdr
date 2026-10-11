@@ -10,7 +10,7 @@ These decoders run inside msdr or through their own protocol-specific command-li
 | RS41 radiosonde | In-process Python decoder | Acquires the 200-bit alternating preamble across integer sample phases, applies RS(255,231) correction to both interleave lanes (up to 12 symbols per lane), then emits frames only when payload sub-block CRCs pass. Synthetic IQ and recording replay are tested; off-air validation remains pending. |
 | FT8 | WSJT-X `jt9` subprocess | Decodes UTC-aligned 15-second USB windows and reports accepted messages. WSJT-X `jt9` is discovered on PATH or in its macOS application bundle. Live UTC alignment is estimated from IQ receipt time. The current path needs IQ rates that are an integer multiple of 12 kHz. |
 | DSC | In-process Python decoder | Framing, one-bit-tolerant phasing, time diversity, XOR ECC and bounded common call semantics (MMSI/category, distress position/time, safety position request/acknowledgement). HF/VHF synthetic IQ tested; off-air validation remains pending. |
-| End-of-Train | In-process Python decoder | Emits only packets with valid CRC-18. RF capture validation is pending. |
+| End-of-Train | In-process Python decoder | Emits only packets with valid CRC-18. Live off-air reception and decoding confirmed 2026-10-11; independent reference comparison pending. |
 | VOR / ILS | In-process measurement estimators | Tentative radial/DDM measurements only; they do not identify a station and are not safe for navigation. |
 
 D-Star, Yaesu System Fusion, dPMR and M17 continue to use the standalone `dsd-fme` executable. The existing NFM decoders remain independent of these raw-IQ paths. FreeDV and DAB/DAB+ are not shipped.
@@ -28,6 +28,8 @@ Availability and parsing are distinct from RF validation.
 
 - FT8 was checked with native WSJT-X 3.0.2, a recorded audio sample (13 messages), and a synthetic IQ path.
 - DSC has synthetic IQ tests for both physical profiles.
+- End-of-Train was received and decoded live off-air (CRC-18-valid packets) on 2026-10-11.
+- VOR was validated off-air on 2026-10-11: radials from OAK VOR at a known location agree with the computed bearing within about ±2° (after fixing a sign error this check exposed). ILS has not been confirmed off-air.
 - The other newly added paths and live field performance still need validation. See [FT8](ft8.md) and [DSC](dsc.md) for exact evidence and limits.
 - Output that has no exposed integrity check must not be presented as a CRC-verified message. VOR/ILS are measurements with `unavailable` integrity.
 - Track misses and false positives alongside successes before treating any decoder as dependable.

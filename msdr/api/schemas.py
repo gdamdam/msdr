@@ -21,6 +21,7 @@ from msdr.settings import (
     HistorySettings,
     IntegrationsSettings,
     Layout,
+    LnaAutoSettings,
     Location,
     NativeAudioSettings,
     SurveySettings,
@@ -203,6 +204,9 @@ class SettingsPatch(BaseModel):
     native_audio: NativeAudioSettings | None = None
     integrations: IntegrationsSettings | None = None
     survey: SurveySettings | None = None
+    # Shallow-merged like `features` (AppService.apply_settings); `bands`
+    # is replaced as a whole list.
+    lna_auto: LnaAutoSettings | None = None
     timezone: str | None = None
 
 

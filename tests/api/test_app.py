@@ -288,6 +288,34 @@ async def test_signal_lna_state_applies_on_tune_unless_locked():
         assert resp.json()["lna_state"] is None
 
 
+async def test_auto_lna_applies_on_band_change_and_backs_off_on_overload():
+    settings = Settings(dwell_seconds=0.05, db_path=":memory:")
+    settings.lna_auto.overload_hold_s = 0.05
+    settings.lna_auto.max_backoff_steps = 2
+    async with running_app(settings=settings) as (app, client, adapter):
+        resp = await client.post("/api/tune/frequency", json={"hz": 1_090_000_000})
+        assert resp.json()["status"] == "confirmed"
+        assert adapter.state["lna_state"] == 0
+        # Same band: a hand-set LNA survives retuning.
+        await client.post("/api/receiver/lna", json={"lna_state": 2})
+        await client.post("/api/tune/frequency", json={"hz": 1_089_000_000})
+        assert adapter.state["lna_state"] == 2
+
+        await adapter.external_change("overload", True)
+        for _ in range(100):
+            await asyncio.sleep(0.02)
+            if adapter.state["lna_state"] == 4:
+                break
+        await asyncio.sleep(0.15)
+        assert adapter.state["lna_state"] == 4  # capped at baseline + 2
+        await adapter.external_change("overload", False)
+
+        await client.patch("/api/settings", json={"lna_auto": {"enabled": False}})
+        assert (await client.get("/api/settings")).json()["lna_auto"]["bands"][3]["lna_state"] == 0
+        await client.post("/api/tune/frequency", json={"hz": 162_000_000})
+        assert adapter.state["lna_state"] == 4
+
+
 async def test_mode_lock_keeps_mode_on_tune_but_mode_select_still_switches():
     async with running_app() as (app, client, adapter):
         resp = await client.post(

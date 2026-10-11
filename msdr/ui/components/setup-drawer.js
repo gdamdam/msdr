@@ -198,6 +198,13 @@ function draftFromSettings(s) {
     loraCodingRate: s.decoder?.lora_coding_rate ?? 1,
     loraProtocol: s.decoder?.lora_protocol ?? "lora",
     surveyThresholdDb: s.survey?.threshold_db ?? 8,
+    // Auto LNA (settings.lna_auto): band edges edited in MHz, blank = open-ended.
+    lnaAutoEnabled: s.lna_auto?.enabled ?? true,
+    lnaAutoBackoff: s.lna_auto?.overload_backoff ?? true,
+    lnaAutoBands: (s.lna_auto?.bands ?? []).map((b) => ({
+      upToMhz: b.up_to_hz == null ? "" : b.up_to_hz / 1e6,
+      lnaState: b.lna_state,
+    })),
     surveySpectrumFps: s.survey?.spectrum_fps ?? 10,
     surveyPeakThresholdDb: s.survey?.peak_threshold_db ?? 10,
     surveyCenterExclusion: s.survey?.center_exclusion_enabled ?? false,
@@ -983,7 +990,53 @@ export class SetupDrawer extends LitElement {
       };
     }
 
+    // Auto LNA: `bands` is replaced as a whole list, so send it whole when
+    // any row changed (the backend validates ordering/open-ended last band).
+    const origLna = o.lna_auto ?? {};
+    const bands = d.lnaAutoBands.map((b) => ({
+      up_to_hz: b.upToMhz === "" ? null : Math.round(Number(b.upToMhz) * 1e6),
+      lna_state: Number(b.lnaState),
+    }));
+    const lnaPatch = {};
+    if (d.lnaAutoEnabled !== (origLna.enabled ?? true)) lnaPatch.enabled = d.lnaAutoEnabled;
+    if (d.lnaAutoBackoff !== (origLna.overload_backoff ?? true)) lnaPatch.overload_backoff = d.lnaAutoBackoff;
+    if (JSON.stringify(bands) !== JSON.stringify(origLna.bands ?? [])) lnaPatch.bands = bands;
+    if (Object.keys(lnaPatch).length) patch.lna_auto = lnaPatch;
+
     return patch;
+  }
+
+  _setLnaBand(index, key, value) {
+    const bands = this._draft.lnaAutoBands.map((b, i) => (i === index ? { ...b, [key]: value } : b));
+    this._set("lnaAutoBands", bands);
+  }
+
+  /** Auto LNA (Radio section): frequency band table + overload backoff. */
+  _lnaAutoGroup(d) {
+    const check = (key, label, title) => html`<label class="row mono" title=${title}
+      style="cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.85em">
+      <input type="checkbox" .checked=${d[key]} @change=${(e) => this._set(key, e.target.checked)} />${label}</label>`;
+    return this._field("auto LNA", html`<div style="display:flex;flex-direction:column;gap:6px">
+      ${check("lnaAutoEnabled", "set LNA from frequency band on tune",
+        "Tuning into another band applies that band's LNA state, unless the memory/profile has its own or the LNA is locked")}
+      ${check("lnaAutoBackoff", "back off on overload",
+        "While the receiver reports overload, add one LNA attenuation step every 2 s (max 4 over the band value)")}
+      <table class="mono" style="font-size:0.85em;border-collapse:collapse">
+        <thead><tr><th class="dim" style="text-align:left">below (MHz)</th><th class="dim" style="text-align:left">LNA state</th></tr></thead>
+        <tbody>${d.lnaAutoBands.map((b, i) => {
+          const last = i === d.lnaAutoBands.length - 1;
+          return html`<tr>
+            <td>${last ? html`<span class="dim">above</span>` : html`<input type="number" min="0" step="any" style="width:7em"
+              aria-label=${`Band ${i + 1} upper edge (MHz)`} .value=${String(b.upToMhz)}
+              @input=${(e) => this._setLnaBand(i, "upToMhz", e.target.value)} />`}</td>
+            <td><input type="number" min="0" max="59" step="1" style="width:4em"
+              aria-label=${`Band ${i + 1} LNA state`} .value=${String(b.lnaState)}
+              @input=${(e) => this._setLnaBand(i, "lnaState", e.target.value)} /></td>
+          </tr>`;
+        })}</tbody>
+      </table>
+      <span class="dim" style="font-size:0.8em">Higher LNA state = more attenuation. Values above the device's maximum are clamped.</span>
+    </div>`);
   }
 
   async _save() {
@@ -1590,6 +1643,7 @@ export class SetupDrawer extends LitElement {
           @input=${(e) => this._set("dwellSeconds", e.target.value)}
         />`
       )}
+      ${this._lnaAutoGroup(d)}
       ${this._field(
         "nearby (kHz)",
         html`<input

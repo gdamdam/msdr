@@ -16,7 +16,7 @@ import time
 
 import numpy as np
 
-from msdr.decoder.backends import DecodeEvent, DecoderError
+from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
 from msdr.decoder.payloads import decode_payload
 from msdr.decoder.pydecoders.rs41_fec import correct_rs41_frame
 
@@ -187,7 +187,7 @@ class RS41Backend:
         self.offset = float(frequency_hz - center_hz)
         self.error = None
         self._running = False
-        self._events: asyncio.Queue[DecodeEvent | None] = asyncio.Queue()
+        self._events: asyncio.Queue[DecodeEvent | None] = LoopEventQueue()
         self._resampler = _StreamingResampler(self.rate, self.offset)
         self._prev = 0j
         self._have_prev = False

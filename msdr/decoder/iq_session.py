@@ -55,8 +55,12 @@ class IQDecoderSession:
                 if not self._running:
                     break
                 self._last_frame = time.monotonic()
+                # Off the event loop: in-process decoders (End-of-Train,
+                # VOR/ILS, DSC, RS41, LoRa) are CPU-heavy, and running two at
+                # full IQ rate on the loop starved the web UI until the app
+                # froze. They emit through LoopEventQueue, which is safe here.
+                await asyncio.to_thread(self._feed_all, frame.data)
                 for key, backend in self._backends.items():
-                    backend.feed(frame.data)
                     if backend.error != self._backend_errors.get(key):
                         self._backend_errors[key] = backend.error
                         self._on_status()
@@ -65,6 +69,10 @@ class IQDecoderSession:
         except Exception as exc:
             self._error = str(exc)
             self._on_status()
+
+    def _feed_all(self, data):
+        for backend in self._backends.values():
+            backend.feed(data)
 
     async def _drain(self, key, backend):
         try:

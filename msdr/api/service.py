@@ -121,6 +121,7 @@ from msdr.catalog.store import CatalogRepo
 from msdr.engine.confirmed import ConfirmedState, matches
 from msdr.engine.dwell import DwellObserver
 from msdr.engine.history import HistoryStack
+from msdr.engine.lna_auto import auto_lna_state, backoff_state, band_index
 from msdr.engine.restore import (
     RestoreExecutor,
     RestoreReport,
@@ -651,6 +652,10 @@ class AppService(
         # needs this to start/stop it safely as journal_passive flips live.
         self._dwell_running = False
         self._telemetry_task: asyncio.Task | None = None
+        # Frequency-adaptive LNA: the band's starting LNA state (overload
+        # backoff counts steps from it) and the running overload watch.
+        self._lna_baseline: int | None = None
+        self._lna_overload_task: asyncio.Task | None = None
         self._telemetry_at: float = float("-inf")
         self._recorder_task: asyncio.Task | None = None
         # Owner chip (U1): DopplerLoop doesn't track its own start time (see
@@ -770,12 +775,16 @@ class AppService(
         await self._stop_rules_runtime()
         if self.spectrum_hub is not None:
             await self.spectrum_hub.stop()
-        for task in (self._hint_task, self._state_task, self._event_task, self._telemetry_task):
+        for task in (
+            self._hint_task, self._state_task, self._event_task, self._telemetry_task,
+            self._lna_overload_task,
+        ):
             if task is not None:
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
         self._hint_task = self._state_task = self._event_task = self._telemetry_task = None
+        self._lna_overload_task = None
 
         if self._dwell_running:
             await self.dwell.stop()
@@ -842,6 +851,8 @@ class AppService(
                         self._executor.feed(ev)  # feed() applies to confirmed itself
                     else:
                         self.confirmed.apply(ev)
+                    if ev.property == "overload":
+                        self._on_overload(bool(ev.value))
                     if ev.property in _TELEMETRY_PROPS and self.settings.features.telemetry:
                         self._note_telemetry()
                     if (
@@ -1168,6 +1179,7 @@ class AppService(
             profile = (profile or ProfileSettings()).model_copy(
                 update={"lna_state": signal.lna_state}
             )
+        profile = self._with_auto_lna(profile, signal.frequency_hz)
         steps, desired = plan_with_desired(
             confirmed=self.confirmed.props, profile=profile, recipe=signal.recipe()
         )
@@ -1191,6 +1203,7 @@ class AppService(
     ) -> RestoreReport:
         steps, desired = plan_with_desired(
             confirmed=self.confirmed.props,
+            profile=self._with_auto_lna(None, hz),
             recipe=TuneRecipe(
                 frequency_hz=hz, demodulator=demodulator, filter_bandwidth_hz=filter_bandwidth_hz
             ),
@@ -1231,7 +1244,71 @@ class AppService(
         steps, desired = plan_with_desired(
             confirmed=self.confirmed.props, profile=ProfileSettings(lna_state=lna_state)
         )
+        # A hand-set LNA is the new reference for overload backoff.
+        self._lna_baseline = lna_state
         return await self._restore(steps, desired=desired, kind="lna")
+
+    def _with_auto_lna(self, profile: ProfileSettings | None, target_hz: int):
+        """Frequency-adaptive LNA (settings.lna_auto): a tune into another
+        band gets that band's LNA state, unless the signal/profile already
+        sets one or the LNA is locked. Also resets the backoff baseline."""
+        config = self.settings.lna_auto
+        current_hz = self.confirmed.props.get("device_vfo_frequency")
+        if band_index(target_hz, config) == band_index(current_hz, config):
+            return profile
+        if profile is not None and profile.lna_state is not None:
+            self._lna_baseline = profile.lna_state
+            return profile
+        self._lna_baseline = None
+        if self.settings.lna_locked:
+            return profile
+        state = auto_lna_state(
+            target_hz, current_hz, config, self.confirmed.props.get("lna_state_max")
+        )
+        if state is None:
+            return profile
+        self._lna_baseline = state
+        return (profile or ProfileSettings()).model_copy(update={"lna_state": state})
+
+    def _on_overload(self, overloaded: bool) -> None:
+        task = self._lna_overload_task
+        if not overloaded:
+            if task is not None and not task.done():
+                task.cancel()
+            self._lna_overload_task = None
+        elif task is None or task.done():
+            self._lna_overload_task = asyncio.create_task(self._lna_overload_watch())
+
+    async def _lna_overload_watch(self) -> None:
+        """While the receiver stays overloaded, add one LNA attenuation step
+        every overload_hold_s, up to max_backoff_steps over the band's
+        baseline. Quiet (no history/journal): it's a safety net, and the
+        panel's LNA readout shows the change."""
+        while True:
+            config = self.settings.lna_auto
+            await asyncio.sleep(config.overload_hold_s)
+            props = self.confirmed.props
+            if not props.get("overload") or self.settings.lna_locked:
+                return
+            if self._executor.running or self.scanner.is_tuning:
+                continue  # a tune is in flight; re-check after it settles
+            current = props.get("lna_state")
+            if self._lna_baseline is None:
+                self._lna_baseline = current
+            nxt = backoff_state(current, self._lna_baseline, config, props.get("lna_state_max"))
+            if nxt is None:
+                return
+            steps, desired = plan_with_desired(
+                confirmed=props, profile=ProfileSettings(lna_state=nxt)
+            )
+            try:
+                await self._restore(
+                    steps, desired=desired, kind="lna", push_history=False, journal_action=False
+                )
+            except Exception as exc:  # noqa: BLE001 -- best effort; stop on refusal
+                logger.info("LNA overload backoff stopped: %s", exc)
+                return
+            logger.info("LNA overload backoff: %s -> %s", current, nxt)
 
     async def apply_profile(self, profile_id: str) -> RestoreReport:
         profile = self.profiles.get(profile_id)
@@ -1343,6 +1420,9 @@ class AppService(
                     for key, value in integrations_patch.items()
                 },
             }
+        lna_auto_patch = patch.get("lna_auto")
+        if lna_auto_patch:
+            patch["lna_auto"] = {**data["lna_auto"], **lna_auto_patch}
         survey_patch = patch.get("survey")
         if survey_patch:
             # SettingsPatch preserves which nested survey fields were sent.

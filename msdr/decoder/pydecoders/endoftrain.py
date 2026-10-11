@@ -15,7 +15,7 @@ import time
 
 import numpy as np
 
-from msdr.decoder.backends import DecodeEvent, DecoderError
+from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
 from msdr.decoder.payloads import decode_payload
 from msdr.decoder.pydecoders.rs41 import _StreamingResampler
 
@@ -85,7 +85,7 @@ class EndOfTrainBackend:
         )
         self._process_rate = 57_600 if self._resampler is not None else self.rate
         self._running = False
-        self._events: asyncio.Queue[DecodeEvent | None] = asyncio.Queue()
+        self._events: asyncio.Queue[DecodeEvent | None] = LoopEventQueue()
         self._n = 0
         self._h = _lowpass_taps(self._process_rate)
         self._zi = np.zeros(len(self._h) - 1, dtype=np.complex128)

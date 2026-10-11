@@ -208,6 +208,46 @@ class SpanPreset(BaseModel):
     center_hz: int
 
 
+class LnaBand(BaseModel):
+    # Upper edge (exclusive); None = everything above the previous band.
+    up_to_hz: int | None = Field(default=None, gt=0)
+    lna_state: int = Field(ge=0, le=59)
+
+
+def _default_lna_bands() -> list[LnaBand]:
+    # Starting points only -- LNA steps are device- and band-specific (higher
+    # state = more attenuation on SDRplay), and get clamped to lna_state_max.
+    return [
+        LnaBand(up_to_hz=30_000_000, lna_state=6),
+        LnaBand(up_to_hz=300_000_000, lna_state=8),
+        LnaBand(up_to_hz=1_000_000_000, lna_state=4),
+        LnaBand(up_to_hz=None, lna_state=0),
+    ]
+
+
+class LnaAutoSettings(BaseModel):
+    """Frequency-adaptive LNA (msdr.engine.lna_auto): a tune that crosses
+    into another band applies that band's LNA state, unless the signal or
+    profile carries its own LNA or settings.lna_locked is on. With
+    overload_backoff, a sustained receiver overload adds one step of
+    attenuation at a time, up to max_backoff_steps over the band's value."""
+
+    enabled: bool = True
+    bands: list[LnaBand] = Field(default_factory=_default_lna_bands)
+    overload_backoff: bool = True
+    overload_hold_s: float = Field(default=2.0, gt=0, le=30)
+    max_backoff_steps: int = Field(default=4, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def bands_are_ordered(self):
+        edges = [b.up_to_hz for b in self.bands]
+        if not edges or edges[-1] is not None or None in edges[:-1]:
+            raise ValueError("lna bands must end with exactly one open-ended band")
+        if edges[:-1] != sorted(set(edges[:-1])):
+            raise ValueError("lna band edges must be strictly increasing")
+        return self
+
+
 class SurveySettings(BaseModel):
     """Wide-view survey configuration (msdr.survey, S1) -- see
     docs/superpowers/specs/2026-09-25-wide-view-identification-design.md."""
@@ -646,6 +686,7 @@ class Settings(BaseModel):
     native_audio: NativeAudioSettings = Field(default_factory=NativeAudioSettings)
     integrations: IntegrationsSettings = Field(default_factory=IntegrationsSettings)
     survey: SurveySettings = Field(default_factory=SurveySettings)
+    lna_auto: LnaAutoSettings = Field(default_factory=LnaAutoSettings)
     beacons: BeaconSettings = Field(default_factory=BeaconSettings)
     # IANA zone name (e.g. "Europe/Rome") for displaying CATALOG's UTC HHMM
     # schedule windows in local time too. None means auto-detect -- see

@@ -20,7 +20,7 @@ import time
 
 import numpy as np
 
-from msdr.decoder.backends import DecodeEvent, DecoderError
+from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
 from msdr.decoder.pydecoders.dsc_message import parse_dsc_symbols
 from msdr.decoder.pydecoders.rs41 import _StreamingResampler
 
@@ -183,7 +183,7 @@ class DSCBackend:
             _StreamingResampler(self.rate, self.offset_hz) if self.rate >= 57_600 else None
         )
         self._work_rate = 57_600 if self._resampler is not None else self.rate
-        self._events: asyncio.Queue[DecodeEvent | None] = asyncio.Queue()
+        self._events: asyncio.Queue[DecodeEvent | None] = LoopEventQueue()
         self._running = False
         self._frame = _Frame()
         self._sample_count = 0

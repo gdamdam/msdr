@@ -20,7 +20,7 @@ from typing import Any
 
 import numpy as np
 
-from msdr.decoder.backends import DecodeEvent, DecoderError
+from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
 from msdr.decoder.pydecoders.lora_phy import LoRaParams, LoRaReceiver
 
 _MAX_SOURCE_CHUNKS = 24
@@ -169,7 +169,7 @@ class LoRaBackend:
         self.sync_word = _MESHTASTIC_SYNC if self.protocol == "meshtastic" else _DEFAULT_SYNC
         self.error: str | None = None
         self._running = False
-        self._events: asyncio.Queue[DecodeEvent | None] = asyncio.Queue(_MAX_DECODE_EVENTS)
+        self._events: asyncio.Queue[DecodeEvent | None] = LoopEventQueue(_MAX_DECODE_EVENTS)
         # gr-lora_sdr's frame_sync works at os_factor 4 so it can pick the
         # sample phase closest to the chip timing; at 1 sample/chip a
         # fractional timing offset costs several dB (see LoRaReceiver).

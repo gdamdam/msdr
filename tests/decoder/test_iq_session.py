@@ -1,9 +1,10 @@
 import asyncio
+import time
 from types import SimpleNamespace
 
 import pytest
 
-from msdr.decoder.backends import DecodeEvent, DecoderError
+from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
 from msdr.decoder.iq_session import IQDecoderSession
 
 
@@ -66,8 +67,12 @@ async def test_iq_is_not_audio_demodulated_and_events_retain_integrity():
     try:
         stream.queue.put_nowait(SimpleNamespace(data=b"\x01\x00\x02\x00"))
         backend.queue.put_nowait(DecodeEvent(1, "adsb", "text", "aircraft", {}))
-        for _ in range(5):
-            await asyncio.sleep(0)
+        # feed() runs in a worker thread now, so wait for it rather than a
+        # fixed number of loop ticks.
+        for _ in range(200):
+            if backend.fed and events:
+                break
+            await asyncio.sleep(0.005)
         assert backend.fed == [b"\x01\x00\x02\x00"]
         assert events[0].source_id == "live:sdrconnect"
         assert events[0].frequency_hz == 1090000000
@@ -115,3 +120,45 @@ def test_status_includes_drops_from_the_input_stream():
     assert status["channels"][0]["decoder_status"][0]["dropped_frames"] == 3
     assert status["iq"]["dropped"] == 1
     assert status["iq"]["dropped_samples"] == 2
+
+
+class SlowBackend(Backend):
+    """Stands in for a CPU-heavy in-process decoder (End-of-Train, VOR):
+    feed() blocks, then emits through LoopEventQueue from that thread."""
+
+    def __init__(self):
+        super().__init__()
+        self.queue = LoopEventQueue()
+
+    def feed(self, data):
+        time.sleep(0.3)
+        self.queue.put_nowait(DecodeEvent(1, "vor", "measurement", "radial", {}))
+
+
+@pytest.mark.asyncio
+async def test_slow_decoder_feed_does_not_block_event_loop():
+    stream, backend, events = Stream(), SlowBackend(), []
+    session = IQDecoderSession(
+        stream=stream,
+        backends={"vor": backend},
+        frequency_hz=115_800_000,
+        signal_id=None,
+        on_event=events.append,
+        on_status=lambda: None,
+    )
+    await session.start()
+    try:
+        stream.queue.put_nowait(SimpleNamespace(data=b"\x01\x00\x02\x00"))
+        await asyncio.sleep(0.01)  # let the pump hand the frame to its thread
+        # The loop must keep running while feed() sleeps: on-loop feeding
+        # would stall this for the full 0.3 s.
+        start = time.monotonic()
+        await asyncio.sleep(0.05)
+        assert time.monotonic() - start < 0.2
+        for _ in range(100):
+            if events:
+                break
+            await asyncio.sleep(0.01)
+        assert [e.text for e in events] == ["radial"]
+    finally:
+        await session.stop()

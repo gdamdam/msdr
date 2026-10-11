@@ -16,7 +16,7 @@ import time
 
 import numpy as np
 
-from msdr.decoder.backends import DecodeEvent, DecoderError
+from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
 from msdr.decoder.pydecoders.adsb_phy import _SAMPLE_RATE, AdsbMessage, AdsbReceiver
 
 _FIR_HALF_TAPS = 48
@@ -195,7 +195,7 @@ class NativeADSBBackend:
             _Resampler(self.sample_rate_hz, self.offset_hz, target_rate) if needs_resample else None
         )
         self._receiver = AdsbReceiver(samples_per_chip=samples_per_chip)
-        self._events: asyncio.Queue[DecodeEvent] = asyncio.Queue()
+        self._events: asyncio.Queue[DecodeEvent] = LoopEventQueue()
 
     async def start(self) -> None:
         return None
@@ -233,4 +233,4 @@ class NativeADSBBackend:
         return _gen()
 
     async def stop(self) -> None:
-        self._events = asyncio.Queue()
+        self._events = LoopEventQueue()

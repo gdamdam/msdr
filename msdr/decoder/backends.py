@@ -37,6 +37,40 @@ _MAX_QUEUED_BYTES = 22050 * 2
 Integrity = Literal["passed", "failed", "unknown", "unavailable", "not_applicable"]
 
 
+class LoopEventQueue(asyncio.Queue):
+    """asyncio.Queue for decoder events whose put_nowait() also works from a
+    worker thread: IQDecoderSession runs backend.feed() off the event loop
+    (asyncio.to_thread), and feed() is where in-process decoders emit events.
+    asyncio.Queue itself isn't thread-safe, so off-loop puts are handed to the
+    owning loop with call_soon_threadsafe. A bounded queue still raises
+    QueueFull to the caller when it's already full."""
+
+    def __init__(self, maxsize: int = 0) -> None:
+        super().__init__(maxsize)
+        try:
+            self._owner: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+        except RuntimeError:
+            self._owner = None  # built outside a loop (sync tests): plain queue
+
+    def put_nowait(self, item) -> None:
+        try:
+            on_owner = asyncio.get_running_loop() is self._owner
+        except RuntimeError:
+            on_owner = False
+        if on_owner or self._owner is None:
+            super().put_nowait(item)
+            return
+        if self.full():
+            raise asyncio.QueueFull
+        self._owner.call_soon_threadsafe(self._put_from_thread, item)
+
+    def _put_from_thread(self, item) -> None:
+        # full() was checked in the worker thread; a race can only overfill
+        # by a frame or two, which is dropped like any other QueueFull.
+        with contextlib.suppress(asyncio.QueueFull):
+            super().put_nowait(item)
+
+
 class DecoderError(Exception):
     """Raised when a decoder can't be started (missing binary, bad backend id)."""
 
