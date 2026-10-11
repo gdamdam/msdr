@@ -189,7 +189,11 @@ export class Drawer extends LitElement {
       if (this.selected.identify) this._runIdent();
       if (this._draft.satellite) this._loadSkyPos(this._draft.satellite);
     } else {
-      this._draft = this.selected.item ? profileDraftFrom(this.selected.item) : blankProfileDraft();
+      this._draft = this.selected.item
+        ? profileDraftFrom(this.selected.item)
+        : this.selected.prefill
+          ? profileDraftFrom({ name: "", ...this.selected.prefill })
+          : blankProfileDraft();
     }
   }
 

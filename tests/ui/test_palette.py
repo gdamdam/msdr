@@ -20,6 +20,7 @@ import vm from 'node:vm';
 
 const source = fs.readFileSync(process.argv[1], 'utf8')
   .replace(/^import .*;\n/gm, '')
+  .replace('export function', 'function')
   .replace('export class Palette', 'class Palette');
 const events = [];
 class CustomEventStub {
@@ -139,3 +140,26 @@ assert.equal(topFocus, 1);
         timeout=30,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_empty_state_lists_recent_signals_then_all_actions():
+    script = r"""
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const source = fs.readFileSync(process.argv[1], 'utf8')
+  .replace(/^import .*;\n/gm, '')
+  .replace('export function', 'function')
+  .replace('export class Palette', 'class Palette');
+const emptyStateResults = vm.runInNewContext(source + '\nemptyStateResults', {
+  LitElement: class {}, html() {}, customElements: { define() {} },
+});
+const out = emptyStateResults([{ kind: 'signal', id: 's1' }]);
+assert.equal(out[0].id, 's1');
+const actions = out.slice(1);
+assert.ok(actions.length > 0 && actions.every((r) => r.kind === 'action' && r.id && r.title));
+assert.ok(actions.some((r) => r.id === 'capture'));
+assert.equal(emptyStateResults([]).length, actions.length);
+"""
+    subprocess.run(["node", "--input-type=module", "-e", script, str(PALETTE_JS)], check=True)

@@ -18,9 +18,9 @@ The panel at the top has three rows:
 
 | Row | Contains |
 |---|---|
-| Status | Lamps (LINK, ALERT, owner, REC when armed or recording), source, Wi-Fi/BLE chips, **STOP**, icon actions (☆ favourite, ＋ save to library, ←, →, ⌕, **◐** theme, **⚙** setup) and the **⋯** tools menu (New profile, Diagnostics, Layout, Presets, Recordings). A `DECODE · <mode>` chip appears here while a decoder runs. |
+| Status | Lamps (LINK, ALERT, owner, REC when armed or recording), source, Wi-Fi/BLE chips, **STOP**, icon actions (☆ favourite, ＋ save to library, ←, →, ⌕, **◐** theme, **⚙** setup) and the **⋯** tools menu (New profile, Diagnostics, Layout, Recordings). A `DECODE · <mode>` chip appears here while a decoder runs. |
 | Readout | Frequency with fine-tune ±, step control, S-meter with SNR/PWR, band plan, allocation pill, **Details** / **Open chart** / ⓘ. |
-| Settings | **RECEIVER**: Ant + lock, LNA (shows the state index 0–59, not dB), Profile, Mode, Bandwidth + lock, AGC/NR/SQL, Levels. **OPERATIONS**: recorder, **▶ Band scan · range** and **Channel scan**, which open their controls below the strip. |
+| Settings | **RECEIVER**: Ant + lock, LNA (shows the state index 0–59, not dB), Profile, Mode, Bandwidth + lock, AGC/NR/SQL (click a chip for its on/off switch and level). **OPERATIONS**: recorder, **▶ Band scan · range** and **Channel scan**, which open their controls below the strip. |
 
 Click the allocation pill to open the band's details in a popover; the ✎ button edits the frequency instead.
 

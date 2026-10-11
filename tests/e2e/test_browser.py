@@ -42,9 +42,10 @@ def test_receiver_does_not_repeat_band_allocation_as_detection(live_app, page: P
     # summary; the band-plan channel/application hint ("ISS voice
     # downlink") lives separately, in the context strip under the digits --
     # it is never shown as if it were a detection.
-    expect(panel.locator(".frequency-allocation")).to_contain_text("MHz · US · AMATEUR")
+    expect(panel.locator(".frequency-allocation")).to_contain_text("Allocation")
+    expect(panel.locator(".frequency-allocation")).to_have_attribute("title", re.compile("MHz · US · AMATEUR"))
     hints = panel.locator(".frequency-context-strip .band-plan-hints")
-    expect(hints).to_contain_text("ISS voice downlink")
+    expect(hints).to_have_attribute("title", re.compile("ISS voice downlink"))
     expect(panel.locator(".detect-readout")).to_have_count(0)
 
 
@@ -58,9 +59,10 @@ def test_receiver_separates_catalog_reference_from_band_allocation(live_app, pag
     )
     page.goto(live_app.base_url)
     panel = page.locator("instrument-panel")
-    expect(panel.locator(".frequency-allocation")).to_contain_text("MHz · US · AMATEUR")
+    expect(panel.locator(".frequency-allocation")).to_contain_text("Allocation")
+    expect(panel.locator(".frequency-allocation")).to_have_attribute("title", re.compile("MHz · US · AMATEUR"))
     hints = panel.locator(".frequency-context-strip .band-plan-hints")
-    expect(hints).to_contain_text("ISS voice downlink")
+    expect(hints).to_have_attribute("title", re.compile("ISS voice downlink"))
     reference = panel.locator(".detect-readout")
     expect(reference).to_contain_text("Independent catalog station")
     expect(reference).to_contain_text("catalog match · reference only")
@@ -811,7 +813,7 @@ def test_scanner_range_scan_runs_and_stops(live_app, page: Page):
 
     deck = page.locator("scanner-deck")
     modal = _open_scanner_setup(page)
-    modal.get_by_role("button", name="RANGE", exact=True).click()
+    modal.get_by_role("tab", name="Range", exact=True).click()
     modal.locator("input[name='scan-start-mhz']").fill("118")
     modal.locator("input[name='scan-stop-mhz']").fill("118.3")
     modal.locator("select[aria-label='step']").select_option(label="100 kHz")
@@ -867,7 +869,7 @@ def test_scanner_spectrum_scan_holds_on_candidate_and_logs_hit(live_app, page: P
 
     deck = page.locator("scanner-deck")
     modal = _open_scanner_setup(page)
-    modal.get_by_role("button", name="SPECTRUM", exact=True).click()
+    modal.get_by_role("tab", name="Spectrum", exact=True).click()
 
     modal.get_by_role("button", name="▶ START", exact=True).click()
     expect(modal).to_be_hidden()

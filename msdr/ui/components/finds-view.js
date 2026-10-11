@@ -344,7 +344,7 @@ export class FindsView extends LitElement {
               ${finds.length
                 ? finds.map((f) => this._renderRow(f))
                 : html`<tr>
-                    <td colspan="9" class="empty">No finds — enable LOG FINDS in SCANNER ⚙ and start a scan</td>
+                    <td colspan="9" class="empty">No finds — enable Log finds in Scanner setup and start a scan</td>
                   </tr>`}
             </tbody>
           </table>

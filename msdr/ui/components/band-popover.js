@@ -3,15 +3,21 @@ import { LitElement, html } from "../vendor/lit.js";
 /** Where to put a popover card, in coordinates relative to the container:
  * below the anchor if the card fits above the container's bottom
  * edge, otherwise above. Left is clamped so the card never overflows the
- * container; `notch` is the pointer's x offset inside the card. */
+ * container; `notch` is the pointer's x offset inside the card. When the card
+ * fits on neither side it goes on the roomier one, and `maxHeight` caps it to
+ * that room (it scrolls inside) so it never runs past the container's edge. */
 export function popoverPlacement(anchorRect, cardSize, containerRect, gap = 10) {
-  const below = anchorRect.bottom + gap + cardSize.height <= containerRect.bottom;
-  const top = (below ? anchorRect.bottom + gap : anchorRect.top - gap - cardSize.height) - containerRect.top;
+  const roomBelow = containerRect.bottom - anchorRect.bottom - gap;
+  const roomAbove = anchorRect.top - containerRect.top - gap;
+  const below = cardSize.height <= roomBelow || (cardSize.height > roomAbove && roomBelow >= roomAbove);
+  const maxHeight = Math.max(below ? roomBelow : roomAbove, 0);
+  const height = Math.min(cardSize.height, maxHeight);
+  const top = (below ? anchorRect.bottom + gap : anchorRect.top - gap - height) - containerRect.top;
   const maxLeft = Math.max(containerRect.right - containerRect.left - cardSize.width, 0);
   const anchorX = (anchorRect.left + anchorRect.right) / 2 - containerRect.left;
   const left = Math.min(Math.max(anchorX - cardSize.width / 2, 0), maxLeft);
   const notch = Math.min(Math.max(anchorX - left, 14), Math.max(cardSize.width - 14, 14));
-  return { top, left, notch, side: below ? "below" : "above" };
+  return { top, left, notch, maxHeight, side: below ? "below" : "above" };
 }
 
 /** Anchored details card (wide screens) / native modal <dialog> (< 700 px).
@@ -140,7 +146,7 @@ export class BandPopover extends LitElement {
         containerRect = { top: 0, left: 0, right: window.innerWidth, bottom: window.innerHeight };
       }
       const p = popoverPlacement(this.anchor.getBoundingClientRect(), this._cardSize, containerRect);
-      style = `top:${p.top}px;left:${p.left}px;--notch-left:${p.notch}px`;
+      style = `top:${p.top}px;left:${p.left}px;--notch-left:${p.notch}px;max-height:min(70vh, ${Math.floor(p.maxHeight)}px)`;
       side = p.side;
     }
     return html`

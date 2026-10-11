@@ -115,7 +115,7 @@ export class ScannerDeck extends LitElement {
     if (src) return this._describeSource(src);
     const saved = { ...DEFAULT_PARAMS, ...loadParams() };
     const config = buildConfig(saved);
-    return config ? this._describeSource(config.source) : "no source set — ⚙ to configure";
+    return config ? this._describeSource(config.source) : "no source set — open Scanner setup";
   }
 
   _describeSource(src) {
@@ -219,7 +219,7 @@ export class ScannerDeck extends LitElement {
     if (!this.connected || !(this.started ?? true)) return "Press Play in SDRconnect";
     if (!this.canControl) return "";
     const saved = { ...DEFAULT_PARAMS, ...loadParams() };
-    return buildConfig(saved) ? "" : "Pick a source in ⚙";
+    return buildConfig(saved) ? "" : "Pick a source in Scanner setup";
   }
 
   _controls(state) {
@@ -263,7 +263,7 @@ export class ScannerDeck extends LitElement {
         >
           HOLD
         </button>
-        <button title="Scanner setup" @click=${() => (this._setupOpen = true)}>⚙</button>
+        <button title="Scanner setup" aria-label="Scanner setup" @click=${() => (this._setupOpen = true)}>Scanner setup</button>
         <button
           title="Recent hits"
           aria-haspopup="true"
@@ -283,7 +283,7 @@ export class ScannerDeck extends LitElement {
   _emptyHitsText(state) {
     if (state === "running" || state === "holding") return "Scanning… no hits yet";
     const summary = this._sourceSummary();
-    if (summary.startsWith("no source set")) return "No scan source — ⚙ to pick a list or range";
+    if (summary.startsWith("no source set")) return "No scan source — open Scanner setup to pick a list or range";
     return `Press START to scan ${summary}`;
   }
 
@@ -423,7 +423,7 @@ export class ScannerDeck extends LitElement {
           <span class="spacer"></span>
           ${expanded ? html`<span class="dim mono" style="font-size:0.85em">${this._sourceSummary()}</span>` : html`
             ${this._collapsedPrimary(state)}
-            <button title="Scanner setup" aria-label="Scanner setup" @click=${() => (this._setupOpen = true)}>⚙</button>
+            <button title="Scanner setup" aria-label="Scanner setup" @click=${() => (this._setupOpen = true)}>Scanner setup</button>
           `}
           <button
             title=${expanded ? "Collapse" : "Expand"}

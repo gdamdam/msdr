@@ -11,6 +11,15 @@ import "./led-dot.js";
 // ALERT lamps) instead of adding any CSS of its own, so it adds no height to
 // the strip (tests/e2e/test_layout_gate.py's 100-220 px gate).
 const REFRESH_MS = 1000;
+// With both receivers disabled the strip shows nothing, so it only checks
+// now and then whether one was enabled in Setup instead of every second.
+const IDLE_REFRESH_MS = 15000;
+
+/** Next poll delay: fast only while a receiver is enabled (its lamp shows
+ * live state); slow otherwise. */
+export function refreshDelay(wifi, ble) {
+  return wifi?.enabled || ble?.enabled ? REFRESH_MS : IDLE_REFRESH_MS;
+}
 const STALE_COLOR_STATES = new Set(["starting", "stale"]);
 const PROBLEM_STATES = new Set([
   "dependency_missing",
@@ -82,19 +91,29 @@ export class ReceiverStatusStrip extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this._onVisibility = () => { if (!document.hidden) this._refresh(); };
+    document.addEventListener("visibilitychange", this._onVisibility);
     this._refresh();
-    this._timer = setInterval(() => this._refresh(), REFRESH_MS);
   }
 
   disconnectedCallback() {
-    clearInterval(this._timer);
+    clearTimeout(this._timer);
+    this._timer = null;
+    document.removeEventListener("visibilitychange", this._onVisibility);
     super.disconnectedCallback();
   }
 
   async _refresh() {
+    clearTimeout(this._timer);
+    this._timer = null;
+    // A hidden tab doesn't poll; visibilitychange restarts the loop.
+    if (document.hidden || !this.isConnected) return;
     const [wifi, ble] = await Promise.allSettled([api.getWifiStatus(), api.getBleStatus()]);
     this._wifi = wifi.status === "fulfilled" ? wifi.value : null;
     this._ble = ble.status === "fulfilled" ? ble.value : null;
+    if (this.isConnected && this._timer === null) {
+      this._timer = setTimeout(() => this._refresh(), refreshDelay(this._wifi, this._ble));
+    }
   }
 
   _lamp(kind, status) {

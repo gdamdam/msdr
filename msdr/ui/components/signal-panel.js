@@ -983,12 +983,16 @@ export class SignalPanel extends LitElement {
         <button title="Close current frequency details (Esc)" aria-label="Close current frequency details"
           @click=${() => this._close()}>&times;</button>
       </div>
+      <div class="freq-details-columns">
+      <div class="freq-details-col">
       ${this._actions(d, { tune: false })}
       ${this._renderTestResult()}
       ${saved && (saved.distanceHz > 1 || !d.memory) ? html`<div class="nearby-saved-pill" aria-label="Nearby saved channel"
         title="Frequency proximity to an operator-saved channel; not a signal identification">
         ${saved.distanceHz > 1 ? "Nearby saved" : "Saved channel"}${saved.favorite ? " ★" : ""} · ${saved.name} · ${mhz(saved.frequencyHz)}${saved.distanceHz > 1 ? ` · ${bw(saved.distanceHz)} away` : ""}
       </div>` : ""}
+      </div>
+      <div class="freq-details-col">
       <div class="inspector-tabs" role="tablist" aria-label="Inspector sections">
         ${tabButton("evidence", "Evidence", evidenceCount)}
         ${tabButton("history", "History", historyCount)}
@@ -1006,11 +1010,13 @@ export class SignalPanel extends LitElement {
           ${this._observationsSection(d)}
         </details>` : ""}
       </section>`}
-      <section class="inspector-notes">
+      </div>
+      <section class="inspector-notes freq-details-col">
         ${d.memory && !this._notesDraft && !this._notesOpen
           ? html`<button class="inspector-add-note" @click=${() => { this._notesOpen = true; }}>+ Add note</button>`
           : html`<h2>Notes</h2>${this._notes(d)}`}
       </section>
+      </div>
     `;
   }
 
@@ -1112,8 +1118,7 @@ export class SignalPanel extends LitElement {
   _wideTitle(d) {
     return html`
       <div class="freq-details-title">
-        <span class="freq-details-name">Current frequency</span>
-        ${d?.frequency_hz ? html`<span class="mono freq-details-hz">${mhz(d.frequency_hz)}</span>` : ""}
+        <span class="freq-details-name">Current frequency${d?.frequency_hz ? html` · <span class="mono freq-details-hz">${mhz(d.frequency_hz)}</span>` : ""}</span>
         <span class="freq-details-follow" title="Updates each time the receiver retunes">● following radio</span>
         ${this._loading ? html`<span class="dim freq-details-updating">updating…</span>` : ""}
       </div>`;
@@ -1121,14 +1126,14 @@ export class SignalPanel extends LitElement {
 
   render() {
     if (!this.open) return html``;
-    // Wide (the receiver strip's ⓘ): a non-modal column docked beside the
-    // workspace at >=1100px, full-width block flow below. No backdrop; Esc
-    // still closes. Without a target the receiver has no VFO
-    // (disconnected), which is said rather than left as stale details.
+    // Wide (the receiver strip's ⓘ): a full-width, non-modal panel directly
+    // below the receiver (app.js). No backdrop; Esc still closes. Without a
+    // target the receiver has no VFO (disconnected), which is said rather
+    // than left as stale details.
     if (this.wide) {
       return html`
         <aside
-          class="panel signal-panel wide docked"
+          class="panel signal-panel wide"
           aria-label="current frequency details"
           tabindex="-1"
           @keydown=${(ev) => this._onKeydown(ev)}

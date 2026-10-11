@@ -307,6 +307,24 @@ async def test_apply_profile_with_native_name_calls_apply_profile():
         assert resp.json()["outcomes"][0]["status"] == "unverified"
 
 
+async def test_active_profile_is_only_the_applied_one_while_it_still_matches():
+    async with running_app() as (app, client, adapter):
+        props = (await client.get("/api/state")).json()["props"]
+        created = await client.post("/api/profiles", json={
+            "name": "Two-field profile", "antenna": props["active_antenna"], "lna_state": props["lna_state"]})
+        profile_id = created.json()["id"]
+
+        # Matching settings alone no longer label the receiver with it.
+        assert (await client.get("/api/state")).json()["active_profile_id"] is None
+
+        assert (await client.post(f"/api/profiles/{profile_id}/apply")).status_code == 200
+        assert (await client.get("/api/state")).json()["active_profile_id"] == profile_id
+
+        other = next(a for a in ("Antenna A", "Antenna B", "Antenna C") if a != props["active_antenna"])
+        assert (await client.post("/api/receiver/antenna", json={"antenna": other})).status_code == 200
+        assert (await client.get("/api/state")).json()["active_profile_id"] is None
+
+
 async def test_palette_frequency_query():
     async with running_app() as (app, client, adapter):
         resp = await client.get("/api/palette", params={"q": "146.52"})

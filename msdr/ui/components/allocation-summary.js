@@ -321,17 +321,21 @@ export class AllocationSummary extends LitElement {
         ${this.actionsOnly ? "" : html`<div class="allocation-compact-line mono" title=${line} style=${lineStyle}>${line}</div>`}
         ${stale ? html`<span class="chip" title="Allocation data may be out of date">stale</span>` : ""}
         <div class="control-row allocation-actions" style=${this.compact ? "margin:0;flex:0 0 auto;gap:6px" : "margin-top:4px"}>
-          <button
+          ${this.actionsOnly ? "" : html`<button
             type="button"
             class="allocation-toggle"
             aria-haspopup="dialog"
             aria-expanded=${this._expanded ? "true" : "false"}
-            title=${this.actionsOnly ? `Allocation details · ${line}` : ""}
             @click=${() => this._toggle()}
-          >Details</button>
-          <button type="button" class="allocation-open-chart" @click=${() => this._openChart()}>Open chart</button>
+          >Details</button>`}
+          ${this.actionsOnly
+            // Icon-only in the receiver strip; the § pill beside it already opens the details.
+            ? html`<button type="button" class="allocation-open-chart seg-info-button"
+                title="Open the allocation chart at this frequency" aria-label="Open the allocation chart at this frequency"
+                @click=${() => this._openChart()}>▦</button>`
+            : html`<button type="button" class="allocation-open-chart" @click=${() => this._openChart()}>Open chart</button>`}
         </div>
-        ${this._expanded ? this._renderModal(d, line) : ""}
+        ${this._expanded && !this.actionsOnly ? this._renderModal(d, line) : ""}
       </div>
     `;
   }

@@ -1,5 +1,7 @@
 """Saved receiver context and allocation follow the actual tuned frequency."""
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -24,14 +26,14 @@ def test_saved_frequency_and_allocation_near_readout_and_inspector(live_app, pag
     expect(saved).to_contain_text('My aircraft receiver')
     expect(saved).to_contain_text('★ Favorite')
     expect(saved).to_contain_text('RAW')
-    # The pill beside the digits is a single button showing the regulatory
-    # allocation summary; the band-plan channel/application hint ("Aviation
-    # radionavigation (DME / transponders)") is kept separate, in the
-    # context strip under the digits.
-    allocation = page.get_by_role('button', name='Enter frequency · Band allocation')
-    expect(allocation).to_contain_text('AERONAUTICAL RADIONAVIGATION')
+    # The pill beside the digits is a labelled "Allocation" chip carrying the
+    # regulatory summary in its title; the band-plan strip shows the top
+    # channel/application hint, with every hint ("Aviation radionavigation
+    # (DME / transponders)") in its title.
+    allocation = page.locator('instrument-panel button.frequency-allocation')
+    expect(allocation).to_have_attribute('title', re.compile('AERONAUTICAL RADIONAVIGATION'))
     hints = page.locator('instrument-panel .frequency-context-strip .band-plan-hints')
-    expect(hints).to_contain_text('Aviation radionavigation (DME / transponders)')
+    expect(hints).to_have_attribute('title', re.compile(re.escape('Aviation radionavigation (DME / transponders)')))
     # The same offline band plan is visible immediately below the inspector frequency.
     page.evaluate("document.querySelector('msdr-app').openSignal({frequency_hz:1089974844})")
     header = page.locator('.signal-panel-header')
@@ -44,9 +46,9 @@ def test_saved_frequency_and_allocation_near_readout_and_inspector(live_app, pag
     )
     assert response.ok
     expect(saved).to_have_count(0)
-    expect(allocation).to_contain_text('AMATEUR')
+    expect(allocation).to_have_attribute('title', re.compile('AMATEUR'))
     expect(hints).to_contain_text('2 m calling')
-    expect(hints).to_contain_text('Amateur radio')
+    expect(hints).to_have_attribute('title', re.compile('Amateur radio'))
 
 
 def test_measured_signal_shows_nearby_saved_channel_without_claiming_identity(live_app, page: Page):

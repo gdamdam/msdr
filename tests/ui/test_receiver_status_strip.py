@@ -33,6 +33,18 @@ def _run(body):
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_refresh_delay_is_slow_when_both_receivers_are_disabled():
+    _run(r"""
+const { refreshDelay } = vm.runInNewContext(raw + '\n({ refreshDelay })', {
+  LitElement: class {}, html: () => {}, customElements: { define() {} }, console,
+});
+assert.equal(refreshDelay({ enabled: false }, { enabled: false }), 15000);
+assert.equal(refreshDelay(null, null), 15000);
+assert.equal(refreshDelay({ enabled: true }, { enabled: false }), 1000);
+assert.equal(refreshDelay(null, { enabled: true }), 1000);
+""")
+
+
 def test_lamp_for_state():
     _run(r"""
 const { lampFor } = vm.runInNewContext(raw + '\n({ lampFor })', {

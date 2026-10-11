@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from "../vendor/lit.js";
 import { bw, decodeChipLabel, callLineText, LAYOUT_PRESETS, DEMODULATORS, BW_PRESETS, stepLabel } from "../format.js";
 import { summarizeSavedMatches } from "../saved-frequency.js";
+import { profileSummary } from "../profile-summary.js";
 import { antennaOptions, antennaDisplay } from "../antenna.js";
 import * as api from "../api.js";
 import { readTheme, applyTheme, nextTheme, themeLabel } from "../theme.js";
@@ -12,8 +13,9 @@ import "./detect-readout.js";
 import { compactText, allocationStatusInfo } from "./allocation-summary.js";
 import "./s-meter.js";
 import "./failure-note.js";
-import "./recorder-control.js";
+import { renderCaptureHealth } from "./recorder-control.js";
 import "./receiver-status-strip.js";
+import "./profile-list.js";
 
 const DISCONNECTED_HINT = "Enable SDRconnect ▸ Preferences ▸ WebSocket Server (port 5454)";
 
@@ -39,7 +41,6 @@ export class InstrumentPanel extends LitElement {
     savedFrequencyMatches: { type: Array },
     recorderStatus: { type: Object },
     scannerDeck: { attribute: false },
-    bandScanDraft: { attribute: false },
     bandScanStatus: { attribute: false },
     bandScanSampleRates: { type: Array },
     surveySettings: { attribute: false },
@@ -53,7 +54,10 @@ export class InstrumentPanel extends LitElement {
     _dspStatus: { state: true }, // per-property audio-dsp request state: {status: "pending"|"unsupported", value, reason}
     _dspDraft: { state: true }, // in-progress Levels popover edits, keyed by property, cleared once a request settles
     _dspNote: { state: true }, // one-line rejection note beside the Audio line, cleared on the next change
-    _dspLevelsOpen: { state: true },
+    _profileMenuOpen: { state: true }, // receiver-strip PROFILE dropdown
+    _profilesModalOpen: { state: true }, // "Manage profiles…" modal
+    _dspOpen: { state: true }, // which AGC/NR/SQL chip's level popover is open (its property key), else null
+    _captureHealthOpen: { state: true }, // capture-health panel under the operations row
   };
 
   createRenderRoot() {
@@ -79,7 +83,6 @@ export class InstrumentPanel extends LitElement {
     this.savedFrequencyMatches = [];
     this.recorderStatus = null;
     this.scannerDeck = null;
-    this.bandScanDraft = null;
     this.bandScanStatus = { state: "idle" };
     this.bandScanSampleRates = [];
     this.surveySettings = null;
@@ -92,11 +95,126 @@ export class InstrumentPanel extends LitElement {
     this._dspStatus = {};
     this._dspDraft = {};
     this._dspNote = null;
-    this._dspLevelsOpen = false;
+    this._dspOpen = null;
+    this._profileMenuOpen = false;
+    this._profilesModalOpen = false;
+    this._onProfileDocClick = (ev) => {
+      if (!ev.composedPath().some((n) => n?.classList?.contains?.("profile-menu-wrap"))) this._setProfileMenu(false);
+    };
+    this._captureHealthOpen = false;
+    this._onDspDocClick = (ev) => {
+      // Clicks inside the open chip's wrapper (chip or popover) are handled there.
+      if (!ev.composedPath().some((n) => n?.classList?.contains?.("receiver-dsp-pill"))) this._setDspOpen(null);
+    };
+    this._onDspKey = (ev) => {
+      if (ev.key !== "Escape") return;
+      const key = this._dspOpen;
+      this._setDspOpen(null);
+      this.querySelector(`.receiver-dsp-pill[data-dsp="${key}"] .receiver-dsp-toggle`)?.focus();
+    };
+  }
+
+  /** Open one chip's popover (or close all with null); document listeners
+   * only live while a popover is open. */
+  _setDspOpen(key) {
+    this._dspOpen = key;
+    document.removeEventListener("click", this._onDspDocClick);
+    document.removeEventListener("keydown", this._onDspKey);
+    if (key) {
+      document.addEventListener("click", this._onDspDocClick);
+      document.addEventListener("keydown", this._onDspKey);
+    }
+  }
+
+  /** Open/close the PROFILE dropdown; the outside-click listener only lives
+   * while it is open (Escape is handled on the wrapper so focus can return). */
+  _setProfileMenu(open) {
+    this._profileMenuOpen = open;
+    document.removeEventListener("click", this._onProfileDocClick);
+    if (open) document.addEventListener("click", this._onProfileDocClick);
+  }
+
+  _profileMenu(activeId, disabled) {
+    const fire = (name, detail) => {
+      this._setProfileMenu(false);
+      this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
+    };
+    const profiles = this.profiles ?? [];
+    const active = profiles.find((p) => p.id === activeId);
+    const label = active ? active.name : "custom";
+    return html`<span
+      class="profile-menu-wrap"
+      style="position:relative;display:inline-block;min-width:0"
+      @keydown=${(ev) => {
+        if (ev.key !== "Escape" || !this._profileMenuOpen) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        this._setProfileMenu(false);
+        this.querySelector("#profile-menu-button")?.focus();
+      }}
+    >
+      <button
+        id="profile-menu-button"
+        class="value mono"
+        style="background:none;border:0;padding:0;cursor:pointer;color:inherit;font:inherit;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+        aria-haspopup="menu"
+        aria-expanded=${this._profileMenuOpen ? "true" : "false"}
+        title="Receiver profiles"
+        @click=${() => this._setProfileMenu(!this._profileMenuOpen)}
+      >${label} ▾</button>
+      ${this._profileMenuOpen
+        ? html`<div
+            class="panel profile-menu"
+            role="menu"
+            style="position:absolute;top:100%;left:0;margin-top:4px;padding:6px;display:flex;flex-direction:column;gap:2px;z-index:5;width:max-content;max-width:320px"
+          >
+            ${profiles.length === 0
+              ? html`<span class="dim" style="padding:2px 6px">No saved profiles yet</span>`
+              : profiles.map(
+                  (p) => html`<button
+                    role="menuitemradio"
+                    aria-checked=${p.id === activeId ? "true" : "false"}
+                    style="text-align:left;display:block"
+                    ?disabled=${disabled}
+                    title=${disabled ? "Receiver can't be controlled right now" : `Apply ${p.name}`}
+                    @click=${() => fire("apply-profile", { id: p.id })}
+                  >
+                    <span>${p.id === activeId ? "✓ " : ""}${p.name}</span>
+                    <span class="dim" style="display:block;font-size:0.85em">${profileSummary(p)}</span>
+                  </button>`
+                )}
+            <hr style="width:100%;margin:4px 0;border:0;border-top:1px solid var(--border, currentColor);opacity:.3" />
+            <button role="menuitem" style="text-align:left" @click=${() => fire("new-profile", { fromCurrent: true })}>Save current settings as profile…</button>
+            ${active
+              ? html`<button role="menuitem" style="text-align:left" @click=${() => fire("open-profile", { id: active.id })}>Edit ${active.name}…</button>`
+              : ""}
+            ${profiles.length
+              ? html`<button role="menuitem" style="text-align:left" @click=${() => {
+                  this._setProfileMenu(false);
+                  // The modal returns focus to whatever had it on open; the
+                  // menu item is about to disappear, so hand it the button.
+                  this.querySelector("#profile-menu-button")?.focus();
+                  this._profilesModalOpen = true;
+                }}>Manage profiles…</button>`
+              : ""}
+          </div>`
+        : ""}
+      <profiles-modal
+        .open=${this._profilesModalOpen}
+        .profiles=${profiles}
+        .activeId=${activeId}
+        .disabled=${disabled}
+        @close=${() => (this._profilesModalOpen = false)}
+        @open-profile=${() => (this._profilesModalOpen = false)}
+        @new-profile=${() => (this._profilesModalOpen = false)}
+      ></profiles-modal>
+    </span>`;
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this._setProfileMenu(false);
+    this._setDspOpen(null);
   }
 
   updated(changed) {
@@ -196,7 +314,7 @@ export class InstrumentPanel extends LitElement {
    * an ellipsis appended while pending, disabled (with the reason folded
    * into its title) when unsupported/unavailable or the receiver can't be
    * controlled right now. */
-  _dspToggle(property, label, title, confirmedValue, disabled) {
+  _dspToggle(property, label, title, confirmedValue, disabled, levelField, hint) {
     const entry = this._dspStatus[property];
     const status = dspControlStatus(entry, confirmedValue);
     const pressed = !!dspEffectiveValue(entry, confirmedValue);
@@ -204,29 +322,56 @@ export class InstrumentPanel extends LitElement {
     const fullTitle = status === "unsupported" || status === "unavailable"
       ? `${title} (${entry?.reason ?? "SDRconnect hasn't reported this"})`
       : title;
-    return html`<button type="button"
-      class="receiver-dsp-toggle"
-      aria-pressed=${pressed}
-      data-status=${status}
-      title=${fullTitle}
-      ?disabled=${gated}
-      @click=${() => this._setAudioDsp(property, !pressed, label)}
-    >${label}${status === "pending" ? "…" : ""}</button>`;
+    const open = this._dspOpen === property;
+    // The chip opens its own popover (on/off switch + that function's level);
+    // aria-pressed keeps showing the on/off state, aria-expanded the popover.
+    return html`<span class="receiver-dsp-pill" data-dsp=${property}>
+      <button type="button"
+        class="receiver-dsp-toggle"
+        aria-pressed=${pressed}
+        aria-expanded=${open}
+        aria-haspopup="dialog"
+        data-status=${status}
+        title=${fullTitle}
+        ?disabled=${gated}
+        @click=${() => this._setDspOpen(open ? null : property)}
+      >${label}${status === "pending" ? "…" : ""}</button>
+      ${open ? html`<div class="receiver-dsp-popover" role="dialog" aria-label=${`${title.split(":")[0]} settings`}>
+        <label class="receiver-dsp-switch">
+          <input type="checkbox" role="switch" .checked=${pressed} ?disabled=${gated}
+            @change=${(ev) => this._setAudioDsp(property, ev.target.checked, label)}>
+          <span>${pressed ? "On" : "Off"}</span>
+        </label>
+        ${levelField}
+        <span class="receiver-dsp-hint">${hint}</span>
+      </div>` : ""}
+    </span>`;
   }
 
-  _dspNumberField(property, label, confirmedValue, disabled, short = label) {
+  /** Threshold field: a slider over [min, max] beside a number box. SDRconnect
+   * documents no range for these thresholds, so the slider span is only a
+   * convenience -- the number box accepts any value, and an out-of-span value
+   * just parks the slider at its end. */
+  _dspNumberField(property, label, confirmedValue, disabled, short = label, [min, max] = [-100, 100]) {
     const entry = this._dspStatus[property];
     const status = dspControlStatus(entry, confirmedValue);
     const gated = disabled || status === "unsupported" || status === "unavailable";
     const value = this._dspDraft[property] ?? dspEffectiveValue(entry, confirmedValue) ?? "";
+    const commit = (raw) => {
+      if (raw === "") return;
+      const next = Number(raw);
+      if (Number.isFinite(next)) this._setAudioDsp(property, next, label);
+    };
     return html`<label class="receiver-dsp-field" data-status=${status} title=${label}>
       <span>${short}</span>
-      <input type="number" step="0.5" .value=${value} ?disabled=${gated}
-        @change=${(ev) => {
-          if (ev.target.value === "") return;
-          const next = Number(ev.target.value);
-          if (Number.isFinite(next)) this._setAudioDsp(property, next, label);
-        }}>
+      <span class="receiver-dsp-range-wrap">
+        <input type="range" min=${min} max=${max} step="0.5" .value=${value === "" ? (min + max) / 2 : value}
+          ?disabled=${gated} aria-label=${`${label} slider`}
+          @input=${(ev) => { this._dspDraft = { ...this._dspDraft, [property]: ev.target.value }; }}
+          @change=${(ev) => commit(ev.target.value)}>
+        <input type="number" step="0.5" .value=${value} ?disabled=${gated} aria-label=${label}
+          @change=${(ev) => commit(ev.target.value)}>
+      </span>
     </label>`;
   }
 
@@ -245,37 +390,30 @@ export class InstrumentPanel extends LitElement {
             const next = Number.parseInt(ev.target.value, 10);
             if (Number.isFinite(next)) this._setAudioDsp(property, next, label);
           }}>
-        <output>${value}</output>
+        <output>${value} %</output>
       </span>
     </label>`;
   }
 
-  /** The Audio line: AGC/NR/SQL toggles plus a "Levels…" disclosure for the
-   * three numeric fields. Lives in .receiver-inline-context beside antenna,
+  /** The Audio line: AGC/NR/SQL chips, each opening a small popover with its
+   * own on/off switch and level field. Lives in .receiver-inline-context beside antenna,
    * LNA and profile -- moved from listen-workbench.js's Audio & DSP card,
    * which sat above the station list where it didn't belong (see
    * instrument-panel.js's module comment / the UX fix this accompanies). */
   _renderAudioDsp(props, disabled) {
     return html`<div class="receiver-audio-line" role="group" aria-label="Audio DSP (SDRconnect)">
       <div class="receiver-audio-toggles" role="group" aria-label="Audio DSP toggles">
-        ${this._dspToggle("agc_enable", "AGC", "Audio AGC: SDRconnect evens out loudness", props.agc_enable, disabled)}
-        ${this._dspToggle("noise_reduction_enable", "NR", "Noise reduction: SDRconnect suppresses hiss; strength below", props.noise_reduction_enable, disabled)}
-        ${this._dspToggle("squelch_enable", "SQL", "Squelch: mutes audio below the threshold", props.squelch_enable, disabled)}
+        ${this._dspToggle("agc_enable", "AGC", "Audio AGC: SDRconnect evens out loudness", props.agc_enable, disabled,
+          this._dspNumberField("agc_threshold", "AGC threshold", props.agc_threshold, disabled, "AGC threshold", [-100, 100]),
+          "SDRconnect's own threshold units. The slider applies on release; the box takes any value.")}
+        ${this._dspToggle("noise_reduction_enable", "NR", "Noise reduction: SDRconnect suppresses hiss", props.noise_reduction_enable, disabled,
+          this._dspSliderField("noise_reduction_strength", "Noise reduction strength", props.noise_reduction_strength, disabled, "Noise reduction strength"),
+          "SDRconnect percent; applies when you release the slider.")}
+        ${this._dspToggle("squelch_enable", "SQL", "Squelch: mutes audio below the threshold", props.squelch_enable, disabled,
+          this._dspNumberField("squelch_threshold", "Squelch threshold", props.squelch_threshold, disabled, "Squelch threshold", [-140, 0]),
+          "SDRconnect's own threshold units. The slider applies on release; the box takes any value.")}
       </div>
-      <button type="button" class="receiver-dsp-levels-toggle"
-        aria-expanded=${this._dspLevelsOpen}
-        aria-label="Audio DSP levels" title="AGC threshold, noise reduction strength, squelch threshold"
-        @click=${() => (this._dspLevelsOpen = !this._dspLevelsOpen)}
-      >Levels ⋯</button>
       ${this._dspNote ? html`<span class="receiver-dsp-note" role="status">${this._dspNote}</span>` : ""}
-      ${this._dspLevelsOpen ? html`<div class="receiver-dsp-levels" aria-label="Audio DSP levels">
-        ${this._dspNumberField("agc_threshold", "AGC threshold", props.agc_threshold, disabled, "AGC")}
-        ${this._dspSliderField("noise_reduction_strength", "NR strength (%)", props.noise_reduction_strength, disabled, "NR %")}
-        ${this._dspNumberField("squelch_threshold", "Squelch threshold", props.squelch_threshold, disabled, "Squelch")}
-        <span class="help-mark" tabindex="0" role="note" aria-label="About these levels"
-          title="NR strength is an SDRconnect percent. Threshold fields take the numeric values SDRconnect accepts; the slider commits on release."
-          data-help="NR strength is an SDRconnect percent. Threshold fields take the numeric values SDRconnect accepts; the slider commits on release.">?</span>
-      </div>` : ""}
     </div>`;
   }
 
@@ -455,25 +593,26 @@ export class InstrumentPanel extends LitElement {
     return html`<span class="chip source-chip" data-help="The displayed frequency and receiver controls are connected to the live SDRconnect VFO. A replay is identified separately here.">LIVE · SDRconnect</span>`;
   }
 
-  /** The one-line pill in the frequency readout's edit slot. It is a single
-   * <button> that opens the frequency editor; the allocation actions live in
-   * the context strip below the digits (see <detect-readout allocationOnly>). */
+  /** The "§" icon button in the band-info group: opens the allocation details
+   * popover; the Open chart icon lives beside it (see <detect-readout allocationOnly>). */
   _allocationPill(tuneDisabled) {
     const a = this._allocation;
     const ok = !!a && a.status === "ok";
     const text = a === undefined ? "Looking up allocation…"
       : ok ? compactText(a)
       : (allocationStatusInfo(a)?.label ?? "Allocation unavailable");
-    // Details popover, not edit: the readout's own pencil is the only way to start editing.
+    // The band-plan hint beside it answers "what is this signal"; the pill is
+    // just a "§" icon button, with the full range · jurisdiction · services line
+    // in the Details popover. Non-ok statuses dim the § and carry the status in the title.
+    // Details popover, not edit: frequency editing is double-click on the digits or F.
     return html`<button type="button"
-      class="frequency-allocation frequency-edit-pill${ok ? "" : " frequency-allocation--empty"}"
-      style=${`--allocation-color:${ok ? "var(--context-listen)" : "var(--ink)"}`}
-      aria-label="Band allocation · click for details"
+      class="frequency-allocation frequency-edit-pill seg-info-button${ok ? "" : " frequency-allocation--empty"}"
+      aria-label="Band allocation (regulatory table) — click for details"
       aria-haspopup="dialog"
-      title=${`Band allocation · click for details · ${text}`}
+      title=${ok ? "Band allocation (regulatory table) — click for details" : `Band allocation (regulatory table) — click for details · ${text}`}
       ?disabled=${tuneDisabled}
       @click=${(ev) => { this._bandAnchor = ev.currentTarget; this._bandPopoverOpen = true; }}
-    >${text}</button>
+    >§</button>
     <band-popover
       label="Band allocation details"
       .anchor=${this._bandAnchor ?? null}
@@ -531,8 +670,6 @@ export class InstrumentPanel extends LitElement {
 
     const recState = this.recorderFeature && connected ? this.recorderStatus?.state : null;
     const recLit = recState === "armed" || recState === "recording";
-    const num = (v, d) => { const n = Number(v ?? d); return Number.isFinite(n) ? String(n) : String(d); };
-    const scanRange = `${num(this.bandScanDraft?.start, 136)}–${num(this.bandScanDraft?.end, 174)}`;
     const chanState = this.scannerDeck?.scan?.state ?? "idle";
     const closeOverflow = () => { const d = this.querySelector(".strip-overflow-menu"); if (d) d.open = false; };
     const toolEvent = (name) => () => { closeOverflow(); this.dispatchEvent(new CustomEvent(name)); };
@@ -684,7 +821,6 @@ export class InstrumentPanel extends LitElement {
                 </button>
                 ${this._layoutMenu()}
               </span>
-              <button title="Task presets" @click=${toolEvent("open-presets")}>Presets</button>
               <button title="Browse recordings" @click=${toolEvent("open-recordings")}>Recordings</button>
             </div>
           </details>
@@ -809,7 +945,7 @@ export class InstrumentPanel extends LitElement {
                 <div class="step-profile" title=${`Profile: ${this._profileName(s.active_profile_id)}`}>
                   <div class="readout">
                     <span class="label">Profile</span>
-                    <span class="value mono">${this._profileName(s.active_profile_id)}</span>
+                    ${this._profileMenu(s.active_profile_id, tuneDisabled)}
                   </div>
                 </div>
                 <span class="strip-sep" aria-hidden="true"></span>
@@ -855,6 +991,8 @@ export class InstrumentPanel extends LitElement {
                 <recorder-control
                   .status=${this.recorderStatus}
                   .disabled=${stopped}
+                  .healthOpen=${this._captureHealthOpen}
+                  @capture-health-toggle=${(ev) => (this._captureHealthOpen = ev.detail.open)}
                   @recorder-arm=${(ev) =>
                     this.dispatchEvent(new CustomEvent("recorder-arm", { detail: ev.detail }))}
                   @recorder-rec=${() => this.dispatchEvent(new CustomEvent("recorder-rec"))}
@@ -866,10 +1004,6 @@ export class InstrumentPanel extends LitElement {
                   @open-recordings=${() => this.dispatchEvent(new CustomEvent("open-recordings"))}
                 ></recorder-control></div>`
               : ""}
-            <button class="strip-ops-button"
-              title="Band scan: step the receiver across a range. Opens its controls in Discover → Live survey; a running scan is stopped from the owner lamp's STOP."
-              @click=${() => this.dispatchEvent(new CustomEvent("open-band-scan"))}
-            >${scanActive ? "■" : "▶"} Band scan <span class="dim">· ${scanActive ? `${this.bandScanStatus.state} · ` : ""}${scanRange}</span></button>
             ${this.scannerDeck
               ? html`<button class="strip-ops-button" aria-expanded=${this._scannerOpen}
                   title="VFO / saved-channel sweep"
@@ -878,6 +1012,10 @@ export class InstrumentPanel extends LitElement {
               : ""}
           </div>
         </div>
+
+        ${this.recorderFeature && connected && this._captureHealthOpen && this.recorderStatus?.capture_health
+          ? renderCaptureHealth(this.recorderStatus.capture_health)
+          : ""}
 
         ${this.scannerDeck
           ? html`<div class="channel-scanner-disclosure" ?hidden=${!this._scannerOpen}>

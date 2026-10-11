@@ -61,16 +61,25 @@ def test_capture_health_and_repair_action(live_app, page):
       document.body.appendChild(control);
     }""")
     control = page.locator("body > recorder-control")
-    control.locator("summary").click()
-    expect(
-        control.locator(".capture-health-metrics > div").filter(has_text="IQ received")
-    ).to_contain_text("4.00 MB/s")
-    expect(
-        control.locator(".capture-health-metrics > div").filter(has_text="Dropped samples")
-    ).to_contain_text("12")
-    expect(
-        control.locator(".capture-health-metrics > div").filter(has_text="Remaining")
-    ).to_contain_text("2:00")
+    # The toggle only emits; instrument-panel owns the panel below the
+    # operations row, so render the same panel here the way it does.
+    page.evaluate("""async () => {
+      const control = document.querySelector('body > recorder-control');
+      const { renderCaptureHealth } = await import('/components/recorder-control.js');
+      const { render } = await import('/vendor/lit.js');
+      const host = document.createElement('div'); host.id = 'health-panel-host';
+      document.body.appendChild(host);
+      control.addEventListener('capture-health-toggle', (ev) => {
+        control.healthOpen = ev.detail.open;
+        render(ev.detail.open ? renderCaptureHealth(control.status.capture_health) : '', host);
+      });
+    }""")
+    control.locator(".capture-health-toggle").click()
+    expect(control.locator(".capture-health-toggle")).to_have_attribute("aria-expanded", "true")
+    metrics = page.locator("#health-panel-host .capture-health-metrics > div")
+    expect(metrics.filter(has_text="IQ received")).to_contain_text("4.00 MB/s")
+    expect(metrics.filter(has_text="Dropped")).to_contain_text("12")
+    expect(metrics.filter(has_text="Remaining")).to_contain_text("2:00")
     # Open the actual component independently of application navigation state.
     page.evaluate("document.querySelector('recordings-view').open = true")
     view = page.locator("recordings-view")
@@ -83,25 +92,25 @@ def test_capture_health_and_repair_action(live_app, page):
 def test_capture_health_wraps_with_compact_type(live_app, page, width):
     page.goto(live_app.base_url)
     page.evaluate(
-        """width => {
+        """async width => {
+      const { renderCaptureHealth } = await import('/components/recorder-control.js');
+      const { render } = await import('/vendor/lit.js');
       const host = document.createElement('div');
       host.className = 'strip-recording'; host.id = 'health-layout-test';
       host.style.cssText = `width:${width}px;max-width:100%;padding:8px;box-sizing:border-box`;
-      const control = document.createElement('recorder-control');
-      control.status = {state:'off',capture_health:{iq_throughput_bps:24000000,
+      document.body.prepend(host);
+      render(renderCaptureHealth({iq_throughput_bps:24000000,
         disk_write_bps:24000000,dropped_samples:123456789012345,backlog_s:0.125,
-        remaining_recording_s:86400}};
-      host.append(control); document.body.prepend(host);
+        remaining_recording_s:86400}), host);
     }""",
         width,
     )
-    health = page.locator("#health-layout-test .capture-health")
-    health.locator("summary").click()
+    health = page.locator("#health-layout-test .capture-health-panel")
     expect(health.locator("dd")).to_have_count(5)
+    expect(health).to_contain_text("Capture health · recorder detail")
     assert health.evaluate("el => el.scrollWidth <= el.clientWidth + 1")
     assert (
         health.locator("dd").first.evaluate("el => parseFloat(getComputedStyle(el).fontSize)") <= 13
     )
-    assert health.locator(".dim").evaluate("el => getComputedStyle(el).whiteSpace") == "normal"
     if width == 280:
         health.screenshot(path="/tmp/msdr-capture-health.png")

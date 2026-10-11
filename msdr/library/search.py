@@ -33,9 +33,6 @@ ACTIONS = [
     ("scan-pause", "scan: pause"),
     ("scan-resume", "scan: resume"),
     ("show-getting-started", "getting started"),
-    # S1 task presets: the id is the palette's event name; app.js opens
-    # <preset-picker> on it (never starts anything by itself).
-    ("open-presets", "presets…"),
 ]
 
 

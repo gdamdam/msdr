@@ -317,48 +317,59 @@ export class ScannerView extends LitElement {
     `;
   }
 
+  /** Labelled field: visible caption above the control. The control keeps its
+   * own aria-label, so existing accessible names / selectors are unchanged. */
+  _field(label, control) {
+    return html`<label class="scan-field"><span class="label">${label}</span>${control}</label>`;
+  }
+
+  _sourceTab(source, label) {
+    return html`<button
+      role="tab"
+      aria-selected=${this._source === source}
+      ?disabled=${this._locked}
+      @click=${() => this._selectSource(source)}
+    >
+      ${label}
+    </button>`;
+  }
+
+  _section(title, body) {
+    return html`<section class="scan-setup-section">
+      <h3 class="survey-group-label">${title}</h3>
+      ${body}
+    </section>`;
+  }
+
   _sourceForm(state) {
     const locked = state !== "idle";
-    return html`
-      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
-        <div style="display:flex;gap:8px">
-          <button
-            class="tag-chip mono ${this._source === "list" ? "selected" : ""}"
-            aria-pressed=${this._source === "list"}
-            ?disabled=${locked}
-            @click=${() => this._selectSource("list")}
-          >
-            LIST
-          </button>
-          <button
-            class="tag-chip mono ${this._source === "range" ? "selected" : ""}"
-            aria-pressed=${this._source === "range"}
-            ?disabled=${locked}
-            @click=${() => this._selectSource("range")}
-          >
-            RANGE
-          </button>
-          <button
-            class="tag-chip mono ${this._source === "spectrum" ? "selected" : ""}"
-            aria-pressed=${this._source === "spectrum"}
-            ?disabled=${locked}
-            @click=${() => this._selectSource("spectrum")}
-          >
-            SPECTRUM
-          </button>
+    this._locked = locked;
+    const hint = {
+      list: "Visits every channel of a saved signal list, in order.",
+      range: "Steps through a frequency range one channel at a time.",
+      spectrum: "Watches the live spectrum and visits the strongest peaks above the noise floor.",
+    }[this._source];
+    return this._section(
+      "What to scan",
+      html`
+        <div role="tablist" aria-label="scan source" class="scan-tabs">
+          ${this._sourceTab("list", "List")} ${this._sourceTab("range", "Range")}
+          ${this._sourceTab("spectrum", "Spectrum")}
         </div>
+        <p class="hint" style="margin:0">${hint}</p>
         ${this._source === "list"
           ? this._listForm(locked)
           : this._source === "range"
             ? this._rangeForm(locked)
             : this._spectrumForm(locked)}
-      </div>
-    `;
+      `
+    );
   }
 
   _listForm(locked) {
-    return html`
-      <select
+    return this._field(
+      "Signal list",
+      html`<select
         aria-label="scan list"
         ?disabled=${locked}
         .value=${this._listId}
@@ -375,97 +386,35 @@ export class ScannerView extends LitElement {
                 </option>`
             )
           : html`<option value="">No scan lists — create one in LIBRARY</option>`}
-      </select>
-    `;
+      </select>`
+    );
   }
 
-  _rangeForm(locked) {
-    const count = this._rangeChannelCount;
+  /** Mode + bandwidth selects shared by RANGE and SPECTRUM. `resetPreset`
+   * is RANGE-only: changing the mode makes the chosen preset no longer true. */
+  _modeBwFields(locked, resetPreset) {
     return html`
-      <select
-        aria-label="range preset"
-        ?disabled=${locked}
-        @change=${(e) => this._applyRangePreset(e.target.value)}
-      >
-        <option value="">Custom…</option>
-        ${RANGE_PRESETS.map((p) => html`<option value=${p.key}>${p.label}</option>`)}
-      </select>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input
-          name="scan-start-mhz"
-          class="mono"
-          style="width:110px"
-          placeholder="start MHz"
-          aria-label="range start"
-          ?disabled=${locked}
-          .value=${this._startMhz}
-          @input=${(e) => {
-            this._startMhz = e.target.value;
-            this._rangePreset = "";
-            this._persist();
-          }}
-        />
-        <span class="dim">–</span>
-        <input
-          name="scan-stop-mhz"
-          class="mono"
-          style="width:110px"
-          placeholder="stop MHz"
-          aria-label="range stop"
-          ?disabled=${locked}
-          .value=${this._stopMhz}
-          @input=${(e) => {
-            this._stopMhz = e.target.value;
-            this._rangePreset = "";
-            this._persist();
-          }}
-        />
-        <select
-          aria-label="step"
-          ?disabled=${locked}
-          .value=${String(this._stepHz)}
-          @change=${(e) => {
-            this._stepHz = e.target.value === "custom" ? "custom" : Number(e.target.value);
-            this._rangePreset = "";
-            this._persist();
-          }}
-        >
-          ${STEP_OPTIONS_HZ.map(
-            (hz) => html`<option value=${hz} ?selected=${hz === this._stepHz}>${stepLabel(hz)}</option>`
-          )}
-          <option value="custom" ?selected=${this._stepHz === "custom"}>Custom…</option>
-        </select>
-        ${this._stepHz === "custom"
-          ? html`<input
-              name="scan-step-custom-khz"
-              class="mono"
-              style="width:80px"
-              placeholder="kHz"
-              aria-label="custom step kHz"
-              ?disabled=${locked}
-              .value=${this._stepCustomKhz}
-              @input=${(e) => {
-                this._stepCustomKhz = e.target.value;
-                this._persist();
-              }}
-            />`
-          : ""}
-        <select
+      ${this._field(
+        "Mode",
+        html`<select
           aria-label="scan mode"
           ?disabled=${locked}
           .value=${this._mode}
           @change=${(e) => {
             this._mode = e.target.value;
             this._bwHz = BW_PRESETS[this._mode]?.[0] ?? this._bwHz;
-            this._rangePreset = "";
+            if (resetPreset) this._rangePreset = "";
             this._persist();
           }}
         >
           ${DEMODULATORS.filter((m) => m !== "RAW").map(
             (m) => html`<option value=${m} ?selected=${m === this._mode}>${m}</option>`
           )}
-        </select>
-        <select
+        </select>`
+      )}
+      ${this._field(
+        "Bandwidth",
+        html`<select
           aria-label="scan bandwidth"
           ?disabled=${locked}
           .value=${String(this._bwHz)}
@@ -477,8 +426,102 @@ export class ScannerView extends LitElement {
           ${this._bwOptions().map(
             (hz) => html`<option value=${hz} ?selected=${hz === this._bwHz}>${(hz / 1000).toFixed(1)} kHz</option>`
           )}
-        </select>
+        </select>`
+      )}
+    `;
+  }
+
+  _rangeForm(locked) {
+    const count = this._rangeChannelCount;
+    return html`
+      ${this._field(
+        "Preset",
+        html`<select
+          aria-label="range preset"
+          ?disabled=${locked}
+          @change=${(e) => this._applyRangePreset(e.target.value)}
+        >
+          <option value="">Custom…</option>
+          ${RANGE_PRESETS.map((p) => html`<option value=${p.key}>${p.label}</option>`)}
+        </select>`
+      )}
+      <div class="scan-fields">
+        ${this._field(
+          "Start MHz",
+          html`<input
+            name="scan-start-mhz"
+            class="mono"
+            style="width:110px"
+            placeholder="e.g. 144"
+            aria-label="range start"
+            ?disabled=${locked}
+            .value=${this._startMhz}
+            @input=${(e) => {
+              this._startMhz = e.target.value;
+              this._rangePreset = "";
+              this._persist();
+            }}
+          />`
+        )}
+        ${this._field(
+          "End MHz",
+          html`<input
+            name="scan-stop-mhz"
+            class="mono"
+            style="width:110px"
+            placeholder="e.g. 146"
+            aria-label="range stop"
+            ?disabled=${locked}
+            .value=${this._stopMhz}
+            @input=${(e) => {
+              this._stopMhz = e.target.value;
+              this._rangePreset = "";
+              this._persist();
+            }}
+          />`
+        )}
+        ${this._field(
+          "Step",
+          html`<select
+            aria-label="step"
+            ?disabled=${locked}
+            .value=${String(this._stepHz)}
+            @change=${(e) => {
+              this._stepHz = e.target.value === "custom" ? "custom" : Number(e.target.value);
+              this._rangePreset = "";
+              this._persist();
+            }}
+          >
+            ${STEP_OPTIONS_HZ.map(
+              (hz) => html`<option value=${hz} ?selected=${hz === this._stepHz}>${stepLabel(hz)}</option>`
+            )}
+            <option value="custom" ?selected=${this._stepHz === "custom"}>Custom…</option>
+          </select>`
+        )}
+        ${this._stepHz === "custom"
+          ? this._field(
+              "Custom step kHz",
+              html`<input
+                name="scan-step-custom-khz"
+                class="mono"
+                style="width:80px"
+                placeholder="kHz"
+                aria-label="custom step kHz"
+                ?disabled=${locked}
+                .value=${this._stepCustomKhz}
+                @input=${(e) => {
+                  this._stepCustomKhz = e.target.value;
+                  this._persist();
+                }}
+              />`
+            )
+          : ""}
+        ${this._modeBwFields(locked, true)}
       </div>
+      <p class="hint" style="margin:0">
+        Frequencies are read as MHz (144 or 145.55). A plain number of 1000 or more is read as kHz, so 145550 means
+        145.55 MHz.
+      </p>
       ${count != null && count > MAX_CHANNELS
         ? html`<p class="empty" style="color:var(--danger)">
             ${count.toLocaleString()} channels exceeds the ${MAX_CHANNELS.toLocaleString()} max -- narrow the range or widen the step
@@ -490,56 +533,65 @@ export class ScannerView extends LitElement {
   _spectrumForm(locked) {
     const span = this._visibleSpanLabel;
     return html`
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input
-          name="scan-spectrum-start-mhz"
-          class="mono"
-          style="width:110px"
-          placeholder=${span ? span.split("–")[0].trim() : "start MHz"}
-          aria-label="spectrum start"
-          ?disabled=${locked}
-          .value=${this._spectrumStartMhz}
-          @input=${(e) => {
-            this._spectrumStartMhz = e.target.value;
-            this._persist();
-          }}
-        />
-        <span class="dim">–</span>
-        <input
-          name="scan-spectrum-stop-mhz"
-          class="mono"
-          style="width:110px"
-          placeholder=${span ? span.split("–")[1].trim() : "stop MHz"}
-          aria-label="spectrum stop"
-          ?disabled=${locked}
-          .value=${this._spectrumStopMhz}
-          @input=${(e) => {
-            this._spectrumStopMhz = e.target.value;
-            this._persist();
-          }}
-        />
-        <select
-          aria-label="spectrum step"
-          ?disabled=${locked}
-          .value=${String(this._spectrumStepHz)}
-          @change=${(e) => {
-            this._spectrumStepHz = Number(e.target.value);
-            this._persist();
-          }}
-        >
-          ${SPECTRUM_STEP_OPTIONS_HZ.map(
-            (hz) => html`<option value=${hz} ?selected=${hz === this._spectrumStepHz}>${stepLabel(hz)}</option>`
-          )}
-        </select>
-        <label class="dim mono" style="display:flex;align-items:center;gap:4px" title="above noise floor"
-          >LEVEL
-          <input
+      <div class="scan-fields">
+        ${this._field(
+          "Start MHz",
+          html`<input
+            name="scan-spectrum-start-mhz"
+            class="mono"
+            style="width:110px"
+            placeholder=${span ? span.split("–")[0].trim() : "start MHz"}
+            aria-label="spectrum start"
+            ?disabled=${locked}
+            .value=${this._spectrumStartMhz}
+            @input=${(e) => {
+              this._spectrumStartMhz = e.target.value;
+              this._persist();
+            }}
+          />`
+        )}
+        ${this._field(
+          "End MHz",
+          html`<input
+            name="scan-spectrum-stop-mhz"
+            class="mono"
+            style="width:110px"
+            placeholder=${span ? span.split("–")[1].trim() : "stop MHz"}
+            aria-label="spectrum stop"
+            ?disabled=${locked}
+            .value=${this._spectrumStopMhz}
+            @input=${(e) => {
+              this._spectrumStopMhz = e.target.value;
+              this._persist();
+            }}
+          />`
+        )}
+        ${this._field(
+          "Step",
+          html`<select
+            aria-label="spectrum step"
+            ?disabled=${locked}
+            .value=${String(this._spectrumStepHz)}
+            @change=${(e) => {
+              this._spectrumStepHz = Number(e.target.value);
+              this._persist();
+            }}
+          >
+            ${SPECTRUM_STEP_OPTIONS_HZ.map(
+              (hz) => html`<option value=${hz} ?selected=${hz === this._spectrumStepHz}>${stepLabel(hz)}</option>`
+            )}
+          </select>`
+        )}
+        ${this._field(
+          "Peak dB above floor",
+          html`<input
             name="scan-spectrum-threshold"
             class="mono"
             type="number"
             min="5"
             max="100"
-            style="width:60px"
+            style="width:70px"
+            title="above noise floor"
             aria-label="spectrum level threshold"
             ?disabled=${locked}
             .value=${String(this._spectrumThresholdDb)}
@@ -547,182 +599,203 @@ export class ScannerView extends LitElement {
               this._spectrumThresholdDb = e.target.value;
               this._persist();
             }}
-          />
-        </label>
-        <select
-          aria-label="scan mode"
-          ?disabled=${locked}
-          .value=${this._mode}
-          @change=${(e) => {
-            this._mode = e.target.value;
-            this._bwHz = BW_PRESETS[this._mode]?.[0] ?? this._bwHz;
-            this._persist();
-          }}
-        >
-          ${DEMODULATORS.filter((m) => m !== "RAW").map(
-            (m) => html`<option value=${m} ?selected=${m === this._mode}>${m}</option>`
-          )}
-        </select>
-        <select
-          aria-label="scan bandwidth"
-          ?disabled=${locked}
-          .value=${String(this._bwHz)}
-          @change=${(e) => {
-            this._bwHz = Number(e.target.value);
-            this._persist();
-          }}
-        >
-          ${this._bwOptions().map(
-            (hz) => html`<option value=${hz} ?selected=${hz === this._bwHz}>${(hz / 1000).toFixed(1)} kHz</option>`
-          )}
-        </select>
+          />`
+        )}
+        ${this._modeBwFields(locked, false)}
       </div>
-      <p class="dim mono" style="font-size:0.85em">
-        empty start/stop = current visible span${span ? html` (${span})` : ""} · level is above noise floor
+      <p class="hint" style="margin:0">
+        Leave start/end empty to use the current visible span${span ? html` (${span})` : ""}. A peak must stand this many
+        dB above the spectrum's noise floor to become a candidate.
       </p>
     `;
   }
 
-  /** TIMING sub-group (S5 contract, §3): DWELL/HANG/FINDS DWELL and the
-   * KEEP SCANNING toggle, relabeled for what they actually do -- same state
-   * vars, @input/@click handlers and _persist() calls as before, no engine
-   * change (the POST /api/scan/start body -- scanner-config.js's buildConfig
-   * -- is untouched). */
+  /** TIMING section: dwell, hang -- same state vars, @input handlers and
+   * _persist() calls as before; buildConfig is untouched. */
   _timingGroup(locked) {
-    return html`
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <div class="survey-group-label">TIMING</div>
-        <p class="dim" style="font-size:0.8em;margin:0">
-          Dwell measures each channel briefly; Hang keeps holding after activity ends; with Monitor only, a hit is
-          logged for Finds dwell and the scan moves on instead of holding.
-        </p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <label class="dim mono" style="display:flex;align-items:center;gap:4px"
-            >Dwell (measure)
-            <input
-              name="scan-dwell-ms"
-              class="mono"
-              style="width:70px"
-              ?disabled=${locked}
-              .value=${String(this._dwellMs)}
-              @input=${(e) => {
-                this._dwellMs = e.target.value;
-                this._persist();
-              }}
-            />ms</label
-          >
-          <label class="dim mono" style="display:flex;align-items:center;gap:4px"
-            >Hang (stay after activity ends)
-            <input
-              name="scan-hang-s"
-              class="mono"
-              style="width:50px"
-              ?disabled=${locked}
-              .value=${String(this._hangS)}
-              @input=${(e) => {
-                this._hangS = e.target.value;
-                this._persist();
-              }}
-            />s</label
-          >
-          <button
-            class="mono"
-            aria-pressed=${this._keepScanning}
-            ?disabled=${locked}
-            @click=${() => {
-              this._keepScanning = !this._keepScanning;
-              this._persist();
-            }}
-          >
-            Monitor only (log finds, don't hold)
-          </button>
-          ${this._keepScanning
-            ? html`<label class="dim mono" style="display:flex;align-items:center;gap:4px"
-                >Finds dwell (log then move on)
-                <input
-                  name="scan-finds-dwell-s"
-                  class="mono"
-                  style="width:50px"
-                  ?disabled=${locked}
-                  .value=${String(this._findsDwellS)}
-                  @input=${(e) => {
-                    this._findsDwellS = e.target.value;
-                    this._persist();
-                  }}
-                />s</label
-              >`
-            : ""}
+    return this._section(
+      "Timing",
+      html`
+        <div class="scan-fields">
+          <div class="scan-field">
+            <label class="label" for="scan-dwell-ms">Listen per channel (dwell)</label>
+            <span
+              ><input
+                id="scan-dwell-ms"
+                name="scan-dwell-ms"
+                class="mono"
+                style="width:70px"
+                ?disabled=${locked}
+                .value=${String(this._dwellMs)}
+                @input=${(e) => {
+                  this._dwellMs = e.target.value;
+                  this._persist();
+                }}
+              />
+              ms</span
+            >
+            <span class="hint">How long each channel is measured before moving on.</span>
+          </div>
+          <div class="scan-field">
+            <label class="label" for="scan-hang-s">Hold after signal ends (hang)</label>
+            <span
+              ><input
+                id="scan-hang-s"
+                name="scan-hang-s"
+                class="mono"
+                style="width:70px"
+                ?disabled=${locked}
+                .value=${String(this._hangS)}
+                @input=${(e) => {
+                  this._hangS = e.target.value;
+                  this._persist();
+                }}
+              />
+              s</span
+            >
+            <span class="hint">How long to stay after the signal drops, in case it comes back.</span>
+          </div>
         </div>
-      </div>
-    `;
+      `
+    );
+  }
+
+  /** What the scanner does once a signal is found. stop_on_hit and
+   * keep_scanning are separate engine flags: stop_on_hit ends the scan after
+   * the first hold, keep_scanning caps each hold at finds_dwell_s. The radio
+   * shows stop_on_hit first if (via old saved params) both are set, which is
+   * also what the engine does (hold is capped, then the scan stops). */
+  _onHitChoice() {
+    return this._stopOnHit ? "stop" : this._keepScanning ? "monitor" : "hold";
+  }
+
+  _setOnHit(choice) {
+    this._stopOnHit = choice === "stop";
+    this._keepScanning = choice === "monitor";
+    this._persist();
+  }
+
+  _checkOpt(label, hint, checked, onChange, locked, name) {
+    return html`<label class="scan-opt">
+      <input type="checkbox" name=${name} .checked=${checked} ?disabled=${locked} @change=${onChange} />
+      <span><span class="scan-opt-title">${label}</span><span class="hint">${hint}</span></span>
+    </label>`;
+  }
+
+  _radioOpt(value, label, hint, locked, extra = "") {
+    return html`<label class="scan-opt">
+      <input
+        type="radio"
+        name="scan-on-hit"
+        .checked=${this._onHitChoice() === value}
+        ?disabled=${locked}
+        @change=${() => this._setOnHit(value)}
+      />
+      <span><span class="scan-opt-title">${label}</span><span class="hint">${hint}</span>${extra}</span>
+    </label>`;
   }
 
   _paramsForm(state) {
     const locked = state !== "idle";
     return html`
       ${this._timingGroup(locked)}
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
-        <label class="dim mono" style="display:flex;align-items:center;gap:4px"
-          >THRESHOLD
-          <input
-            name="scan-threshold-db"
-            class="mono"
-            style="width:60px"
-            ?disabled=${locked}
-            .value=${String(this._thresholdDb)}
-            @input=${(e) => {
-              this._thresholdDb = e.target.value;
-              this._persist();
-            }}
-          />dB</label
-        >
-        <button
-          class="mono"
-          aria-pressed=${this._stopOnHit}
-          ?disabled=${locked}
-          @click=${() => {
-            this._stopOnHit = !this._stopOnHit;
-            this._persist();
-          }}
-        >
-          STOP ON HIT
-        </button>
-        ${this._source === "range"
-          ? html`<button
-              class="mono"
-              aria-pressed=${this._captureHits}
-              ?disabled=${locked}
-              @click=${() => {
-                this._captureHits = !this._captureHits;
-                this._persist();
-              }}
+      ${this._section(
+        "When a signal is found",
+        html`
+          <div class="scan-field">
+            <label class="label" for="scan-threshold-db">Detection threshold</label>
+            <span
+              >Signal must be
+              <input
+                id="scan-threshold-db"
+                name="scan-threshold-db"
+                class="mono"
+                style="width:60px"
+                ?disabled=${locked}
+                .value=${String(this._thresholdDb)}
+                @input=${(e) => {
+                  this._thresholdDb = e.target.value;
+                  this._persist();
+                }}
+              />
+              dB above the noise (the receiver's SNR reading)</span
             >
-              CAPTURE HITS
-            </button>`
-          : ""}
-        <button
-          class="mono"
-          aria-pressed=${this._logFinds}
-          ?disabled=${locked}
-          @click=${() => {
-            this._logFinds = !this._logFinds;
-            this._persist();
-          }}
-        >
-          LOG FINDS
-        </button>
-        <button
-          class="mono"
-          aria-pressed=${this._skipIgnored}
-          ?disabled=${locked}
-          @click=${() => {
-            this._skipIgnored = !this._skipIgnored;
-            this._persist();
-          }}
-        >
-          SKIP IGNORED
-        </button>
-      </div>
+          </div>
+          <div role="radiogroup" aria-label="when a signal is found" class="scan-field" style="gap:6px">
+            <span class="label">Then</span>
+            ${this._radioOpt(
+              "hold",
+              "Stay on it, then keep scanning",
+              "Holds while the signal lasts (plus the hang time), then resumes the sweep.",
+              locked
+            )}
+            ${this._radioOpt(
+              "stop",
+              "Stay on it, then stop the scan",
+              "Same hold, but the scan ends after the first signal instead of resuming.",
+              locked
+            )}
+            ${this._radioOpt(
+              "monitor",
+              "Log it and keep scanning (monitor only)",
+              "Stays only a short time per signal, then moves on even if it is still active.",
+              locked,
+              this._keepScanning && !this._stopOnHit
+                ? html`<label class="scan-sub"
+                    >Stay at most
+                    <input
+                      name="scan-finds-dwell-s"
+                      class="mono"
+                      style="width:50px"
+                      ?disabled=${locked}
+                      .value=${String(this._findsDwellS)}
+                      @input=${(e) => {
+                        this._findsDwellS = e.target.value;
+                        this._persist();
+                      }}
+                    />
+                    s</label
+                  >`
+                : ""
+            )}
+          </div>
+          ${this._checkOpt(
+            "Log finds",
+            "Record each hit in the Finds log (frequency, SNR, duration, mode).",
+            this._logFinds,
+            (e) => {
+              this._logFinds = e.target.checked;
+              this._persist();
+            },
+            locked,
+            "scan-log-finds"
+          )}
+          ${this._source === "range"
+            ? this._checkOpt(
+                "Capture hits",
+                "Save each hit as a signal memory, unless one already exists nearby. Range scans only.",
+                this._captureHits,
+                (e) => {
+                  this._captureHits = e.target.checked;
+                  this._persist();
+                },
+                locked,
+                "scan-capture-hits"
+              )
+            : ""}
+          ${this._checkOpt(
+            "Skip ignored",
+            "Don't tune to frequencies within 6 kHz of a find you marked as ignored.",
+            this._skipIgnored,
+            (e) => {
+              this._skipIgnored = e.target.checked;
+              this._persist();
+            },
+            locked,
+            "scan-skip-ignored"
+          )}
+        `
+      )}
     `;
   }
 
@@ -731,7 +804,7 @@ export class ScannerView extends LitElement {
     const paused = state === "paused";
     const configValid = idle ? !!this._buildConfig() : true;
     return html`
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <div class="scan-run" role="group" aria-label="scan controls">
         <button class="run-start" ?disabled=${!this._ready || !idle || !configValid} @click=${() => this._start()}>
           ▶ START
         </button>

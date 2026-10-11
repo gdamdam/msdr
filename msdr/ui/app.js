@@ -1,5 +1,6 @@
 import { LitElement, html } from "./vendor/lit.js";
 import * as api from "./api.js";
+import { profileFromProps } from "./profile-summary.js";
 import { savedFrequencyMatches } from "./saved-frequency.js";
 import { StepTuner } from "./step-tuner.js";
 import { installUiHelp } from "./ui-help.js";
@@ -21,8 +22,6 @@ import {
   defaultStepHz,
   STEP_CYCLE_HZ,
 } from "./format.js";
-import { PRESETS } from "./presets.js";
-import { loadParams, saveParams } from "./scanner-config.js";
 import "./components/instrument-panel.js";
 import "./components/diag-banner.js";
 import "./components/receiver-lost-bar.js";
@@ -65,7 +64,6 @@ import "./components/decode-deck.js";
 import "./components/review-view.js";
 import "./components/signal-workbench.js";
 import "./components/signal-instruments.js";
-import "./components/preset-picker.js";
 
 /** Pause before the current-frequency details section follows a retune. */
 const FREQ_DETAILS_SETTLE_MS = 400;
@@ -152,7 +150,6 @@ export class MsdrApp extends LitElement {
     paletteOpen: { state: true },
     setupOpen: { state: true },
     validation: { state: true }, // GET /api/validation, fetched when SETUP opens -- see updated()
-    presetOpen: { state: true },
     _layoutEditMode: { state: true },
     _reviewRefreshAt: { state: true },
     _libraryRefreshAt: { state: true },
@@ -253,7 +250,6 @@ export class MsdrApp extends LitElement {
     this.setupOpen = false;
     this.validation = null;
     // S1: LIBRARY is a workspace now (was a full-view swap, `libraryOpen`).
-    this.presetOpen = false;
     this._libraryRefreshAt = null;
     this._reviewRefreshAt = null;
     this._workspaceChosen = false;
@@ -562,6 +558,17 @@ export class MsdrApp extends LitElement {
 
   _loadFavorites() {
     return this._run(async () => (this.favorites = await api.listListItems("favorites")));
+  }
+
+  _newProfile(fromCurrent) {
+    // fromCurrent: prefill from the live receiver's confirmed props.
+    const prefill = fromCurrent ? profileFromProps(this.state?.props) : null;
+    this.selected = { kind: "profile", item: null, prefill };
+  }
+
+  _openProfile(id) {
+    const item = this.profiles.find((p) => p.id === id);
+    if (item) this.selected = { kind: "profile", item };
   }
 
   _loadProfiles() {
@@ -1525,7 +1532,7 @@ export class MsdrApp extends LitElement {
    * preventDefault in their own keydown handler, see _onGripKeydown), or
    * while the palette/setup drawer/an editor panel is open. */
   _blocksGlobalStep(ev) {
-    if (this.paletteOpen || this.presetOpen || this.setupOpen || this.selected || this._signalTarget) return true;
+    if (this.paletteOpen || this.setupOpen || this.selected || this._signalTarget) return true;
     const t = ev.target;
     if (t?.classList?.contains("grip")) return true;
     const tag = t?.tagName;
@@ -2470,6 +2477,10 @@ export class MsdrApp extends LitElement {
           .tagsById=${this.tagsById}
           .failure=${this._failureFor("library")}
           .refreshAt=${this._libraryRefreshAt}
+          .profiles=${this.profiles}
+          @open-profile=${(ev) => this._openProfile(ev.detail.id)}
+          @apply-profile=${(ev) => this._doApplyProfile(ev.detail.id)}
+          @refresh=${() => this._loadProfiles()}
           @select-signal=${(ev) => (this.selected = ev.detail)}
           @tune-signal=${(ev) => this._doTuneSignal(ev.detail.id, "library")}
           @capture=${() => this._doCapture()}
@@ -3063,44 +3074,6 @@ export class MsdrApp extends LitElement {
     if (detail?.path) await this._doSurveyReplay({ path: detail.path, loop: false });
   }
 
-  /** preset-start {id, workspace, visible} from <preset-picker>: switches
-   * workspace and remembers the preset's visibility flags, nothing else.
-   * Deliberately no tune/decoder/record/receiver-owner action here -- a
-   * preset only arranges the UI; every radio action stays an explicit
-   * operator click (S1 contract, "Task presets"). */
-  async _onPresetStart(detail) {
-    this.presetOpen = false;
-    if (detail?.visible) writeLocal("msdr.preset.visible", JSON.stringify(detail.visible));
-    if (detail?.workspace) await this._switchWorkspace(detail.workspace);
-    // P2 (review finding): the saved flags above only cover a fresh mount --
-    // push them into the already-mounted strip/survey instances too, same as
-    // a manual MORE/OPTIONS/TECH click, so a running session actually shows
-    // what the preset's plan promised.
-    if (detail?.visible) {
-      await this.updateComplete;
-      this.querySelector("survey-view")?.applyPresetVisible(detail.visible);
-    }
-    if (PRESETS.find((p) => p.id === detail?.id)?.scanListHint) await this._applyScanListHint();
-  }
-
-  /** "Monitor saved channels" preset (presets.js's scanListHint): preselects
-   * the scan deck's LIST source in the saved scanner-config.js params, but
-   * only when a list actually exists -- never touches listId (scanner-view's
-   * own connectedCallback/_loadLists already falls back to the first
-   * builtin/list once one is available), never starts a scan. UI-only: a
-   * scanner-view already mounted keeps whatever it read at construction
-   * until it's remounted (e.g. the SCAN FREQUENCIES setup modal reopening). */
-  async _applyScanListHint() {
-    try {
-      const lists = await api.listLists();
-      if (!lists?.length) return;
-      const params = loadParams();
-      if (params.source !== "list") saveParams({ ...params, source: "list" });
-    } catch {
-      /* no lists reachable -- leave the saved source alone */
-    }
-  }
-
   /** SETUP's VALIDATION group (see updated()) -- a fetch failure just leaves
    * the group showing its own "loading…"/error state rather than a
    * failure-note over the whole drawer. */
@@ -3136,7 +3109,6 @@ export class MsdrApp extends LitElement {
       else if (decodeDeck?.setupOpen) decodeDeck.closeSetup();
       else if (this.diagOpen) this.diagOpen = false;
       else if (this.paletteOpen) this.paletteOpen = false;
-      else if (this.presetOpen) this.presetOpen = false;
       else if (this.setupOpen) this.setupOpen = false;
       else if (this.decodeViewOpen) this.decodeViewOpen = false;
       else if (this._signalTarget) this._signalTarget = null;
@@ -3146,7 +3118,7 @@ export class MsdrApp extends LitElement {
     }
 
     // Modal controls own keyboard interaction; never tune or record behind them.
-    if (this.paletteOpen || this.setupOpen || this.presetOpen || this.decodeViewOpen ||
+    if (this.paletteOpen || this.setupOpen || this.decodeViewOpen ||
         this.selected || this.querySelector('[aria-modal="true"], dialog[open]')) return;
     const mod = ev.metaKey || ev.ctrlKey;
     // Cmd/Ctrl-Z: allowed while typing would undo a bulk library op from
@@ -3304,13 +3276,16 @@ export class MsdrApp extends LitElement {
         @recorder-reveal=${(ev) => this._doRecorderReveal(ev.detail.name)}
         @recorder-analyze=${(ev) => this._doRecorderAnalyze(ev.detail.name)}
         @open-review=${(ev) => this._openReview(ev.detail)}
-        @open-presets=${() => (this.presetOpen = true)}
         @capture=${() => this._doCapture()}
         @favorite-current=${() => this._doFavoriteCurrent()}
         @back=${() => this._doBack()}
         @forward=${() => this._doForward()}
         @find=${() => (this.paletteOpen = true)}
-        @new-profile=${() => (this.selected = { kind: "profile", item: null })}
+        @new-profile=${(ev) => this._newProfile(ev.detail?.fromCurrent)}
+        @refresh=${() => this._loadProfiles()}
+        @api-error=${(ev) => this._status(ev.detail.message)}
+        @open-profile=${(ev) => this._openProfile(ev.detail.id)}
+        @apply-profile=${(ev) => this._doApplyProfile(ev.detail.id)}
         @setup=${() => (this.setupOpen = true)}
         @toggle-library=${() => this._switchWorkspace("library")}
         @toggle-diagnostics=${() => (this.diagOpen = !this.diagOpen)}
@@ -3326,6 +3301,9 @@ export class MsdrApp extends LitElement {
         .frequencyDetailsOpen=${this._freqDetailsOpen}
         @frequency-details-toggle=${() => this.toggleFrequencyDetails()}
       ></instrument-panel>
+
+      <!-- ⓘ current-frequency details: full-width panel directly below the receiver. -->
+      ${this._renderSignalPanel(true)}
 
       <div class="workspace-switch" role="tablist" aria-label="workspace">
         ${WORKSPACE_IDS.map(
@@ -3352,7 +3330,7 @@ export class MsdrApp extends LitElement {
 
       <!-- S1: .app-body is a flex row so the docked <signal-panel> (>=1100px)
            takes a right column and the workspace content reflows beside it. -->
-      <div class="app-body ${this._signalTarget || this._freqDetailsOpen ? "inspector-open" : ""}">
+      <div class="app-body ${this._signalTarget ? "inspector-open" : ""}">
       <div class="app-main">
       ${this.workspace === "discover" ? html`<nav class="geo-toolbar discover-views" role="tablist" aria-label="Discover view">
         ${["spectrum", "inbox", "table", "wifi", "ble", "remoteid", "timeline", "rules", "beacons"].filter((view) => view !== "beacons" || sectionVisible("beacons", this.features)).map(view => html`<button
@@ -3434,7 +3412,6 @@ export class MsdrApp extends LitElement {
       </div>`}
       </div>
       ${this._renderSignalPanel()}
-      ${this._renderSignalPanel(true)}
       </div>
 
       <msdr-palette
@@ -3455,15 +3432,8 @@ export class MsdrApp extends LitElement {
         @scan-pause=${() => this._doScanPause()}
         @scan-resume=${() => this._doScanResume()}
         @show-getting-started=${() => this._showGettingStarted()}
-        @open-presets=${() => (this.presetOpen = true)}
         @api-error=${(ev) => this._status(ev.detail.message)}
       ></msdr-palette>
-
-      <preset-picker
-        .open=${this.presetOpen}
-        @close=${() => (this.presetOpen = false)}
-        @preset-start=${(ev) => this._onPresetStart(ev.detail)}
-      ></preset-picker>
 
       <msdr-drawer
         .selected=${this.selected}

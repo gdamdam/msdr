@@ -473,6 +473,9 @@ class AppService(
 
         self.signals = SignalRepo(db)
         self.profiles = ProfileRepo(db)
+        # The profile the operator last applied (directly or via a signal's
+        # profile). Only it can be reported as active -- see state_payload.
+        self._applied_profile_id: str | None = None
         self.tags = TagRepo(db)
         self.states = StateRepo(db)
         self.settings_repo = SettingsRepo(db)
@@ -1028,11 +1031,17 @@ class AppService(
 
     def state_payload(self) -> dict:
         props = self.confirmed.props
+        # Profiles hold only antenna/LNA/rate/audio settings, so guessing from
+        # a match labelled unrelated tunings with whatever profile shared two
+        # of them. Report only the applied profile, and only while the
+        # receiver still matches it; any change drops it back to "custom".
         active_profile_id = None
-        for profile in self.profiles.list():
-            if profile.matches(props):
-                active_profile_id = profile.id
-                break
+        if self._applied_profile_id is not None:
+            applied = self.profiles.get(self._applied_profile_id)
+            if applied is not None and applied.matches(props):
+                active_profile_id = applied.id
+            elif self.confirmed.is_complete():
+                self._applied_profile_id = None
 
         vfo = props.get("device_vfo_frequency")
         nearby_signals: list[Signal] = []
@@ -1610,6 +1619,9 @@ class AppService(
             not matches(spec.name, pre_props.get(spec.name), self.confirmed.props.get(spec.name))
             for spec in RESTORABLE
         )
+
+        if profile_id is not None and report.status in ("confirmed", "partial"):
+            self._applied_profile_id = profile_id
 
         entry = None
         if report.status in ("confirmed", "partial") or moved:

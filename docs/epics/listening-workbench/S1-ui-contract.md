@@ -128,19 +128,6 @@ stay visible in the strip above (unchanged).
 `open-review {name, path}`; app.js switches to `review` and starts the replay
 through the existing `_doSurveyReplay`.
 
-## Task presets (`<preset-picker>`) — new modal
-
-Data in `msdr/ui/presets.js`: `PRESETS = [{id, label, workspace, plan:
-[strings], visible: {more: bool, tech: bool}, recommended: [strings]}]` for
-`browse-local` (Browse local signals → listen), `monitor-saved` (Monitor
-saved channels → discover), `explore-hf` (Explore HF → listen; recommended
-USB/LSB/CW, HF field validation pending note), `review-recording` (Review
-recording → review). The picker shows the plan **before** its Start button.
-Start dispatches `preset-start {id, workspace, visible}` and nothing else:
-app.js switches workspace and stores the visibility flags; it never retunes,
-starts a decoder, arms recording or takes receiver ownership. Opened from the
-palette (`presets…` command) and the strip's `MORE` area (`PRESETS`).
-
 ## Setup drawer additions
 
 - `DEPENDENCIES` group: table of decoders from `.decoders` (GET
@@ -171,7 +158,6 @@ Never "confirmed"/"identified" from allocation alone; no percentages.
 - W2 (strip): `msdr/ui/components/instrument-panel.js`, `recorder-control.js`,
   `s-meter.js`, `segment-readout.js`, CSS in new `msdr/ui/styles-strip.css`
   (merged into styles.css by the coordinator).
-- W3 (review/presets/setup/table): new `review-view.js`, `preset-picker.js`,
-  `msdr/ui/presets.js`; `setup-drawer.js`, `survey-view.js`,
+- W3 (review/presets/setup/table): new `review-view.js`, `setup-drawer.js`, `survey-view.js`,
   `recordings-view.js`; CSS in new `msdr/ui/styles-review.css`.
 - Coordinator: index.html/CSS merge, README, version, ledger, 1280×800 check.

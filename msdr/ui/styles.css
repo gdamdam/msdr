@@ -999,7 +999,8 @@ failure-note {
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
   display: flex;
-  z-index: 10;
+  /* Above the receiver strip (z-index 20, popovers 30); below tooltips (3000). */
+  z-index: 2000;
 }
 
 /* color/swatch row -- signal color (8) and tag color (6) pickers */
@@ -1426,26 +1427,28 @@ signal-panel {
 }
 
 /* Current-frequency details (signal-panel.js `wide`, opened by the receiver
-   strip's ⓘ): a full-width section directly under the receiver panel, not a
-   side column. Brighter surface and a receiver-coloured top edge so it reads
-   as attached to the radio; below the panel so it never adds to its 220 px
-   layout gate. Evidence/notes flow in columns at desktop widths. */
+   strip's ⓘ): a full-width section directly under the receiver panel (app.js
+   renders it right after <instrument-panel>), styled like the Capture health
+   panel (accent tint, 3px accent left edge); below the panel so it never adds
+   to its 220 px layout gate. Content lays out in side-by-side columns. */
 signal-panel[wide] { display: block; }
 .signal-panel.wide {
+  box-sizing: border-box;
   width: auto;
   height: auto;
   margin: 0 0 16px;
-  /* One step above --panel with a faint receiver-blue cast: visibly a
-     separate, attached surface without a bright slab breaking the dark
-     instrument look (the surrounding panels stay #12151a). */
-  border: 1px solid color-mix(in srgb, var(--context-receiver) 35%, var(--line));
-  border-top: 3px solid var(--context-receiver);
-  background: color-mix(in srgb, var(--panel) 90%, var(--context-receiver) 10%);
-  border-radius: 6px;
+  padding: 8px 12px 10px;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: var(--radius);
   overflow: visible;
 }
+.freq-details-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 20px; align-items: start; margin-top: 6px; }
+.freq-details-col { min-width: 0; }
+.freq-details-col.inspector-notes { border-top: 0; padding-top: 0; margin-top: 0; }
 .freq-details-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 2px; }
-.freq-details-name { font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; color: var(--context-receiver); }
+.freq-details-name { font-size: .68rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--dim); }
 .freq-details-follow { font-size: 0.78em; color: var(--context-receiver); }
 .freq-details-updating { font-size: 0.78em; }
 /* Docked inspector body (signal-panel.js _wideBody): verdict, actions, an
@@ -1480,12 +1483,6 @@ signal-panel[wide] { display: block; }
 .inspector-notes h2 { margin-top: 0; }
 .inspector-notes textarea { box-sizing: border-box; width: 100%; min-height: 64px; resize: vertical; }
 .inspector-add-note { font-size: 12px; }
-@media (min-width: 1100px) {
-  /* Wider than the 360 px signal-detail dock: evidence cards carry a line of
-     decoder output. */
-  .signal-panel.wide.docked { width: 420px; overflow-y: auto; }
-}
-
 /* U3 signal-detail panel (components/signal-panel.js): right-side slide-over
    sharing .overlay-backdrop with the drawer/palette; a bottom sheet under
    900px instead (a small operator screen has more usable width than height). */
@@ -1999,7 +1996,7 @@ button.chip:hover:not(:disabled) {
 .smeter.compact .smeter-scale {
   display: none;
 }
-/* S1: styles for review-view.js, preset-picker.js and setup-drawer.js's new
+/* S1: styles for review-view.js and setup-drawer.js's new
    groups (recordings-view.js/survey-view.js reuse existing global classes
    from styles.css -- .lib-table, .ev-*, .control-row, .run-start/-stop,
    .row, .readout, .empty, .dim, button:disabled -- with no changes needed
@@ -2012,18 +2009,6 @@ button.chip:hover:not(:disabled) {
 .lib-table.review-table tr.selected {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   box-shadow: inset 3px 0 0 var(--accent);
-}
-
-/* PRESET picker: each preset's plan as a compact bullet list, not the
-   browser's default (larger gap, indent) spacing. */
-preset-picker ul {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-preset-picker li {
-  color: var(--fg);
 }
 
 /* Cap the S-meter so it shares the tuning zone with frequency and mode. */
@@ -2062,19 +2047,20 @@ preset-picker li {
 }
 
 /* Keep recorder diagnostics readable inside narrow receiver columns. */
-#recorder-control .capture-health {
-  box-sizing: border-box;
-  min-width: 0;
-  max-width: 100%;
-  margin-top: 6px;
-  font-size: .75rem;
-  line-height: 1.4;
-  white-space: normal;
+#recorder-control .capture-health-toggle {
+  min-height: 0; padding: 2px 8px; font-size: .75rem; line-height: 1.4; white-space: nowrap;
 }
-.capture-health > summary { cursor: pointer; font-size: inherit; }
-/* Open: one tinted strip of label·value pairs with a ? for the caveat,
-   instead of five spaced-out columns and a sentence underneath. */
-.capture-health[open] { padding: 4px 8px 5px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-well); }
+#recorder-control .capture-health-toggle[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+/* Metrics live in a full-width panel below the operations row (rendered by
+   instrument-panel), so opening them never moves ARM/REC or Channel scan. */
+.capture-health-panel {
+  box-sizing: border-box; min-width: 0; max-width: 100%; margin-top: 6px;
+  padding: 5px 10px 6px; border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  font-size: .75rem; line-height: 1.4; white-space: normal;
+}
+.capture-health-heading { margin: 0; font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--dim); }
 .capture-health-metrics {
   display: flex; flex-wrap: wrap; align-items: center; gap: 3px 14px;
   margin: 4px 0 0;
@@ -2089,7 +2075,7 @@ preset-picker li {
 }
 .capture-health-metrics > div.warn dd { color: var(--warn); }
 .capture-health-metrics .help-mark { width: 15px; height: 15px; font-size: 10px; }
-.strip-recording #recorder-control .capture-health .dim {
+.capture-health-panel .dim {
   white-space: normal;
   overflow: visible;
   overflow-wrap: anywhere;
@@ -2679,7 +2665,8 @@ catalog-view .catalog-source-tooltip strong {
 .table-resize-bar:hover, .table-resize-bar:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
 .map-resize-handle { position: absolute; right: 0; bottom: 0; z-index: 1; width: 28px; height: 28px; padding: 0; cursor: nwse-resize; touch-action: none; color: var(--accent); background: var(--panel-well); border: 1px solid var(--line); border-radius: 5px 0 0 0; }
 .discover-map-frame .leaflet-bottom.leaflet-right { right: 30px; }
-.geo-summary { margin: 10px 0; font-size: 12px; }
+.geo-summary { margin: 10px 0; font-size: 12px; display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.geo-summary .help-mark { width: 15px; height: 15px; font-size: 10px; }
 .geo-table-scroll { overflow: auto; max-height: 60vh; }
 .geo-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .geo-table th, .geo-table td { padding: 9px; text-align: left; border-bottom: 1px solid #303a45; vertical-align: top; }
@@ -3028,6 +3015,7 @@ button.frequency-allocation:disabled { cursor: default; opacity: .7; }
 .frequency-context-strip .band-plan-hints small { font-size: 11px; color: #d6b982; }
 .frequency-context-label { display: block; color: var(--warn); font-size: 10px; letter-spacing: .04em; }
 .frequency-allocation small { display: block; color: #d6b982; font-size: 10px; }
+.frequency-allocation .allocation-pill-label { color: var(--warn); font-size: 10px; letter-spacing: .04em; margin-right: 6px; }
 .frequency-allocation--empty { border-color: #7d859077; background: #7d859011; color: var(--dim); }
 .frequency-allocation--empty .frequency-context-label,
 .frequency-allocation--empty small { color: var(--dim); }
@@ -3087,26 +3075,26 @@ instrument-panel .receiver-dsp-toggle[aria-pressed="true"] {
 }
 instrument-panel .receiver-dsp-toggle[data-status="pending"] { opacity: .7; }
 instrument-panel .receiver-dsp-toggle:disabled { opacity: .45; cursor: default; }
-instrument-panel .receiver-dsp-levels-toggle { min-height: 0; height: 18px; line-height: 16px; font-size: 11px; color: var(--dim); background: transparent; border: 0; padding: 0 2px; cursor: pointer; }
-instrument-panel .receiver-dsp-levels-toggle:hover { color: var(--ink); }
 instrument-panel .receiver-dsp-note { color: var(--danger); font-size: 11px; }
-/* Levels open as a popover over the panel, so opening them never changes the
-   receiver strip's height. */
-/* Levels popover: one line of three short labelled controls plus a ? for
-   the SDRconnect caveat, instead of two rows and a paragraph. */
-instrument-panel .receiver-dsp-levels {
+/* Each chip opens its own popover directly beneath it (over the panel, so
+   the strip's height never changes): on/off switch, that function's level
+   and a one-line hint. */
+instrument-panel .receiver-dsp-pill { position: relative; display: inline-block; }
+instrument-panel .receiver-dsp-toggle[aria-expanded="true"] { outline: 1px solid var(--accent); outline-offset: 1px; }
+instrument-panel .receiver-dsp-popover {
   position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
-  width: max-content; max-width: min(560px, 90vw); white-space: nowrap;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  width: max-content; max-width: min(280px, 90vw);
   padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--panel, #1c1f26); box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
 }
+instrument-panel .receiver-dsp-switch { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink); cursor: pointer; }
+instrument-panel .receiver-dsp-hint { font-size: 10px; color: var(--dim); white-space: normal; }
 instrument-panel .receiver-dsp-field { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink); }
 instrument-panel .receiver-dsp-field input[type="number"] { width: 60px; height: 24px; min-height: 0; padding: 0 4px; font-size: 12px; }
 instrument-panel .receiver-dsp-range-wrap { display: flex; align-items: center; gap: 5px; }
 instrument-panel .receiver-dsp-range-wrap input[type="range"] { width: 90px; margin: 0; }
 instrument-panel .receiver-dsp-range-wrap output { min-width: 26px; text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 11px; }
-instrument-panel .receiver-dsp-levels .help-mark { width: 16px; height: 16px; font-size: 10px; }
 instrument-panel .receiver-inline-context .receiver-demodulation { padding-top: 4px; gap: 4px; }
 instrument-panel .receiver-inline-context .receiver-demodulation .readout {
   display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 6px;
@@ -3127,9 +3115,7 @@ instrument-panel .receiver-operations > .channel-scanner-disclosure:not([open]) 
 instrument-panel .strip-recording #recorder-control { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
 instrument-panel .strip-recording #recorder-control > * { flex: 1 1 100%; min-width: 0; margin: 0; }
 instrument-panel .strip-recording #recorder-control > .control-row { flex: 0 1 auto; }
-instrument-panel .strip-recording #recorder-control > .capture-health:not([open]) { flex: 0 0 auto; }
-instrument-panel .receiver-band-scan { padding-top: 3px; padding-bottom: 3px; }
-instrument-panel .receiver-band-scan button { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+instrument-panel .strip-recording #recorder-control > .capture-health-toggle { flex: 0 0 auto; }
 
 /* Instrument panel layout B: row 1 status bar (.strip-row1), row 2 readout
    strip (.readout-strip), row 3 settings strip (.settings-strip). Rows use
@@ -3156,7 +3142,7 @@ instrument-panel .strip-overflow-menu > .strip-tools {
 }
 instrument-panel .strip-overflow-menu > .strip-tools button { font-size: 1em; text-align: left; }
 
-/* Row 2 (mock B): [digits · MHz · ±] [◂ step ▸] [meter · SNR PWR S] … spacer … [band plan · pill · Details · Open chart · ⓘ].
+/* Row 2 (mock B): [digits · MHz · ±] [◂ step ▸] [meter · SNR PWR S] … spacer … [band plan · § · ▦ · ⓘ].
    One flex row that wraps as a whole; nothing inside is exploded with
    display:contents except the context strip, so the pill, hints and
    actions can be ordered as siblings inside .band-info. */
@@ -3182,22 +3168,39 @@ instrument-panel .readout-strip .step-group #step-size { min-width: 74px; white-
 /* S-meter: short bar, then "SNR · PWR · S" on the same line; no tick scale. */
 instrument-panel .readout-strip .receiver-signal-level { flex: none; padding: 0; min-width: 0; }
 instrument-panel .readout-strip .panel-smeter { flex: none; width: auto; max-width: none; min-width: 0; }
-instrument-panel .readout-strip .smeter.compact { flex-direction: row; align-items: center; gap: 10px; }
-instrument-panel .readout-strip .smeter.compact .smeter-bar { flex: none; width: 170px; gap: 4px; }
-instrument-panel .readout-strip .smeter.compact .smeter-bar .smeter-seg { height: 12px; }
+/* SNR / PWR / S-reading sit under the bar at the bar's fixed width, so changing
+   values (−85.0 vs −119.3 dBm, S1 vs S9+20) never resize the meter or push the
+   band-info group sideways. */
+instrument-panel .readout-strip .smeter.compact { flex-direction: column; align-items: stretch; gap: 3px; width: 240px; }
+instrument-panel .readout-strip .smeter.compact .smeter-bar { flex: none; width: 100%; gap: 4px; }
+instrument-panel .readout-strip .smeter.compact .smeter-bar .smeter-seg { height: 10px; }
 instrument-panel .readout-strip .smeter.compact .smeter-scale { display: none; }
-instrument-panel .readout-strip .smeter.compact .smeter-text { order: 1; white-space: nowrap; font-size: 12px; gap: 8px; }
+instrument-panel .readout-strip .smeter.compact .smeter-text { order: 1; white-space: nowrap; font-size: 11px; gap: 8px; justify-content: space-between; font-variant-numeric: tabular-nums; overflow: hidden; }
 instrument-panel .readout-strip .smeter.compact .smeter-sreading { font-size: 1em; }
 instrument-panel .readout-strip > .spacer { flex: 1 1 0; min-width: 0; }
-/* Band info, right-aligned: plan name · allocation pill · Details / Open chart · ⓘ. */
-instrument-panel .readout-strip .band-info { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+/* Band info, right-aligned: plan name · § allocation · ▦ chart · ⓘ. */
+/* Band info shrinks instead of wrapping, and the plan name ellipsises (full
+   list in its title), so retuning never moves this group to another line.
+   The large grow factor takes the free space the .spacer would otherwise share;
+   on narrow windows the hints' min-width makes the whole group wrap as one.
+   contain: inline-size keeps the hint text out of that min-content, so whether
+   it wraps depends on the window width only, never on the tuned frequency. */
+/* min-width ≈ hints' 140px + three 26px icon buttons (§ ▦ ⓘ) + 3 × 8px gaps
+   = 242px, rounded up: the contained hints don't count toward min-content, so
+   without it the group squeezed below its contents and spilled left over the
+   S-meter. */
+instrument-panel .readout-strip .band-info { display: flex; flex: 100 1 0; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: 8px; min-width: 250px; }
 instrument-panel .readout-strip .band-info detect-readout,
 instrument-panel .readout-strip .band-info .frequency-context-strip { display: contents; }
-instrument-panel .readout-strip .band-info .band-plan-hints { order: 1; flex: none; white-space: nowrap; overflow: visible; text-overflow: clip; font-size: 12px; }
-instrument-panel .readout-strip .band-info button.frequency-allocation { order: 2; flex: none; max-width: none; overflow: visible; text-overflow: clip; white-space: nowrap; border-radius: var(--radius-pill); }
+instrument-panel .readout-strip .band-info .band-plan-hints { order: 1; flex: 1 1 auto; min-width: 140px; max-width: 280px; contain: inline-size; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+/* § (order 2), ▦ (inside allocation-summary, order 3), ⓘ (order 4): same square icon buttons. */
+instrument-panel .readout-strip .band-info button.frequency-allocation { order: 2; flex: none; width: 26px; padding: 0; text-align: center; border-radius: var(--radius); }
+instrument-panel .readout-strip .band-info button.frequency-allocation--empty { opacity: .55; }
+instrument-panel .readout-strip .band-info .allocation-actions .seg-info-button { position: static; }
 instrument-panel .readout-strip .band-info allocation-summary { order: 3; display: inline-flex; align-items: center; }
 instrument-panel .readout-strip .band-info .allocation-summary--compact { margin: 0; }
-instrument-panel .readout-strip .band-info .seg-info-button { order: 4; position: static; min-height: 26px; min-width: 26px; border-color: var(--line); background: var(--panel-well); border-radius: var(--radius); }
+instrument-panel .readout-strip .band-info .seg-info-button { position: static; min-height: 26px; min-width: 26px; padding: 0; border-color: var(--line); background: var(--panel-well); color: var(--ink); border-radius: var(--radius); }
+instrument-panel .readout-strip .band-info button.seg-info-button[aria-pressed] { order: 4; }
 
 /* Row 3. */
 instrument-panel .settings-strip {
@@ -3211,7 +3214,6 @@ instrument-panel .settings-strip .step-profile { flex: none; overflow: visible; 
 instrument-panel .settings-strip .step-profile .value { white-space: nowrap; }
 instrument-panel .settings-strip select { min-height: 26px; height: 26px; padding: 0 4px; font-size: 12px; }
 instrument-panel .settings-strip .receiver-audio-line { flex: none; flex-wrap: wrap; }
-instrument-panel .settings-strip .receiver-dsp-levels-toggle { height: 26px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-well); color: var(--ink); }
 instrument-panel .settings-strip .receiver-operations {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0; border: 0;
 }
@@ -3219,9 +3221,6 @@ instrument-panel .settings-strip .strip-ops-button { min-height: 26px; padding: 
 instrument-panel .settings-strip .strip-ops-button[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
 instrument-panel .settings-strip .strip-recording { padding: 0; border: 0; background: none; }
 /* Band-scan / channel-scan disclosures sit below the strip in normal flow. */
-instrument-panel .receiver-band-scan { margin-top: 8px; justify-content: flex-start; }
-instrument-panel .receiver-band-scan-fields { position: static; width: auto; flex: 1 1 100%; padding: 0; border: 0; box-shadow: none; }
-instrument-panel .receiver-band-scan span { overflow: visible; text-overflow: clip; white-space: normal; }
 instrument-panel .channel-scanner-disclosure { margin-top: 8px; }
 instrument-panel .channel-scanner-disclosure[hidden] { display: none; }
 .inspector-header-allocation { margin: 7px 0; max-width: 100%; }
@@ -3334,30 +3333,11 @@ band-scan-inbox .band-scan-observation time { grid-column: 1 / -1; color: var(--
 
 .vehicle-track-summary button { display: block; margin-top: 7px; padding: 3px 8px; border-color: currentColor; color: inherit; background: transparent; font-size: 11px; }
 
-.receiver-band-scan {
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 7px;
-  min-width: 0; padding: 5px 8px; border: 1px solid color-mix(in srgb,var(--context-survey) 65%,var(--line));
-  border-left: 3px solid var(--context-survey); background: color-mix(in srgb,var(--context-survey) 8%,var(--panel));
-}
-.receiver-band-scan > div { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.receiver-band-scan strong { color: var(--context-survey); font: 700 11px var(--mono); letter-spacing: .09em; }
-.receiver-band-scan span { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.receiver-band-scan button { white-space: nowrap; border-color: var(--context-survey); color: var(--context-survey); }
 .channel-scanner-disclosure { min-width: 0; border: 1px solid var(--line); background: var(--panel); }
 .channel-scanner-disclosure > summary { cursor: pointer; padding: 5px 9px; color: var(--dim); font: 700 11px var(--mono); }
 .channel-scanner-disclosure > summary span { font-weight: 400; font-size: 10px; margin-left: 6px; }
 .channel-scanner-disclosure .panel-scanner-deck { margin-top: 4px; }
 
-.receiver-band-scan-quick { position: relative; min-width: 0; }
-.receiver-band-scan-quick > summary { cursor: pointer; color: var(--context-survey); font: 700 11px var(--mono); white-space: nowrap; }
-.receiver-band-scan-fields {
-  position: absolute; top: calc(100% + 10px); right: 0; z-index: 500;
-  display: flex; flex-wrap: wrap; gap: 8px; width: min(540px, 90vw); padding: 10px;
-  border: 1px solid var(--context-survey); background: var(--panel); box-shadow: 0 10px 28px #0008;
-}
-.receiver-band-scan-fields label { display: grid; gap: 3px; color: var(--dim); font-size: 10px; }
-.receiver-band-scan-fields input, .receiver-band-scan-fields select { width: 105px; min-height: 27px; font: 11px var(--mono); }
-.receiver-band-scan-fields select[aria-label="Quick band-scan duration"] { width: 125px; }
 .receiver-quick-peak { display: grid; gap: 3px; flex-basis: 100%; color: var(--dim); font: 10px var(--mono); }
 .receiver-quick-peak-controls { display: flex; align-items: center; gap: 3px; }
 .receiver-quick-peak-controls select { width: 145px; }
@@ -3366,8 +3346,6 @@ band-scan-inbox .band-scan-observation time { grid-column: 1 / -1; color: var(--
 .receiver-quick-dwell { display: flex; gap: 2px; align-items: center; }
 .receiver-quick-dwell input { width: 55px; text-align: center; }
 .receiver-quick-dwell button { min-width: 24px; padding: 3px; }
-.receiver-band-scan .receiver-band-scan-start:not(.run-stop) { color: var(--panel); border-color: var(--context-survey); background: var(--context-survey); }
-instrument-panel > #instrument-panel:has(.receiver-band-scan-quick[open]) { clip-path: none; z-index: 200; }
 
 /* Primary workspace selection is a bold outlined tab; Discover subviews are
    quiet underlined tabs so the two navigation levels read distinctly. */
@@ -3454,7 +3432,7 @@ catalog-view .catalog-source-filters .catalog-source-hint:has(button:focus-visib
 .allocation-modal-head h2 { margin: 0; font-size: 22px; letter-spacing: .02em; }
 .allocation-modal-head p { margin: 2px 0 0; }
 .allocation-modal-line { margin: 10px 0 14px; padding: 8px 10px; border-radius: 8px;
-  background: #efb34f14; color: #f4c976; overflow-wrap: anywhere; }
+  background: #efb34f14; color: #f4c976; overflow-wrap: anywhere; white-space: normal; /* .mono is nowrap */ }
 .allocation-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
 .allocation-column, .allocation-section { padding: 10px 12px; border: 1px solid #ffffff14; border-radius: 10px; margin-top: 10px; }
 .allocation-column { margin-top: 0; }
@@ -4139,3 +4117,27 @@ span.timeline-clear { color: var(--warn); font-size: 12px; display: inline-flex;
 .setup-ndb-toolbar input { width: 5em; }
 .setup-ndb-table { width: 100%; font-size: 0.85em; border-collapse: collapse; }
 .setup-ndb-table td { padding: 0.15em 0.4em; }
+
+/* Scanner setup modal: grouped sections, real tabs, labelled fields. */
+.scan-setup-section {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-top: 10px; padding: 10px;
+  border: 1px solid var(--line); background: var(--panel-well);
+}
+.scan-setup-section > .survey-group-label { margin: 0; }
+.scan-tabs { display: flex; gap: 4px; }
+.scan-fields { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.scan-field { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.scan-opt { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.scan-opt > input { margin-top: 3px; accent-color: var(--accent); }
+.scan-opt-title { display: block; color: var(--fg); }
+.scan-sub { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
+/* run controls sit apart from the settings groups above */
+.scan-run {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--line);
+}
+
+/* The PROFILE dropdown menu must not be clipped by the ellipsis container. */
+instrument-panel .receiver-antenna-line .step-profile:has(.profile-menu),
+instrument-panel .settings-strip .step-profile:has(.profile-menu) { overflow: visible; }

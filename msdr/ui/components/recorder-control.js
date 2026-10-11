@@ -29,10 +29,30 @@ function recordingName(path) {
   return parts[parts.length - 1] ?? path;
 }
 
+/** Capture-health metrics. Rendered by instrument-panel.js as a full-width
+ * panel below the operations row (not inside this component) so opening it
+ * never moves ARM/REC or Channel scan. */
+export function renderCaptureHealth(ch) {
+  return html`<section class="capture-health-panel" aria-label="Capture health, recorder detail">
+    <h4 class="capture-health-heading">Capture health · recorder detail</h4>
+    <dl class="capture-health-metrics">
+      <div><dt>IQ received</dt><dd>${((ch.iq_throughput_bps ?? 0) / 1e6).toFixed(2)} MB/s</dd></div>
+      <div><dt>Disk written</dt><dd>${((ch.disk_write_bps ?? 0) / 1e6).toFixed(2)} MB/s</dd></div>
+      <div class=${(ch.dropped_samples ?? 0) > 0 ? "warn" : ""}><dt>Dropped</dt><dd>${ch.dropped_samples ?? 0}</dd></div>
+      <div><dt>Backlog</dt><dd>${(ch.backlog_s ?? 0).toFixed(2)} s</dd></div>
+      <div><dt>Remaining</dt><dd>${ch.remaining_recording_s == null ? "—" : mmss(ch.remaining_recording_s)}</dd></div>
+      <span class="help-mark" tabindex="0" role="note" aria-label="About these figures"
+        title="Rates measure received and written IQ. Remaining time estimates available disk above the reserve and capture limit."
+        data-help="Rates measure received and written IQ. Remaining time estimates available disk above the reserve and capture limit.">?</span>
+    </dl>
+  </section>`;
+}
+
 export class RecorderControl extends LitElement {
   static properties = {
     status: { type: Object },
     disabled: { type: Boolean },
+    healthOpen: { type: Boolean },
   };
 
   createRenderRoot() {
@@ -185,18 +205,11 @@ export class RecorderControl extends LitElement {
         </div>
         ${s.recoverable_count ? html`<p role="status">${s.recoverable_count} interrupted recording(s).
           Open Recordings to repair the retained IQ segments.</p>` : ""}
-        ${s.capture_health ? html`<details class="capture-health"><summary>Capture health</summary>
-          <dl class="capture-health-metrics">
-            <div><dt>IQ received</dt><dd>${((s.capture_health.iq_throughput_bps ?? 0) / 1e6).toFixed(2)} MB/s</dd></div>
-            <div><dt>Disk written</dt><dd>${((s.capture_health.disk_write_bps ?? 0) / 1e6).toFixed(2)} MB/s</dd></div>
-            <div class=${(s.capture_health.dropped_samples ?? 0) > 0 ? "warn" : ""}><dt>Dropped</dt><dd>${s.capture_health.dropped_samples ?? 0}</dd></div>
-            <div><dt>Backlog</dt><dd>${(s.capture_health.backlog_s ?? 0).toFixed(2)} s</dd></div>
-            <div><dt>Remaining</dt><dd>${s.capture_health.remaining_recording_s == null ? "—" : mmss(s.capture_health.remaining_recording_s)}</dd></div>
-            <span class="help-mark" tabindex="0" role="note" aria-label="About these figures"
-              title="Rates measure received and written IQ. Remaining time estimates available disk above the reserve and capture limit."
-              data-help="Rates measure received and written IQ. Remaining time estimates available disk above the reserve and capture limit.">?</span>
-          </dl>
-        </details>` : ""}
+        ${s.capture_health ? html`<button type="button" class="capture-health-toggle"
+          aria-expanded=${this.healthOpen ? "true" : "false"}
+          title="Recorder capture health: rates, dropped samples, backlog"
+          @click=${() => this.dispatchEvent(new CustomEvent("capture-health-toggle", { bubbles: true, detail: { open: !this.healthOpen } }))}
+        >Capture health</button>` : ""}
         ${finalizing ? this._progressBar(s.finalize_progress) : ""}
       </div>
     `;

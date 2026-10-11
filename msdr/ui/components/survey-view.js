@@ -318,7 +318,7 @@ export class SurveyView extends LitElement {
     // S1 workspace-aware chrome: "listen" renders the compact toolbar (span,
     // PEAK/AVG, waterfall range, plain table); anything else (default
     // "discover") keeps the full toolbar exactly as before -- see render()/
-    // _renderHeader()/_visibleColumns(). The instance itself never changes
+    // _renderSource()/_visibleColumns(). The instance itself never changes
     // across a Listen<->Discover switch (app.js._inPrimarySlot), only this.
     mode: { type: String },
     status: { type: Object },
@@ -368,6 +368,7 @@ export class SurveyView extends LitElement {
     _hoverNearest: { state: true }, // this._nearestLabel(_hoverHz) result, for the hover card + highlight
     _selectedLabelId: { state: true }, // canvas-click table-row/badge highlight -- see _onCanvasClick/_selectLabel
     _replayPickerOpen: { state: true }, // "⏵ REPLAY…" inline picker row toggle
+    _displayOpen: { state: true }, // "Display ▾" popover (levels + zoom) open
     _replayPath: { state: true }, // picker's free-text path draft
     _replayLoop: { state: true }, // picker's loop checkbox draft
     _replayRecordings: { state: true }, // api.listRecordings() result, loaded lazily when the picker opens
@@ -513,6 +514,7 @@ export class SurveyView extends LitElement {
     this._pendingHoverCanvas = null;
     this._selectedLabelId = null;
     this._replayPickerOpen = false;
+    this._displayOpen = false;
     this._replayPath = "";
     this._replayLoop = true;
     this._replayRecordings = null;
@@ -540,6 +542,16 @@ export class SurveyView extends LitElement {
       if (ev.key === "Escape" && this._selectedLabelId != null) this._selectLabel(null);
     };
     document.addEventListener("keydown", this._onKeyDown);
+    // Display popover: outside click / Escape close it (same pattern as the
+    // receiver DSP chip popovers in instrument-panel.js).
+    this._onDisplayDocClick = (ev) => {
+      if (!ev.composedPath().some((n) => n?.classList?.contains?.("survey-display-wrap"))) this._setDisplayOpen(false);
+    };
+    this._onDisplayKey = (ev) => {
+      if (ev.key !== "Escape") return;
+      this._setDisplayOpen(false);
+      this.querySelector(".survey-display-toggle")?.focus();
+    };
     this._refreshBandScan();
     this._bandScanTimer = setInterval(() => this._refreshBandScan(), 1500);
     this._activityTimer = setInterval(() => { this.requestUpdate(); this._scheduleDraw(); }, 1000);
@@ -549,9 +561,21 @@ export class SurveyView extends LitElement {
     super.disconnectedCallback();
     this._resizeObserver?.disconnect();
     document.removeEventListener("keydown", this._onKeyDown);
+    this._setDisplayOpen(false);
     clearInterval(this._bandScanTimer);
     clearInterval(this._activityTimer);
     this._stopBandScanDwellHold();
+  }
+
+  /** Open/close the Display popover; document listeners only live while it is open. */
+  _setDisplayOpen(open) {
+    this._displayOpen = open;
+    document.removeEventListener("click", this._onDisplayDocClick);
+    document.removeEventListener("keydown", this._onDisplayKey);
+    if (open) {
+      document.addEventListener("click", this._onDisplayDocClick);
+      document.addEventListener("keydown", this._onDisplayKey);
+    }
   }
 
   async _refreshBandScan() {
@@ -2469,22 +2493,6 @@ msdr-rfml download-detector</pre>
     saveOptionsOpen(this._optionsOpen);
   }
 
-  /** S1 review finding P2: a started task preset (presets.js's `visible:
-   * {more, tech}`) mirrors app.js's _onPresetStart into this already-mounted
-   * instance, same as a manual OPTIONS/TECH click -- `more` maps to the
-   * OPTIONS disclosure (this component's own MORE-equivalent), `tech` to the
-   * table's TECH toggle. Never touches acquisition, span or dimensions. */
-  applyPresetVisible(visible) {
-    if (typeof visible?.more === "boolean") {
-      this._optionsOpen = visible.more;
-      saveOptionsOpen(this._optionsOpen);
-    }
-    if (typeof visible?.tech === "boolean") {
-      this._techOn = visible.tech;
-      saveTechOn(this._techOn);
-    }
-  }
-
   /** Collapsed-by-default OPTIONS row (IDENTIFY/STATUS/DISPLAY moved behind
    * it, see render()): a disclosure button plus, while collapsed, a
    * one-line summary of what's enabled so the operator doesn't have to
@@ -3630,7 +3638,6 @@ msdr-rfml download-detector</pre>
    * (S6 restyle): min/max drive both the waterfall palette mapping and the
    * spectrum pane's y-axis, and persist to localStorage across sessions. */
   _renderSpectrumControls() {
-    const btnStyle = (on) => `font-size:inherit${on ? ";background:var(--accent);color:#0b1220;border-color:var(--accent)" : ""}`;
     const span = this.status?.span;
     const sampleRateHz = this._dirty && this._sampleRateHz != null
       ? this._sampleRateHz
@@ -3643,7 +3650,10 @@ msdr-rfml download-detector</pre>
     const peakPresets = [[0, "0 · Minimum"], [6, "6 · Sensitive"], [10, "10 · Default"],
       [14, "14 · Balanced"], [20, "20 · Strong"], [30, "30 · Very strong"], [60, "60 · Maximum"]];
     return html`
-      <div class="control-row spectrum-toolbar" style="gap:4px;flex-wrap:wrap;align-items:center;justify-content:flex-end;font-size:0.85em">
+      <div class="control-row spectrum-toolbar">
+        <div class="survey-row survey-row-sweep">
+          <span class="survey-row-label">Sweep</span>
+          <div class="survey-row-body">
         <div class="survey-band-step" role="group" aria-label="Shift survey span">
           <button aria-label="Step survey left by half the sampled span"
             title=${`Move survey center left by ${halfSpanMHz} MHz (50% overlap)`}
@@ -3666,9 +3676,27 @@ msdr-rfml download-detector</pre>
             @click=${() => this._stepSpan(1)}>→</button>
           <span class="survey-step-size" title="Each ← / → moves the survey centre by half the sampled span (50% overlap)">step ${halfSpanMHz} MHz</span>
         </div>
+${!this.status?.replay ? this._renderPresetControls() : ""}
+          ${!this.status?.replay ? html`<label class="survey-sampling-control">
+            <span>Rate</span>
+            <select aria-label="Survey sample rate / width"
+              ?disabled=${!this.connected || !!this.status?.replay}
+              @change=${(e) => { this._sampleRateHz = Number(e.target.value); this._dirty = true; this._applySpan(); }}>
+              ${(this.status?.sample_rates_hz ?? []).map((hz) => html`<option value=${hz}
+                ?selected=${hz === (this._sampleRateHz ?? this.status?.span?.sample_rate_hz)}>
+                ${(hz / 1_000_000).toFixed(1)} MS/s
+              </option>`)}
+            </select>
+          </label>` : ""}
+${!this.status?.replay ? this._renderKeepVfo() : ""}
+          </div>
+        </div>
+        <div class="survey-row survey-row-detect">
+          <span class="survey-row-label">Detect</span>
+          <div class="survey-row-body">
         <div class="survey-peak-threshold" role="group" aria-label="DSP peak sensitivity"
           title="Threshold above the measured noise floor, 0–60 dB. Higher values show fewer peaks. Survey history stays in the table.">
-          <span>DSP PEAK</span>
+          <span class="survey-peak-label">Peak ≥</span>
           <button aria-label="Decrease DSP peak threshold" ?disabled=${!this.wfSettings || this.peakBusy || peakDb <= 0}
             @click=${() => this._setPeakThreshold(peakDb - 1)}>−</button>
           <select aria-label="DSP peak threshold, dB over noise floor" ?disabled=${!this.wfSettings || this.peakBusy}
@@ -3684,31 +3712,42 @@ msdr-rfml download-detector</pre>
             @click=${() => this._setPeakThreshold(peakDb + 1)}>+</button>
           <span>${this.peakBusy ? "Saving…" : "dB"}</span>
         </div>
-        <div class="survey-toolbar-group survey-level-controls" role="group" aria-label="Spectrum levels">
-          ${this._renderDbRangeControls()}
+        <div class="survey-trace-controls" role="group" aria-label="Spectrum trace controls">
+          <span class="survey-group-label">Trace</span>
+          <span class="survey-seg">
+            <button aria-pressed=${this._peakHold} title="Peak hold: keep the highest level seen in each bin" @click=${() => this._togglePeak()}>Peak</button>
+            <button aria-pressed=${this._avgSmooth} title="Average: smooth the trace over successive frames" @click=${() => this._toggleAvg()}>Avg</button>
+          </span>
+          <button
+            class="survey-snap"
+            title="Snap clicks to the nearest detected signal (Alt/Option-click bypasses, Shift-click opens details)"
+            aria-pressed=${this._snapOn}
+            @click=${() => this._toggleSnap()}
+          >Snap</button>
         </div>
-        <div class="survey-toolbar-group" role="group" aria-label="Spectrum trace controls">
-        <button
-          title="Snap clicks to the nearest detected signal (Alt/Option-click bypasses, Shift-click opens details)"
-          aria-pressed=${this._snapOn}
-          style=${btnStyle(this._snapOn)}
-          @click=${() => this._toggleSnap()}
-        >
-          SNAP
-        </button>
-        <button aria-pressed=${this._peakHold} style=${btnStyle(this._peakHold)} @click=${() => this._togglePeak()}>PEAK</button>
-        <button aria-pressed=${this._avgSmooth} style=${btnStyle(this._avgSmooth)} @click=${() => this._toggleAvg()}>AVG</button>
-        </div>
-        <div class="survey-toolbar-group" role="group" aria-label="Spectrum zoom">
-        <span class="survey-group-label">Zoom</span>
-        <button aria-label="Zoom spectrum out" @click=${() => this._setZoom(this._zoom / 2)}>−</button>
-        <span class="mono">${Number(this._zoom.toFixed(2))}×</span>
-        <button aria-label="Zoom spectrum in" @click=${() => this._setZoom(this._zoom * 2)}>+</button>
-        <button @click=${() => { this._pan = 0.5; this._setZoom(1); }}>Full span</button>
-        ${this._zoom > 1 ? html`<label class="dim mono">PAN
-          <input aria-label="Pan spectrum" type="range" min=${0.5 / this._zoom} max=${1 - 0.5 / this._zoom} step="0.001"
-            .value=${String(this._pan)} @input=${(e) => { this._pan = Number(e.target.value); this._scheduleDraw(); }} />
-        </label>` : ""}
+        <span class="survey-display-wrap">
+          <button type="button" class="survey-display-toggle"
+            aria-expanded=${this._displayOpen} aria-haspopup="dialog"
+            title="Display: spectrum/waterfall levels and zoom"
+            @click=${() => this._setDisplayOpen(!this._displayOpen)}>Display ▾</button>
+          ${this._displayOpen ? html`<div class="survey-display-popover" role="dialog" aria-label="Display settings">
+            <div class="survey-toolbar-group survey-level-controls" role="group" aria-label="Spectrum levels">
+              ${this._renderDbRangeControls()}
+            </div>
+            <div class="survey-toolbar-group" role="group" aria-label="Spectrum zoom">
+              <span class="survey-group-label">Zoom</span>
+              <button aria-label="Zoom spectrum out" @click=${() => this._setZoom(this._zoom / 2)}>−</button>
+              <span class="mono">${Number(this._zoom.toFixed(2))}×</span>
+              <button aria-label="Zoom spectrum in" @click=${() => this._setZoom(this._zoom * 2)}>+</button>
+              <button @click=${() => { this._pan = 0.5; this._setZoom(1); }}>Full span</button>
+              ${this._zoom > 1 ? html`<label class="dim mono">PAN
+                <input aria-label="Pan spectrum" type="range" min=${0.5 / this._zoom} max=${1 - 0.5 / this._zoom} step="0.001"
+                  .value=${String(this._pan)} @input=${(e) => { this._pan = Number(e.target.value); this._scheduleDraw(); }} />
+              </label>` : ""}
+            </div>
+          </div>` : ""}
+        </span>
+          </div>
         </div>
       </div>
     `;
@@ -3834,36 +3873,45 @@ msdr-rfml download-detector</pre>
     `;
   }
 
-  _renderHeader() {
+  /** Row 1 "Source" control: Live (default) vs a replayed recording. The
+   * REPLAY… button opens the file picker; while replaying, the transport
+   * (play/seek/loop/stop) takes its place. */
+  _renderSource() {
     const status = this.status ?? {};
     if (status.replay) return this._renderReplayTransport(status.replay);
-    const presets = status.presets ?? [];
     return html`
-      <div class="control-row survey-span-row">
-        <select aria-label="Survey span preset" @change=${(e) => this._applyPreset(e.target.value)}>
-          <option value="">Preset…</option>
-          ${presets.map((p) => html`<option value=${p.name}>${p.name}</option>`)}
-        </select>
-        <label class="dim mono" style="display:flex;align-items:center;gap:4px;font-size:0.85em">
-          <input type="checkbox" .checked=${this._keepVfo} @change=${(e) => (this._keepVfo = e.target.checked)} />
-          keep VFO
-        </label>
+      <div class="survey-source" role="group" aria-label="Survey source">
+        <span class="survey-source-live" title="Surveying the live SDRconnect stream">Live</span>
         ${this.mode === "listen"
           ? ""
-          : html`
-              <span class="survey-divider" aria-hidden="true"></span>
-              <button
-                style="font-size:0.85em"
-                aria-pressed=${this._replayPickerOpen}
-                title="Survey a recorded SigMF file instead of the live SDRconnect stream"
-                @click=${() => this._toggleReplayPicker()}
-              >
-                ⏵ REPLAY…
-              </button>
-            `}
+          : html`<button
+              class="survey-replay-button"
+              aria-pressed=${this._replayPickerOpen}
+              title="Survey a recorded SigMF file instead of the live SDRconnect stream"
+              @click=${() => this._toggleReplayPicker()}
+            >⏵ REPLAY…</button>`}
       </div>
-      ${this.mode !== "listen" && this._replayPickerOpen ? this._renderReplayPicker() : ""}
     `;
+  }
+
+  /** Row 2 span preset (hidden while replaying a file). */
+  _renderPresetControls() {
+    const presets = this.status?.presets ?? [];
+    return html`
+      <select aria-label="Survey span preset" @change=${(e) => this._applyPreset(e.target.value)}>
+        <option value="">Preset…</option>
+        ${presets.map((p) => html`<option value=${p.name}>${p.name}</option>`)}
+      </select>
+    `;
+  }
+
+  /** Row 2 keep-VFO: leave the receiver's VFO alone when the span changes. */
+  _renderKeepVfo() {
+    return html`<label class="dim mono survey-keep-vfo"
+      title="When the sweep centre or rate changes, put the tuned VFO back where it was if it is still inside the new span">
+      <input type="checkbox" .checked=${this._keepVfo} @change=${(e) => (this._keepVfo = e.target.checked)} />
+      keep VFO
+    </label>`;
   }
 
   _toggleReplayPicker() {
@@ -4018,23 +4066,13 @@ msdr-rfml download-detector</pre>
           >
             ⟲ CLEAR
           </button>
-          <div class="survey-tune">${this._renderHeader()}</div>
+          <div class="survey-tune"><span class="survey-group-label">Source</span>${this._renderSource()}</div>
           <span class="spacer"></span>
-          ${!status.replay ? html`<label class="survey-sampling-control">
-            <span>Sampling</span>
-            <select aria-label="Survey sample rate / width"
-              ?disabled=${!this.connected || !!status.replay}
-              @change=${(e) => { this._sampleRateHz = Number(e.target.value); this._dirty = true; this._applySpan(); }}>
-              ${(status.sample_rates_hz ?? []).map((hz) => html`<option value=${hz}
-                ?selected=${hz === (this._sampleRateHz ?? status.span?.sample_rate_hz)}>
-                ${(hz / 1_000_000).toFixed(1)} MS/s
-              </option>`)}
-            </select>
-          </label>` : ""}
           <span class="dim mono" style="font-size:0.85em" title="spectrum frames per second from SDRconnect">
             ${fps != null ? `${fps.toFixed(1)} fps` : "-- fps"}
           </span>
         </div>
+        ${this.mode !== "listen" && !status.replay && this._replayPickerOpen ? this._renderReplayPicker() : ""}
         ${this.failure
           ? html`<failure-note
               .failure=${this.failure}

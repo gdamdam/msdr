@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/gdamdam/msdr/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/gdamdam/msdr/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="version" src="https://img.shields.io/badge/version-1.0.0--rc.1-blue">
+  <img alt="version" src="https://img.shields.io/badge/version-1.0.0--rc.2-blue">
   <a href="LICENSE"><img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-green"></a>
 </p>
 
@@ -34,7 +34,7 @@ Tested on macOS with SDRconnect 1.0.10 and an RSPdx-R2.
    ```
 
 3. Open [127.0.0.1:8765](http://127.0.0.1:8765) and press **Play** in SDRconnect.
-4. Follow the **Getting Started** checklist at the top of the page. Press **S** to save the current receiver state, or **Cmd/Ctrl-K** to search and tune.
+4. Follow the **Getting Started** checklist at the top of the page. Press **S** to save the current receiver state. **Cmd/Ctrl-K** tunes by typed frequency (e.g. `145.800` or `1090M`); search results appear once you have saved signals or imported catalogs.
 
 `msdr --no-browser` runs it headless. Your library stays browsable and editable while SDRconnect is closed.
 

@@ -423,15 +423,14 @@ def test_spectrum_levels_are_before_snap_and_validation_is_secondary(live_app, p
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(live_app.base_url)
     toolbar = page.locator(".spectrum-toolbar")
+    # Levels now live in the Display popover, which follows the Snap/trace
+    # controls in the Detect row; open it to reach the min/max sliders.
+    toolbar.get_by_role("button", name="Display ▾").click()
     assert toolbar.locator("input[type=range]").count() >= 2
-    # Control groups wrap onto their own rows at narrower widths (see
-    # survey-layout.css's wrapping `.spectrum-toolbar`), so visual left
-    # position no longer tracks priority once groups land on different
-    # rows; document order still does.
     assert toolbar.evaluate("""el => {
       const min = el.querySelector('input[type=range]');
-      const snap = [...el.querySelectorAll('button')].find(b => b.textContent.trim() === 'SNAP');
-      return !!(min.compareDocumentPosition(snap) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const snap = [...el.querySelectorAll('button')].find(b => b.textContent.trim() === 'Snap');
+      return !!(snap.compareDocumentPosition(min) & Node.DOCUMENT_POSITION_FOLLOWING);
     }""")
     validation = page.locator(".survey-validation")
     expect(validation.locator("summary")).to_contain_text("IQ validation sample")

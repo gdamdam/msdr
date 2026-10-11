@@ -391,3 +391,68 @@ survey-view .spectrum-toolbar .survey-peak-threshold select { width: 136px; min-
 survey-view .spectrum-toolbar input[type="range"] { width: 80px; margin: 0; }
 survey-view .spectrum-toolbar .survey-level-controls label { gap: 4px; white-space: nowrap; }
 survey-view .spectrum-toolbar .survey-group-label { font-size: 10px; }
+
+/* Survey toolbar as one panel with three labelled rows (run · sweep ·
+   detect) separated by light rules. Appended last so it replaces the older
+   per-group boxes above; control heights share one variable. */
+survey-view { --survey-ctl-h: 28px; --survey-label-w: 64px; }
+survey-view .survey-topbar {
+  gap: 8px; padding: 6px 0; background: none;
+  border-bottom: 1px solid var(--line);
+}
+survey-view .survey-topbar h2 { flex: 0 0 var(--survey-label-w); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; }
+survey-view .survey-topbar > .spacer { display: block; flex: 1 1 0; height: 0; }
+survey-view .survey-topbar .survey-tune { flex: 0 1 auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; padding: 0 0 0 10px; border-left: 1px solid var(--line); }
+survey-view .survey-topbar button,
+survey-view .survey-topbar select { min-height: var(--survey-ctl-h); padding: 2px 8px; font-size: 11px; }
+survey-view .survey-group-label,
+survey-view .survey-row-label { color: var(--dim); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
+survey-view .survey-source { display: inline-flex; align-items: center; gap: 6px; }
+survey-view .survey-source-live { font: 700 11px var(--mono); color: var(--accent); }
+survey-view .survey-replay-button { white-space: nowrap; }
+survey-view .survey-topbar .survey-tune > .control-row { align-items: center; }
+
+survey-view .survey-toolbar-scroll .spectrum-toolbar {
+  flex-direction: column; flex-wrap: nowrap !important; align-items: stretch;
+  gap: 0 !important; margin: 0; padding: 0;
+}
+survey-view .survey-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+survey-view .survey-row-label { flex: 0 0 var(--survey-label-w); padding-top: 8px; }
+survey-view .survey-row-body { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+survey-view .survey-row .survey-band-step,
+survey-view .survey-row .survey-peak-threshold {
+  min-height: 0; padding: 0; border: 0; background: none; border-radius: 0; gap: 4px;
+}
+survey-view .survey-row .survey-band-step { display: inline-flex; flex-wrap: nowrap; }
+survey-view .survey-row button,
+survey-view .survey-row select,
+survey-view .survey-row .survey-band-step-center {
+  min-height: var(--survey-ctl-h); box-sizing: border-box; font-size: 11px;
+}
+survey-view .survey-row .survey-band-step button,
+survey-view .survey-row .survey-peak-threshold button { padding: 2px 8px; font: 700 12px var(--mono); }
+survey-view .survey-row .survey-band-step-center { padding: 0 6px; border: 1px solid var(--line); background: var(--panel-well); }
+survey-view .survey-row .survey-peak-threshold { color: var(--ink); font-size: 11px; }
+survey-view .survey-row .survey-peak-threshold select { width: 136px; }
+survey-view .survey-row .survey-sampling-control { margin: 0; padding: 0; border: 0; }
+survey-view .survey-row .survey-keep-vfo { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; white-space: nowrap; }
+survey-view .survey-row input[type="checkbox"] { width: auto; min-height: 0; margin: 0; }
+
+survey-view .survey-trace-controls { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+survey-view .survey-seg { display: inline-flex; }
+survey-view .survey-seg button { border-radius: 0; margin-left: -1px; padding: 2px 10px; }
+survey-view .survey-seg button:first-child { margin-left: 0; border-radius: var(--radius) 0 0 var(--radius); }
+survey-view .survey-seg button:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+survey-view .survey-trace-controls button[aria-pressed="true"] { background: var(--accent); color: #0b1220; border-color: var(--accent); position: relative; }
+
+survey-view .survey-display-wrap { position: relative; display: inline-block; }
+survey-view .survey-display-toggle[aria-expanded="true"] { outline: 1px solid var(--accent); outline-offset: 1px; }
+survey-view .survey-display-popover {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  width: max-content; max-width: min(440px, 90vw); box-sizing: border-box;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel, #1c1f26); box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
+}
+survey-view .survey-display-popover .survey-toolbar-group { border: 0; padding: 0; flex-wrap: wrap; min-height: 0; }
+survey-view .survey-display-popover .survey-level-controls > span[aria-hidden="true"] { display: none; }

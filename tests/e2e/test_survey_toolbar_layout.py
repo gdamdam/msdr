@@ -24,6 +24,11 @@ def test_survey_controls_wrap_with_all_actions_visible(live_app, page, width):
     }""", width)
     view=page.locator('survey-view')
     toolbar=view.locator('.survey-toolbar-scroll')
+    # Zoom and levels live in the Display popover.
+    display = view.get_by_role('button', name='Display ▾')
+    expect(display).to_have_attribute('aria-expanded', 'false')
+    display.click()
+    expect(display).to_have_attribute('aria-expanded', 'true')
     expect(view.get_by_role('button', name='Zoom spectrum in', exact=True)).to_be_visible()
     for label in ['Survey sample rate / width', 'Survey span preset',
                   'DSP peak threshold, dB over noise floor', 'Survey center frequency (MHz)']:
@@ -43,5 +48,7 @@ def test_survey_controls_wrap_with_all_actions_visible(live_app, page, width):
     }""")
     assert overflow == []
     expect(toolbar.get_by_role('group', name='Spectrum levels')).to_be_visible()
+    page.keyboard.press('Escape')
+    expect(display).to_have_attribute('aria-expanded', 'false')
     if width == 1024:
         toolbar.screenshot(path='/tmp/msdr-survey-toolbar.png')

@@ -44,11 +44,10 @@ def test_default_listen_workbench_and_inspector_order(
         re.compile("Looking up")
     )
     expect(
-        panel.locator(".frequency-context-strip allocation-summary .allocation-toggle")
+        panel.locator(".frequency-context-strip allocation-summary .allocation-open-chart")
     ).to_be_visible()
     expect(panel.locator("s-meter .smeter")).to_be_visible()
     expect(panel.locator("#recorder-arm-button")).to_be_visible()
-    expect(panel.get_by_role("button", name=re.compile(r"Band scan ·"))).to_be_visible()
     page.wait_for_timeout(300)
 
     strip = _rect(page, "instrument-panel")
@@ -105,10 +104,9 @@ def test_recorder_status_and_buttons_share_one_receiver_group(live_app, page: Pa
     expect(panel.locator(".strip-row1 .record-chip")).to_have_count(0)
 
 
-def test_band_scan_is_primary_and_channel_scanner_compact(live_app, page: Page):
+def test_channel_scanner_disclosure_is_compact(live_app, page: Page):
     page.goto(live_app.base_url)
     panel = page.locator("instrument-panel")
-    expect(panel.get_by_role("button", name=re.compile(r"Band scan ·"))).to_be_visible()
     disclosure = panel.locator(".channel-scanner-disclosure")
     expect(disclosure).to_be_visible()
     features = page.request.get(f"{live_app.base_url}/api/settings").json()["features"]
@@ -116,19 +114,14 @@ def test_band_scan_is_primary_and_channel_scanner_compact(live_app, page: Page):
     expect(disclosure.locator("scanner-deck")).to_be_hidden()
     panel.get_by_role("button", name=re.compile(r"^Channel scan")).click()
     expect(disclosure.locator("scanner-deck")).to_be_visible()
-    panel.get_by_role("button", name=re.compile(r"Band scan ·")).click()
-    expect(page.locator(".workspace-tab", has_text="DISCOVER")).to_have_attribute(
-        "aria-selected", "true"
-    )
-    expect(page.locator("survey-view details.survey-band-scan")).to_have_attribute("open", "")
 
 
-def test_receiver_quick_band_scan_settings_start_and_focus(live_app, page: Page):
+def test_discover_band_scan_settings_start_and_focus(live_app, page: Page):
     page.goto(live_app.base_url)
     page.wait_for_function("() => document.querySelector('msdr-app')?.state?.can_control")
-    panel = page.locator("instrument-panel")
-    panel.get_by_role("button", name=re.compile(r"Band scan ·")).click()
+    page.locator(".workspace-tab", has_text="DISCOVER").click()
     quick = page.locator("survey-view details.survey-band-scan")
+    quick.locator("summary").click()
     quick.get_by_label("Start MHz").fill("145.000")
     quick.get_by_label("End MHz").fill("146.000")
     # Simulate SDRconnect changing span after the forms have already mounted.

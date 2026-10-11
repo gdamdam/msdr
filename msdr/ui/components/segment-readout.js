@@ -226,8 +226,7 @@ export class SegmentReadout extends LitElement {
           <span class="seg-unit label">${this.unit}</span>
         </span>
         ${this._fineButtons()}
-        ${this.editControl ?? (this.editable ? html`<button type="button" aria-label="Enter frequency"
-          title="Type a frequency (F)" @click=${() => this.startEdit()}>✎</button>` : "")}
+        ${this.editControl ?? ""}
       </div>
     `;
   }

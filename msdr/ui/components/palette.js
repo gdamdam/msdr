@@ -14,6 +14,36 @@ const GROUP_LABEL = {
 };
 const GROUP_ORDER = ["tune_frequency", "signal", "catalog", "profile", "action"];
 
+// Mirrors msdr/library/search.py ACTIONS. The server returns nothing for an
+// empty query, so the initial state lists them client-side (same ids, which
+// _execute dispatches).
+const EMPTY_ACTIONS = [
+  ["back", "Back"],
+  ["forward", "Forward"],
+  ["capture", "Save current frequency"],
+  ["export", "Export library"],
+  ["layout-listening", "layout: listening"],
+  ["layout-library", "layout: library"],
+  ["layout-satellites", "layout: satellites"],
+  ["layout-default", "layout: default"],
+  ["scan-stop", "scan: stop"],
+  ["scan-pause", "scan: pause"],
+  ["scan-resume", "scan: resume"],
+  ["show-getting-started", "getting started"],
+];
+
+const EMPTY_HINTS = [
+  "Type a frequency (e.g. 145.800 or 1090M) to tune",
+  "Search saved signals, catalog stations and profiles",
+  "Or pick an action below",
+];
+
+/** Initial (empty-query) rows: recent signals followed by every action. */
+export function emptyStateResults(signalResults) {
+  const actions = EMPTY_ACTIONS.map(([id, title]) => ({ kind: "action", id, title, subtitle: "" }));
+  return [...signalResults, ...actions];
+}
+
 /** A catalog palette result only carries {title, subtitle, frequency_hz, id}
  * per the contract; window fields are optional extras -- the LED only lights
  * up (on-air or not) when they're actually present. */
@@ -83,7 +113,7 @@ export class Palette extends LitElement {
     try {
       const signals = await recent();
       if (!this.open || requestId !== this._requestId) return;
-      this._results = signals.map((s) => ({
+      this._results = emptyStateResults(signals.map((s) => ({
         kind: "signal",
         id: s.id,
         title: s.name,
@@ -91,7 +121,7 @@ export class Palette extends LitElement {
         frequency_hz: s.frequency_hz,
         color: s.color ?? null,
         tag_ids: s.tag_ids ?? [],
-      }));
+      })));
     } catch (err) {
       if (this.open && requestId === this._requestId) {
         this.dispatchEvent(new CustomEvent("api-error", { detail: { message: err.message } }));
@@ -218,6 +248,11 @@ export class Palette extends LitElement {
             .value=${this._query}
             @input=${this._onInput}
           />
+          ${!this._query
+            ? html`<div class="dim" style="font-size:0.9em">
+                ${EMPTY_HINTS.map((h) => html`<div>${h}</div>`)}
+              </div>`
+            : ""}
           <div class="list" style="max-height:60vh">
             ${GROUP_ORDER.map((kind) => {
               const rows = this._results.filter((r) => r.kind === kind);

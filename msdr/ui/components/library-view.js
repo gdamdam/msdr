@@ -2,6 +2,7 @@ import { LitElement, html } from "../vendor/lit.js";
 import { mhz, bw, relativeOrDate } from "../format.js";
 import { antennaDisplay } from "../antenna.js";
 import * as api from "../api.js";
+import "./profile-list.js";
 import "./led-dot.js";
 import "./tag-chips.js";
 import "./failure-note.js";
@@ -62,6 +63,7 @@ export class LibraryView extends LitElement {
     tags: { type: Array },
     tagsById: { type: Object },
     failure: { type: Object },
+    profiles: { type: Array },
     refreshAt: { type: Number }, // bumped by app.js after a ws "inbox" push or a global undo
     _query: { state: true },
     _status: { state: true },
@@ -103,6 +105,7 @@ export class LibraryView extends LitElement {
     this.tagsById = {};
     this.failure = null;
     this.refreshAt = null;
+    this.profiles = [];
     this._query = "";
     this._status = "";
     this._tag = "";
@@ -735,7 +738,18 @@ export class LibraryView extends LitElement {
           ? html`<failure-note .failure=${this.failure} @dismiss=${() => this.dispatchEvent(new CustomEvent("dismiss-failure"))}></failure-note>`
           : ""}
         ${this._duplicatesOpen ? this._duplicatesPanel() : this._libraryBody()}
+        ${this._duplicatesOpen ? "" : this._profilesSection()}
       </div>
+    `;
+  }
+
+  _profilesSection() {
+    return html`
+      <h3 id="profiles-section" tabindex="-1" style="margin:16px 0 6px">Profiles</h3>
+      <profile-list
+        .profiles=${this.profiles}
+        emptyText="No profiles yet — ⋯ → New profile saves the receiver's antenna, LNA and audio settings."
+      ></profile-list>
     `;
   }
 

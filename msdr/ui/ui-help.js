@@ -22,16 +22,12 @@ const LISTEN = {
 
 const HELP = [
   ["#favorite-current-button", "Mark the tuned frequency as a favorite. It is saved first if needed."],
-  [".receiver-band-scan-start", "Start scanning the configured range, then jump to the live survey."],
-  [".receiver-band-scan-quick > summary", "Set range, span, listening time, and overlap without leaving the receiver."],
-  [".receiver-band-scan-fields label", "Quick band-scan setting. Changes also appear in Discover."],
-  [".receiver-band-scan > button:last-child", "Open the full Band scan controls in Discover."],
   [".channel-scanner-disclosure > summary", "Open the optional VFO and saved-channel scanner controls."],
   [".panel-scanner-deck", "Sweep a channel list or VFO range and pause when a signal meets your threshold."],
   [".receiver-operations .strip-recording", "Arm and record receiver IQ, then open recordings for review."],
-  [".receiver-operations .strip-tools", "Receiver setup, diagnostics, layout, and task presets."],
+  [".receiver-operations .strip-tools", "Receiver setup, diagnostics, and layout."],
   [".receiver-context-line", "Saved-channel matches and independent catalog context for this tuned frequency."],
-  [".frequency-edit-pill", "Frequency-band reference. Select it to enter a different receiver frequency."],
+  [".frequency-edit-pill", "Band allocation (regulatory table) for the tuned frequency. Select it for details. To type a frequency, double-click the digits or press F."],
   [".receiver-signal-level", "Current power and signal-to-noise estimate from the receiver."],
   [".receiver-demodulation", "Choose the demodulation mode and filter width for the tuned channel."],
   [".step-row", "Tune one frequency step at a time. Shift multiplies the step; Alt makes it finer."],

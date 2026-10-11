@@ -42,13 +42,13 @@ def test_listen_mode_hides_options_toggle_and_replay_picker():
     render_body = src[render_start:]
     assert 'const listening = this.mode === "listen";' in render_body
     assert "${this._renderSpectrumControls()}" in render_body, (
-        "listen mode must still render PEAK/AVG/waterfall-range controls (_renderSpectrumControls)"
+        "listen mode must still render Peak/Avg/waterfall-range controls (_renderSpectrumControls)"
     )
     assert '${!listening ? html`<div class="survey-controls">' in render_body and '"survey-group-label">Options</span>' in render_body, (
         "OPTIONS must only render on the non-listening branch"
     )
     # The ⏵ REPLAY… picker button/inline form must be conditioned on mode too.
-    header_start = src.index("_renderHeader() {")
+    header_start = src.index("_renderSource() {")
     header_body = src[header_start : header_start + 3000]
     assert 'this.mode === "listen"' in header_body
     assert "⏵ REPLAY…" in header_body

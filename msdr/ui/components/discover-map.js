@@ -413,7 +413,7 @@ export class DiscoverMap extends LitElement {
     if (!this._map) {
       const loc = this.location;
       const valid = Number.isFinite(loc?.lat) && Number.isFinite(loc?.lon) && Math.abs(loc.lat) <= 90 && Math.abs(loc.lon) <= 180;
-      this._map = L.map(canvas, { scrollWheelZoom: false }).setView(valid ? [loc.lat, loc.lon] : [25, 0], valid ? 6 : 2);
+      this._map = L.map(canvas, { scrollWheelZoom: true }).setView(valid ? [loc.lat, loc.lon] : [25, 0], valid ? 6 : 2);
       this._map.on("move zoom resize", () => this._scheduleHoverPosition());
       this._mapResizeObserver = new ResizeObserver(() => {
         cancelAnimationFrame(this._mapResizeFrame);
@@ -686,7 +686,10 @@ export class DiscoverMap extends LitElement {
           <button @click=${() => this._fit()}>Fit positions</button>
           <label><input type="checkbox" .checked=${this._tiles} @change=${e => this._tiles = e.target.checked}>Online basemap</label>` : ""}
       </div>
-      <p class="dim geo-summary">${mapped.length} positioned / ${rows.length} rows · retained ADS-B/AIS decoder history plus saved stations and located HF catalog entries. Faded markers are over 15 minutes old or have unknown position age.</p>
+      <p class="dim geo-summary">${mapped.length} positioned / ${rows.length} rows
+        <span class="help-mark" tabindex="0" role="note" aria-label="What this shows"
+          title="Retained ADS-B/AIS decoder history plus saved stations and located HF catalog entries. Faded markers are over 15 minutes old or have unknown position age."
+          data-help="Retained ADS-B/AIS decoder history plus saved stations and located HF catalog entries. Faded markers are over 15 minutes old or have unknown position age.">?</span></p>
       ${this._error ? html`<p role="status">${this._error}</p>` : ""}
       <div class="discover-map-frame" ?hidden=${this.view !== "map"}>
         <div class="discover-map-canvas" aria-label="Reception positions"></div>

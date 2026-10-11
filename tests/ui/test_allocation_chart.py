@@ -125,6 +125,11 @@ pl = mod.popoverPlacement(band(50, 60, 150, 170), card, box);
 if (pl.left !== 0) failures.push('left clamp: ' + JSON.stringify(pl));
 pl = mod.popoverPlacement(band(840, 850, 150, 170), card, box);
 if (pl.left !== 500) failures.push('right clamp: ' + JSON.stringify(pl));
+// Too tall for either side: roomier side, capped to its room, never off the edge.
+pl = mod.popoverPlacement(band(400, 500, 150, 170), { width: 300, height: 900 }, box);
+if (pl.side !== 'below' || pl.top !== 80 || pl.maxHeight !== 520) failures.push('tall card below: ' + JSON.stringify(pl));
+pl = mod.popoverPlacement(band(400, 500, 600, 620), { width: 300, height: 900 }, box);
+if (pl.side !== 'above' || pl.top !== 0 || pl.maxHeight !== 490) failures.push('tall card above: ' + JSON.stringify(pl));
 
 const chart = new mod.AllocationChart();
 chart._anchor = { el: { isConnected: false } };

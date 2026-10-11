@@ -195,11 +195,11 @@ export class DetectReadout extends LitElement {
     const list = this.candidates ?? [];
     if (this.allocationOnly) {
       // One-line context strip under the frequency digits: the regulatory
-      // allocation's Details / Open chart actions (allocation-summary.js in
+      // allocation's Open chart icon (allocation-summary.js in
       // actionsOnly mode -- the one-line pill next to the digits, rendered by
-      // the parent from `allocation-change`, already shows the text) plus
-      // ALL band-plan channel/application hints, ellipsised with the full
-      // list in the title.
+      // the parent from `allocation-change`, carries the text in its title) plus
+      // the top band-plan channel/application hint -- the "what is this
+      // signal" answer -- with a "+N" count and the full list in the title.
       const hints = list.filter(candidate => candidate.provider === "bandplan");
       // The band-plan hints are US-specific: under an ITU jurisdiction the
       // lookup says so (`supplemental.reason`) and that replaces the hints.
@@ -214,9 +214,9 @@ export class DetectReadout extends LitElement {
               <small class="dim">${hintsNotice}</small>
             </div>`
           : hints.length
-          ? html`<div class="band-plan-hints" title=${hints.map(h => h.name).join(" · ")}>
+          ? html`<div class="band-plan-hints" title=${hints.map(h => `${h.name}${h.category ? ` (${bandCategoryLabel(h.category)})` : ""}`).join(" · ")}>
               <span class="frequency-context-label" title="Channel / application hints from the band plan">Band plan</span>
-              ${hints.map((h, i) => html`<small>${i ? " · " : ""}${h.name}${h.category ? ` (${bandCategoryLabel(h.category)})` : ""}</small>`)}
+              <small>${hints[0].name}</small>${hints.length > 1 ? html`<small class="dim"> +${hints.length - 1}</small>` : ""}
             </div>`
           : ""}
       </div>`;
