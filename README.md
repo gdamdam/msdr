@@ -94,7 +94,7 @@ Per-decoder notes: [ADS-B](docs/adsb-native.md) · [LoRa / mesh](docs/lora-nativ
 ## Configuration
 
 - **Data and settings** live in `~/Library/Application Support/msdr/`.
-- **CLI flags:** `--host` (SDRconnect host), `--port`, `--web-port`, `--db`, `--settings`, `--no-browser`. See `msdr --help`.
+- **CLI flags:** `--host` (SDRconnect host), `--port`, `--web-port`, `--db`, `--settings`, `--no-browser`, `--debug` (also log every HTTP request). See `msdr --help`.
 - **Access:** the web UI listens on `127.0.0.1` only.
 - **Live data** needs SDRconnect playing. Satellite features need your location and orbital elements (**↻ TLE** in the app).
 - **Device history** (Wi-Fi/BLE) is off by default; enable it with `"history": {"enabled": true}` in `settings.json`.

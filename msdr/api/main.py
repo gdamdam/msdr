@@ -38,7 +38,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--no-browser", action="store_true", help="do not open the UI in a browser on start"
     )
+    parser.add_argument(
+        "--debug", action="store_true", help="log every HTTP request and msdr debug messages"
+    )
     return parser.parse_args(argv)
+
+
+def _uvicorn_options(debug: bool) -> dict:
+    # The UI polls several endpoints every second or so; uvicorn's access log
+    # turned that into a line per request. Keep it for --debug only.
+    return {"log_level": "info", "access_log": debug}
 
 
 def _open_browser_later(url: str, delay_s: float = 1.0) -> None:
@@ -58,6 +67,8 @@ def _open_browser_later(url: str, delay_s: float = 1.0) -> None:
 def main(argv: list[str] | None = None) -> None:
     _configure_logging()
     args = _parse_args(argv)
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
     settings_path = Path(args.settings) if args.settings else None
     settings = Settings.load(settings_path)
     if args.host is not None:
@@ -74,7 +85,7 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("msdr listening on %s", url)
     if not args.no_browser:
         _open_browser_later(url)
-    uvicorn.run(app, host="127.0.0.1", port=settings.web_port, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=settings.web_port, **_uvicorn_options(args.debug))
 
 
 if __name__ == "__main__":
