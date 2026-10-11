@@ -1,0 +1,892 @@
+{
+ "retrieved_at": "2026-10-01T00:00:00Z",
+ "sources": {
+  "hdw": "https://raw.githubusercontent.com/SuperDARN/hdw/main/",
+  "radar_info": "https://superdarn.ca/radar-info"
+ },
+ "licence": "Hardware tables from github.com/SuperDARN/hdw (no licence stated) and names from superdarn.ca/radar-info (all rights reserved); only identifiers and coordinates are stored. Data use is governed by a PI agreement.",
+ "radars": [
+  {
+   "code": "ade",
+   "station_id": 209,
+   "name": "Adak Island East",
+   "institution": "Penn State University",
+   "pi": "Dr. Bill Bristow",
+   "country": "United States",
+   "lat": 51.89309,
+   "lon": -176.62827,
+   "boresight": 46.0,
+   "beams": 22,
+   "gates": 110,
+   "config_valid_from": "2018-10-17 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.ade",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "adw",
+   "station_id": 208,
+   "name": "Adak Island West",
+   "institution": "Penn State University",
+   "pi": "Dr. Bill Bristow",
+   "country": "United States",
+   "lat": 51.89337,
+   "lon": -176.63121,
+   "boresight": -28.0,
+   "beams": 22,
+   "gates": 110,
+   "config_valid_from": "2018-11-01 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.adw",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "bks",
+   "station_id": 33,
+   "name": "Blackstone",
+   "institution": "Virginia Tech",
+   "pi": "Dr. J. Michael Ruohoniemi",
+   "country": "United States",
+   "lat": 37.10211,
+   "lon": -77.95033,
+   "boresight": -40.0,
+   "beams": 24,
+   "gates": 110,
+   "config_valid_from": "2024-03-27 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.bks",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "bpk",
+   "station_id": 24,
+   "name": "Buckland Park",
+   "institution": "La Trobe University",
+   "pi": "Dr. John Devlin",
+   "country": "Australia",
+   "lat": -34.6271,
+   "lon": 138.466,
+   "boresight": 146.5,
+   "beams": 22,
+   "gates": 110,
+   "config_valid_from": "2014-12-01 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.bpk",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "cly",
+   "station_id": 66,
+   "name": "Clyde River",
+   "institution": "University of Saskatchewan",
+   "pi": "Dr. Glenn Hussey",
+   "country": "Canada",
+   "lat": 70.487,
+   "lon": -68.504,
+   "boresight": -55.62,
+   "beams": 16,
+   "gates": 100,
+   "config_valid_from": "2022-02-01 18:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.cly",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "cve",
+   "station_id": 207,
+   "name": "Christmas Valley East",
+   "institution": "Dartmouth College",
+   "pi": "Dr. Simon Shepherd",
+   "country": "United States",
+   "lat": 43.27053,
+   "lon": -120.35642,
+   "boresight": 54.0,
+   "beams": 24,
+   "gates": 110,
+   "config_valid_from": "2026-07-08 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.cve",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "cvw",
+   "station_id": 206,
+   "name": "Christmas Valley West",
+   "institution": "Dartmouth College",
+   "pi": "Dr. Simon Shepherd",
+   "country": "United States",
+   "lat": 43.27101,
+   "lon": -120.35856,
+   "boresight": -20.0,
+   "beams": 24,
+   "gates": 110,
+   "config_valid_from": "2026-07-08 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.cvw",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "dce",
+   "station_id": 96,
+   "name": "Dome C East",
+   "institution": "IAPS",
+   "pi": "Dr. Stefano Massetti",
+   "country": null,
+   "lat": -75.08952,
+   "lon": 123.35125,
+   "boresight": 115.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2013-01-23 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.dce",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "dcn",
+   "station_id": 97,
+   "name": "Dome C North",
+   "institution": "IAPS",
+   "pi": "Dr. Stefano Massetti",
+   "country": null,
+   "lat": -75.08629,
+   "lon": 123.3599,
+   "boresight": -28.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2019-01-29 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.dcn",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "ekb",
+   "station_id": 512,
+   "name": null,
+   "institution": null,
+   "pi": null,
+   "country": null,
+   "lat": 56.43568,
+   "lon": 58.57142,
+   "boresight": 30.0,
+   "beams": 16,
+   "gates": 110,
+   "config_valid_from": "2011-01-01 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.ekb",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "fhe",
+   "station_id": 205,
+   "name": "Fort Hays East",
+   "institution": "Virginia Tech",
+   "pi": "Dr. J. Michael Ruohoniemi",
+   "country": "United States",
+   "lat": 38.85877,
+   "lon": -99.38843,
+   "boresight": 45.0,
+   "beams": 22,
+   "gates": 110,
+   "config_valid_from": "2010-06-27 15:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.fhe",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "fhw",
+   "station_id": 204,
+   "name": "Fort Hays West",
+   "institution": "Virginia Tech",
+   "pi": "Dr. J. Michael Ruohoniemi",
+   "country": "United States",
+   "lat": 38.85909,
+   "lon": -99.39061,
+   "boresight": -25.0,
+   "beams": 22,
+   "gates": 110,
+   "config_valid_from": "2010-06-27 15:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.fhw",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "fir",
+   "station_id": 21,
+   "name": "Falkland Islands",
+   "institution": "British Antarctic Survey",
+   "pi": "Dr. Gareth Chisham",
+   "country": "Falkland Islands",
+   "lat": -51.8314,
+   "lon": -58.9793,
+   "boresight": 178.3,
+   "beams": 16,
+   "gates": 110,
+   "config_valid_from": "2017-11-14 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.fir",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "gbr",
+   "station_id": 1,
+   "name": "Goose Bay",
+   "institution": "Virginia Tech",
+   "pi": "Dr. J. Michael Ruohoniemi",
+   "country": "Canada",
+   "lat": 53.31753,
+   "lon": -60.46424,
+   "boresight": 5.0,
+   "beams": 16,
+   "gates": 100,
+   "config_valid_from": "2003-11-01 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.gbr",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "hal",
+   "station_id": 4,
+   "name": "Halley",
+   "institution": "British Antarctic Survey",
+   "pi": "Dr. Gareth Chisham",
+   "country": null,
+   "lat": -75.62,
+   "lon": -26.219,
+   "boresight": 165.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2016-01-19 14:32:15",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.hal",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "han",
+   "station_id": 10,
+   "name": "Hankasalmi",
+   "institution": "University of Leicester",
+   "pi": "Dr. Tim Yeoman",
+   "country": "Finland",
+   "lat": 62.31357,
+   "lon": 26.60562,
+   "boresight": -12.0,
+   "beams": 16,
+   "gates": 225,
+   "config_valid_from": "2025-07-08 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.han",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "hje",
+   "station_id": 55,
+   "name": "Hejing East",
+   "institution": "Chinese Academy of Sciences",
+   "pi": "Dr. J.J. Zhang",
+   "country": "China",
+   "lat": 42.76818,
+   "lon": 83.73024,
+   "boresight": 39.0,
+   "beams": 24,
+   "gates": 100,
+   "config_valid_from": "2023-09-17 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.hje",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "hjw",
+   "station_id": 56,
+   "name": "Hejing West",
+   "institution": "Chinese Academy of Sciences",
+   "pi": "Dr. J.J. Zhang",
+   "country": "China",
+   "lat": 42.76818,
+   "lon": 83.72791,
+   "boresight": -39.0,
+   "beams": 24,
+   "gates": 100,
+   "config_valid_from": "2023-09-17 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.hjw",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "hkw",
+   "station_id": 41,
+   "name": "Hokkaido West",
+   "institution": "Nagoya University",
+   "pi": "Dr. Nozomu Nishitani",
+   "country": "Japan",
+   "lat": 43.5374,
+   "lon": 143.6073,
+   "boresight": -30.0,
+   "beams": 16,
+   "gates": 110,
+   "config_valid_from": "2014-10-29 08:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.hkw",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "hok",
+   "station_id": 40,
+   "name": "Hokkaido East",
+   "institution": "Nagoya University",
+   "pi": "Dr. Nozomu Nishitani",
+   "country": "Japan",
+   "lat": 43.5319,
+   "lon": 143.6146,
+   "boresight": 30.0,
+   "beams": 16,
+   "gates": 110,
+   "config_valid_from": "2006-11-01 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.hok",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "ice",
+   "station_id": 211,
+   "name": "Iceland East",
+   "institution": "Dartmouth College",
+   "pi": "Dr. Simon Shepherd",
+   "country": "Iceland",
+   "lat": 63.77443,
+   "lon": -20.54167,
+   "boresight": 23.0,
+   "beams": 24,
+   "gates": 100,
+   "config_valid_from": "2025-05-05 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.ice",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "icw",
+   "station_id": 210,
+   "name": "Iceland West",
+   "institution": "Dartmouth College",
+   "pi": "Dr. Simon Shepherd",
+   "country": "Iceland",
+   "lat": 63.77396,
+   "lon": -20.54578,
+   "boresight": -52.0,
+   "beams": 24,
+   "gates": 100,
+   "config_valid_from": "2025-05-05 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.icw",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "inv",
+   "station_id": 64,
+   "name": "Inuvik",
+   "institution": "University of Saskatchewan",
+   "pi": "Dr. Glenn Hussey",
+   "country": "Canada",
+   "lat": 68.413,
+   "lon": -133.769,
+   "boresight": 29.5,
+   "beams": 16,
+   "gates": 225,
+   "config_valid_from": "2022-02-01 18:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.inv",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "jme",
+   "station_id": 50,
+   "name": "Jiamusi East",
+   "institution": "Chinese Academy of Sciences",
+   "pi": "Dr. J.J. Zhang",
+   "country": "China",
+   "lat": 46.76656,
+   "lon": 130.48594,
+   "boresight": 44.0,
+   "beams": 24,
+   "gates": 100,
+   "config_valid_from": "2019-06-25 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.jme",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "kap",
+   "station_id": 3,
+   "name": "Kapuskasing",
+   "institution": "Virginia Tech",
+   "pi": "Dr. J. Michael Ruohoniemi",
+   "country": "Canada",
+   "lat": 49.3926,
+   "lon": -82.32184,
+   "boresight": -12.0,
+   "beams": 16,
+   "gates": 100,
+   "config_valid_from": "2010-03-12 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.kap",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "ker",
+   "station_id": 15,
+   "name": "Kerguelen",
+   "institution": "IRAP/CNRS/IPEV",
+   "pi": "Dr. Aurélie Marchaudon",
+   "country": null,
+   "lat": -49.35073,
+   "lon": 70.26652,
+   "boresight": 168.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2000-06-01 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.ker",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "kod",
+   "station_id": 7,
+   "name": "Kodiak",
+   "institution": "Penn State University",
+   "pi": "Dr. Bill Bristow",
+   "country": "United States",
+   "lat": 57.61215,
+   "lon": -152.19116,
+   "boresight": 30.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2017-09-16 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.kod",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "ksr",
+   "station_id": 16,
+   "name": "King Salmon",
+   "institution": "Penn State University",
+   "pi": "Dr. Bill Bristow",
+   "country": "United States",
+   "lat": 58.69206,
+   "lon": -156.65922,
+   "boresight": -20.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2026-05-24 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.ksr",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "lje",
+   "station_id": 51,
+   "name": "Longjing East",
+   "institution": "Chinese Academy of Sciences",
+   "pi": "Dr. J.J. Zhang",
+   "country": "China",
+   "lat": 42.82406,
+   "lon": 129.42244,
+   "boresight": 44.0,
+   "beams": 24,
+   "gates": 100,
+   "config_valid_from": "2023-06-26 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.lje",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "ljw",
+   "station_id": 52,
+   "name": "Longjing West",
+   "institution": "Chinese Academy of Sciences",
+   "pi": "Dr. J.J. Zhang",
+   "country": "China",
+   "lat": 42.8267,
+   "lon": 129.41775,
+   "boresight": -34.0,
+   "beams": 24,
+   "gates": 100,
+   "config_valid_from": "2023-06-26 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.ljw",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "lyr",
+   "station_id": 90,
+   "name": "Longyearbyen",
+   "institution": "University Centre in Svalbard",
+   "pi": "Dr. Dag Lorentzen",
+   "country": "Norway",
+   "lat": 78.15338,
+   "lon": 16.07342,
+   "boresight": 23.7,
+   "beams": 16,
+   "gates": 110,
+   "config_valid_from": "2016-10-19 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.lyr",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "mcm",
+   "station_id": 20,
+   "name": "McMurdo",
+   "institution": "Penn State University",
+   "pi": "Dr. Bill Bristow",
+   "country": null,
+   "lat": -77.83777,
+   "lon": 166.657,
+   "boresight": 263.4,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2018-02-10 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.mcm",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "pgr",
+   "station_id": 6,
+   "name": "Prince George",
+   "institution": "University of Saskatchewan",
+   "pi": "Dr. Glenn Hussey",
+   "country": "Canada",
+   "lat": 53.98,
+   "lon": -122.59,
+   "boresight": -5.0,
+   "beams": 16,
+   "gates": 225,
+   "config_valid_from": "2022-02-01 18:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.pgr",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "pyk",
+   "station_id": 9,
+   "name": "Pykkvibaer",
+   "institution": "University of Leicester",
+   "pi": "Dr. Tim Yeoman",
+   "country": "Iceland",
+   "lat": 63.77258,
+   "lon": -20.54476,
+   "boresight": 30.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2018-09-09 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.pyk",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "rkn",
+   "station_id": 65,
+   "name": "Rankin Inlet",
+   "institution": "University of Saskatchewan",
+   "pi": "Dr. Glenn Hussey",
+   "country": "Canada",
+   "lat": 62.828,
+   "lon": -92.113,
+   "boresight": 5.7,
+   "beams": 16,
+   "gates": 225,
+   "config_valid_from": "2022-02-01 18:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.rkn",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "san",
+   "station_id": 11,
+   "name": "SANAE",
+   "institution": "South African National Space Agency",
+   "pi": "Dr. Mike Kosch",
+   "country": null,
+   "lat": -71.67714,
+   "lon": -2.82816,
+   "boresight": 173.2,
+   "beams": 16,
+   "gates": 110,
+   "config_valid_from": "2024-02-07 17:47:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.san",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "sas",
+   "station_id": 5,
+   "name": "Saskatoon",
+   "institution": "University of Saskatchewan",
+   "pi": "Dr. Glenn Hussey",
+   "country": "Canada",
+   "lat": 52.16,
+   "lon": -106.53,
+   "boresight": 23.1,
+   "beams": 16,
+   "gates": 225,
+   "config_valid_from": "2022-02-01 18:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.sas",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "sch",
+   "station_id": 2,
+   "name": "Schefferville",
+   "institution": "CNRS/LPCE",
+   "pi": "Dr. Christian Hanuise",
+   "country": "Canada",
+   "lat": 54.8,
+   "lon": -66.8,
+   "boresight": 15.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "1995-09-30 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.sch",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "sps",
+   "station_id": 22,
+   "name": "South Pole Station",
+   "institution": "Penn State University",
+   "pi": "Dr. Bill Bristow",
+   "country": null,
+   "lat": -89.995,
+   "lon": 118.291,
+   "boresight": 75.7,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2020-01-01 02:46:40",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.sps",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "sto",
+   "station_id": 8,
+   "name": "Stokkseyri",
+   "institution": "Lancaster University",
+   "pi": "Dr. Jim Wild",
+   "country": "Iceland",
+   "lat": 63.86045,
+   "lon": -21.0315,
+   "boresight": -59.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2019-03-22 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.sto",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "sye",
+   "station_id": 13,
+   "name": "Syowa East",
+   "institution": "National Institute of Polar Research",
+   "pi": "Dr. Akira Sessai Yukimatu",
+   "country": null,
+   "lat": -69.01,
+   "lon": 39.61,
+   "boresight": 106.5,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "1999-07-16 11:18:29",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.sye",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "sys",
+   "station_id": 12,
+   "name": "Syowa South",
+   "institution": "National Institute of Polar Research",
+   "pi": "Dr. Akira Sessai Yukimatu",
+   "country": null,
+   "lat": -69.0,
+   "lon": 39.58,
+   "boresight": 159.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2000-12-31 06:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.sys",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "sze",
+   "station_id": 53,
+   "name": "Siziwang East",
+   "institution": "Chinese Academy of Sciences",
+   "pi": "Dr. J.J. Zhang",
+   "country": "China",
+   "lat": 41.83265,
+   "lon": 111.93369,
+   "boresight": 42.0,
+   "beams": 24,
+   "gates": 100,
+   "config_valid_from": "2022-11-01 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.sze",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "szw",
+   "station_id": 54,
+   "name": "Siziwang West",
+   "institution": "Chinese Academy of Sciences",
+   "pi": "Dr. J.J. Zhang",
+   "country": "China",
+   "lat": 41.83272,
+   "lon": 111.93093,
+   "boresight": -36.0,
+   "beams": 24,
+   "gates": 100,
+   "config_valid_from": "2022-11-01 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.szw",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "tig",
+   "station_id": 14,
+   "name": "Tiger",
+   "institution": "La Trobe University",
+   "pi": "Dr. John Devlin",
+   "country": "Australia",
+   "lat": -43.40012,
+   "lon": 147.21627,
+   "boresight": 180.0,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "1999-12-02 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.tig",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "tst",
+   "station_id": 0,
+   "name": null,
+   "institution": null,
+   "pi": null,
+   "country": null,
+   "lat": 53.32,
+   "lon": -60.46,
+   "boresight": 5.0,
+   "beams": 16,
+   "gates": 100,
+   "config_valid_from": "2008-02-03 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.tst",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "unw",
+   "station_id": 18,
+   "name": "Unwin",
+   "institution": "La Trobe University",
+   "pi": "Dr. John Devlin",
+   "country": "New Zealand",
+   "lat": -46.5133,
+   "lon": 168.37569,
+   "boresight": 227.9,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2019-07-26 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.unw",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "wal",
+   "station_id": 32,
+   "name": "Wallops Island",
+   "institution": "JHU/APL",
+   "pi": "Dr. Alex Chartier",
+   "country": "United States",
+   "lat": 37.8573,
+   "lon": -75.51019,
+   "boresight": 35.9,
+   "beams": 24,
+   "gates": 110,
+   "config_valid_from": "2023-11-22 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.wal",
+    "https://superdarn.ca/radar-info"
+   ]
+  },
+  {
+   "code": "zho",
+   "station_id": 19,
+   "name": "Zhongshan",
+   "institution": "Polar Research Institute of China",
+   "pi": "Dr. Hongqiao Hu",
+   "country": null,
+   "lat": -69.37669,
+   "lon": 76.36646,
+   "boresight": 72.5,
+   "beams": 16,
+   "gates": 75,
+   "config_valid_from": "2010-04-01 00:00:00",
+   "source_urls": [
+    "https://raw.githubusercontent.com/SuperDARN/hdw/main/hdw.dat.zho",
+    "https://superdarn.ca/radar-info"
+   ]
+  }
+ ]
+}

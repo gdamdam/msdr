@@ -1,0 +1,12 @@
+# Optional, tested GNU Radio/LoRa runtime for Apple Silicon and other conda platforms.
+# Run msdr with this environment's Python; native GNU Radio modules must match it.
+name: msdr-lora
+channels:
+  - tapparelj
+  - conda-forge
+channel_priority: strict
+dependencies:
+  - python=3.12
+  - gnuradio-core=3.10.11
+  - gnuradio-lora_sdr=0.0.0.20260105.dev+gfbbf6ea66
+  - pip

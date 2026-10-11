@@ -1,0 +1,234 @@
+{
+  "commit": "6484f26545d4f012682524e2d843fab0fbdc0b34",
+  "vectors": [
+    {
+      "name": "basic_id_serial",
+      "type": "message",
+      "hex": "0212313539363839353033374135384d000000000000000000",
+      "decoded": {
+        "message_type": 0,
+        "protocol_version": 2,
+        "ua_type": 2,
+        "id_type": 1,
+        "uas_id": "1596895037A58M"
+      }
+    },
+    {
+      "name": "basic_id_utm_uuid",
+      "type": "message",
+      "hex": "02310123456789abcdeffedcba987654321000000000000000",
+      "decoded": {
+        "message_type": 0,
+        "ua_type": 1,
+        "id_type": 3,
+        "uas_id_hex": "0123456789abcdeffedcba987654321000000000"
+      }
+    },
+    {
+      "name": "location_normal",
+      "type": "message",
+      "hex": "122624160b42bf241b6ed1b4b69808ac0870086b53150e0200",
+      "decoded": {
+        "message_type": 1,
+        "status": 2,
+        "direction_deg": 216.0,
+        "speed_horizontal_ms": 5.500,
+        "speed_vertical_ms": 5.50,
+        "latitude": 45.5393090,
+        "longitude": -122.9663890,
+        "altitude_baro_m": 100.0,
+        "altitude_geo_m": 110.0,
+        "height_type": 1,
+        "height_m": 80.0,
+        "horiz_accuracy_enum": 11,
+        "vert_accuracy_enum": 6,
+        "baro_accuracy_enum": 5,
+        "speed_accuracy_enum": 3,
+        "ts_accuracy_enum": 2,
+        "timestamp_s": 360.5
+      }
+    },
+    {
+      "name": "location_unknown",
+      "type": "message",
+      "hex": "1203b5ff7e00000000000000000000000000000000ffff0000",
+      "decoded": {
+        "message_type": 1,
+        "status": 0,
+        "direction_deg": null,
+        "speed_horizontal_ms": null,
+        "speed_vertical_ms": null,
+        "latitude": null,
+        "longitude": null,
+        "altitude_baro_m": null,
+        "altitude_geo_m": null,
+        "height_type": 0,
+        "height_m": null,
+        "horiz_accuracy_enum": 0,
+        "vert_accuracy_enum": 0,
+        "baro_accuracy_enum": 0,
+        "speed_accuracy_enum": 0,
+        "ts_accuracy_enum": 0,
+        "timestamp_s": null
+      }
+    },
+    {
+      "name": "location_boundary",
+      "type": "message",
+      "hex": "1233b3fe7c00e9a43500d2496bffff0000d0076c649f8c0f00",
+      "decoded": {
+        "message_type": 1,
+        "status": 3,
+        "direction_deg": 359.0,
+        "speed_horizontal_ms": 254.250,
+        "speed_vertical_ms": 62.00,
+        "latitude": 90.0000000,
+        "longitude": 180.0000000,
+        "altitude_baro_m": 31767.5,
+        "altitude_geo_m": null,
+        "height_type": 0,
+        "height_m": 0.0,
+        "horiz_accuracy_enum": 12,
+        "vert_accuracy_enum": 6,
+        "baro_accuracy_enum": 6,
+        "speed_accuracy_enum": 4,
+        "ts_accuracy_enum": 15,
+        "timestamp_s": 3599.9
+      }
+    },
+    {
+      "name": "location_timestamp_zero",
+      "type": "message",
+      "hex": "1213b5ff7e0000000000000000000000000000000000000000",
+      "decoded": {
+        "message_type": 1,
+        "status": 1,
+        "direction_deg": null,
+        "speed_horizontal_ms": null,
+        "speed_vertical_ms": null,
+        "latitude": null,
+        "longitude": null,
+        "altitude_baro_m": null,
+        "altitude_geo_m": null,
+        "height_type": 0,
+        "height_m": null,
+        "horiz_accuracy_enum": 0,
+        "vert_accuracy_enum": 0,
+        "baro_accuracy_enum": 0,
+        "speed_accuracy_enum": 0,
+        "ts_accuracy_enum": 0,
+        "timestamp_s": 0.0
+      }
+    },
+    {
+      "name": "auth_page0",
+      "type": "message",
+      "hex": "22100128003fab013132333435363738393031323334353637",
+      "decoded": {
+        "message_type": 2,
+        "auth_type": 1,
+        "data_page": 0,
+        "last_page_index": 1,
+        "length": 40,
+        "timestamp_s_since_2019": 28000000,
+        "auth_data_hex": "3132333435363738393031323334353637"
+      }
+    },
+    {
+      "name": "auth_page1",
+      "type": "message",
+      "hex": "22113132333435363738393031323334353637383930313233",
+      "decoded": {
+        "message_type": 2,
+        "auth_type": 1,
+        "data_page": 1,
+        "auth_data_hex": "3132333435363738393031323334353637383930313233"
+      }
+    },
+    {
+      "name": "self_id",
+      "type": "message",
+      "hex": "320044726f6e65735255533a205265616c2045737461746500",
+      "decoded": {
+        "message_type": 3,
+        "desc_type": 0,
+        "description": "DronesRUS: Real Estate"
+      }
+    },
+    {
+      "name": "system_normal",
+      "type": "message",
+      "hex": "4204a6bf241bd2d1b4b62300073209230824f907003fab0100",
+      "decoded": {
+        "message_type": 4,
+        "operator_location_type": 0,
+        "classification_type": 1,
+        "operator_latitude": 45.5393190,
+        "operator_longitude": -122.9663790,
+        "area_count": 35,
+        "area_radius_m": 70,
+        "area_ceiling_m": 177.0,
+        "area_floor_m": 41.5,
+        "category_eu": 2,
+        "class_eu": 4,
+        "operator_altitude_geo_m": 20.5,
+        "timestamp_s_since_2019": 28000000
+      }
+    },
+    {
+      "name": "system_unknown",
+      "type": "message",
+      "hex": "42000000000000000000010000000000000000000000000000",
+      "decoded": {
+        "message_type": 4,
+        "operator_location_type": 0,
+        "classification_type": 0,
+        "operator_latitude": null,
+        "operator_longitude": null,
+        "area_count": 1,
+        "area_radius_m": 0,
+        "area_ceiling_m": null,
+        "area_floor_m": null,
+        "category_eu": 0,
+        "class_eu": 0,
+        "operator_altitude_geo_m": null,
+        "timestamp_s_since_2019": 0
+      }
+    },
+    {
+      "name": "operator_id",
+      "type": "message",
+      "hex": "52003938373635343332313030313233343536373839000000",
+      "decoded": {
+        "message_type": 5,
+        "operator_id_type": 0,
+        "operator_id": "98765432100123456789"
+      }
+    },
+    {
+      "name": "message_pack_7",
+      "type": "message_pack",
+      "message_count": 7,
+      "hex": "f2190702223132333435363738393031323334353637383930000000122624160b42bf241b6ed1b4b69808ac0870086b53150e020022100128003fab01313233343536373839303132333435363722113132333435363738393031323334353637383930313233320044726f6e65735255533a205265616c20457374617465004204a6bf241bd2d1b4b62300073209230824f907003fab010052003938373635343332313030313233343536373839000000",
+      "decoded": {
+        "message_type": 15,
+        "basic_id_uas_id": "12345678901234567890",
+        "location_status": 2,
+        "self_id_description": "DronesRUS: Real Estate",
+        "operator_id": "98765432100123456789"
+      }
+    },
+    {
+      "name": "wifi_beacon_message_pack",
+      "type": "wifi_beacon_frame",
+      "message_counter": 42,
+      "vendor_oui": "fa0bbc",
+      "vendor_oui_type": 13,
+      "hex": "80000000ffffffffffff021122334455021122334455000059bd4e364b00000064002004000f4d5344525f544553545f44524f4e4501018cddb7fa0bbc0d2af2190702223132333435363738393031323334353637383930000000122624160b42bf241b6ed1b4b69808ac0870086b53150e020022100128003fab01313233343536373839303132333435363722113132333435363738393031323334353637383930313233320044726f6e65735255533a205265616c20457374617465004204a6bf241bd2d1b4b62300073209230824f907003fab010052003938373635343332313030313233343536373839000000",
+      "decoded": {
+        "basic_id_uas_id": "12345678901234567890",
+        "location_status": 2
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+.venv/
+.venv-lora/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.DS_Store
+tmp/
+
+# Claude Code planning docs (local only)
+docs/superpowers/
+CLAUDE.md
+.claude/
+.playwright/
+
+# Development notes kept out of the public tree
+CHANGELOG.md
+FUTURE.md
+TODO.md

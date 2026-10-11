@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>msdr</title>
+    <!-- Apply the saved theme before the stylesheet paints so there is no flash
+         of the default theme. Duplicates theme.js's key on purpose: this runs
+         before any module loads. -->
+    <script>
+      try { var t = localStorage.getItem("msdr.theme"); if (t && t !== "default") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+    </script>
+    <!-- Theme fonts; the app falls back to system stacks when offline. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;600&family=DM+Mono:wght@400;500&family=Overpass:wght@400;600&family=Overpass+Mono:wght@400;600&family=B612:wght@400;700&family=B612+Mono:wght@400;700&family=Libre+Franklin:wght@400;600&family=Courier+Prime:wght@400;700&display=swap" />
+    <link rel="stylesheet" href="/vendor/leaflet.css" />
+    <link rel="stylesheet" href="/styles.css?v=0.69.1" />
+    <link rel="stylesheet" href="/workspace-layout.css?v=0.69.1" />
+    <link rel="stylesheet" href="/survey-layout.css?v=0.69.1" />
+    <link rel="stylesheet" href="/allocation-chart.css?v=0.69.1" />
+  </head>
+  <body>
+    <msdr-app></msdr-app>
+    <script src="/vendor/leaflet.js"></script>
+    <script type="module" src="/app.js?v=0.69.1"></script>
+  </body>
+</html>

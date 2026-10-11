@@ -1,0 +1,13 @@
+martin_m1_qsstv_sunset.wav
+
+Source: Wikimedia Commons, "File:SSTV sunset audio.ogg"
+        https://commons.wikimedia.org/wiki/File:SSTV_sunset_audio.ogg
+Author: Mysid (photo taken in the Porvoo archipelago, 1997; SSTV
+        transmission made with QSSTV on Linux), mode Martin M1.
+Licence: Creative Commons Attribution 2.5 (CC BY 2.5)
+        https://creativecommons.org/licenses/by/2.5
+
+Modifications for this test fixture: decoded from Ogg Vorbis, downmixed
+to mono, resampled to 11,025 Hz and requantised to 8-bit unsigned PCM
+(to stay well under 2 MB). Used by tests/decoder/test_sstv.py as a
+third-party-encoded check of the Martin M1 timings.

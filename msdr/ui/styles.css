@@ -1,0 +1,4141 @@
+/* msdr front panel -- flat near-black bezel with restrained role colors.
+   Live status keeps green/red semantics; workflow color lives mostly on
+   section edges and selected headings. */
+
+:root {
+  --bg: #08090b;
+  --panel: #12151a;
+  --panel-well: #0c0e11; /* recessed readouts (frequency, meters) */
+  --line: #2b323d; /* hairline borders */
+  --fg: #c9d1d9; /* general text */
+  --ink: #9aa4b0; /* engraved label ink -- >=4.5:1 on --panel */
+  --survey-secondary-ink: color-mix(in srgb, var(--ink) 55%, var(--fg) 45%); /* muted-panel text, a touch lighter than --ink */
+  --survey-secondary-line: #576b7b; /* muted-panel border; no existing token is a close match */
+  --disabled: #4a5058; /* disabled controls -- distinct from --ink labels */
+  --accent: #3ddbd9; /* cyan instrument accent: lit segments, indicators, focus (7.9:1 on --panel) */
+  --unlit: #123433; /* dim cyan ghost segments */
+  --freq: #eafffe; /* lit frequency digits, cool white */
+  --freq-ghost: #17252a; /* unlit ghost digits behind the frequency */
+  --trace: #3399ff; /* spectrum trace, SDRconnect-style azure; fill uses the same hue */
+  --ok: #3fb950;
+  --danger: #ff5b5b;
+  /* Used throughout but previously undefined (fell back to inherited color). */
+  --dim: var(--ink);
+  --muted: var(--ink);
+  --good: var(--ok);
+  --warn: var(--warn);
+  /* Theme hooks (see the data-theme blocks at the end of this file): display
+     wells stay dark in light themes, and shape is tokenised so themes can
+     round, square or chamfer the chrome. */
+  --screen: var(--panel-well);
+  --radius: 0;
+  --radius-pill: 999px;
+  --panel-clip: polygon(
+    10px 0,
+    100% 0,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    0 100%,
+    0 10px
+  );
+
+  /* Section identity is quieter than live status and action colors. The
+     short labels and edge rails below repeat the role in text and shape. */
+  --context-receiver: #a9b9c8;
+  --context-listen: #8eaee6;
+  --context-decode: #ddb47e;
+  --context-survey: #63cbd5;
+  --context-catalog: #78bfff;
+  --context-wifi: #ff9466;
+  --context-ble: #b48cff;
+  /* Measurement row under the waterfall (Scope) and the channel-watch
+     automation: a quiet edge + heading tint each, so the two tool panels read
+     as different kinds of thing from the receiver (grey-blue) and survey. */
+  --context-scope: #79d2a6;
+  --context-watch: #cdb16a;
+
+  /* Label class chips (docs/history.md "Labels") -- quiet, distinct from the
+     section-identity colors above and from --ok/--danger's live-status use. */
+  --label-mine: #7fc29a;
+  --label-known: #7fa6d6;
+  --label-ignore: #8d94a0;
+
+  /* classic S-meter: green S1..S9 region, red +60dB-over-S9 region */
+  --meter-green: #2ecc40;
+  --meter-green-unlit: #1b2b1d;
+  --meter-red: #c0392b;
+  --meter-red-unlit: #2b1b1a;
+  --mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  /* 8-color scanner alert set (msdr/library/models.py SIGNAL_COLORS) */
+  --led-red: #ff5b5b;
+  --led-orange: #ff9a3d;
+  --led-yellow: #f4d03f;
+  --led-green: #3fb950;
+  --led-blue: #4d9de0;
+  --led-magenta: #d162e4;
+  --led-cyan: #3ddbd9;
+  --led-white: #eef2f5;
+  --led-unlit: #333a44;
+
+  /* 6-color category tag set (TAG_COLORS) */
+  --tag-red: #ff5b5b;
+  --tag-orange: #ff9a3d;
+  --tag-green: #3fb950;
+  --tag-blue: #4d9de0;
+  --tag-violet: #9b6bde;
+  --tag-gray: #7d8590;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  overflow-x: hidden;
+}
+
+body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+a {
+  color: var(--accent);
+}
+
+button,
+select,
+input,
+textarea {
+  font-family: inherit;
+  font-size: 0.95em;
+  color: var(--fg);
+  background: var(--panel-well);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
+
+button {
+  min-height: 28px;
+  cursor: pointer;
+  background: var(--panel);
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  opacity: 1;
+  color: var(--disabled);
+  border-color: var(--disabled);
+  cursor: default;
+}
+
+/* Hover is neutral; --accent is reserved for focus, selection and primary actions. */
+button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--line) 50%, var(--fg));
+  color: var(--fg);
+}
+
+/* Primary and selected buttons keep the accent on hover (higher specificity
+   than the neutral hover above). */
+.wifi-view .wifi-start:hover:not(:disabled),
+.ble-view .ble-start:hover:not(:disabled),
+button[aria-selected="true"]:hover:not(:disabled),
+button[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:active:not(:disabled) {
+  background: var(--panel-well);
+  transform: translateY(1px);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dim {
+  color: var(--ink);
+}
+
+/* engraved uppercase label -- the panel's one consistent typographic device,
+   used for every readout caption (MODE, BW, ANT, ...), never as decoration */
+.label {
+  font-family: var(--sans);
+  font-size: 0.75em; /* ~12px min small-text size, see :root --ink comment */
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+
+/* bezel-framed section: hairline border, small notched corners (top-left,
+   bottom-right), flat fill -- the panel's one structural container */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  clip-path: var(--panel-clip);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-family: var(--sans);
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+
+/* Operating band at the right of a radio panel's title (BLE, Wi-Fi). */
+h2 .h2-band {
+  float: right;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent);
+}
+
+/* Channel + MHz in the BLE / Wi-Fi status line, same accent as the band. */
+.chan-hl {
+  color: var(--accent);
+}
+
+/* indicator LED: a dot, lit in its color (glow is the one allowed shadow) or
+   unlit/dim -- used for signal status and the LINK/ALERT lamps */
+.led {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--led-unlit);
+  flex: none;
+}
+
+.led-unlit {
+  background: var(--led-unlit);
+}
+
+/* a running SCANS job -- opacity pulse, not a new glow/shadow device */
+@keyframes led-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+led-dot.led-blink .led {
+  animation: led-blink 1s ease-in-out infinite;
+}
+
+/* category tag chip: "[name]" tinted in the tag's color, or dim ink when
+   the tag has none -- never a rounded pill */
+.tag-chip {
+  font-size: 0.85em;
+  color: var(--ink);
+  background: none;
+  border: 1px solid transparent;
+  padding: 0 2px;
+}
+
+.nameplate {
+  display: inline-flex;
+  align-items: center;
+  background: var(--fg);
+  color: var(--bg);
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+}
+
+/* Wi-Fi/BLE status lamps sit in one row beside LINK/ALERT, never stacked
+   (the strip must not add height to the receiver panel's layout gate). */
+receiver-status-strip { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 8px; }
+.lamp-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lamp-cluster .label {
+  margin-right: 2px;
+}
+.lamp-cluster[role="button"] { cursor: pointer; }
+.lamp-cluster[role="button"]:hover,
+.lamp-cluster[role="button"]:focus-visible { border-color: var(--accent); }
+
+.seg-wrap {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.seg-unit-wrap { position: relative; display: inline-block; }
+.seg-info-button {
+  position: absolute; left: 0; bottom: calc(100% + 2px);
+  min-width: 22px; min-height: 22px; padding: 0;
+  border: 1px solid transparent; border-radius: 3px;
+  background: transparent; color: var(--ink);
+  font-size: 15px; line-height: 1;
+}
+
+/* segmented frequency readout: amber digits over a static ghost layer of
+   unlit digits, absolutely positioned so it reads as a 7-segment display */
+.seg-readout {
+  position: relative;
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 2.4em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  /* NOT pre here: the lit template's newline/indent text nodes between the
+     ghost and value spans would otherwise be preserved as a literal line
+     break, pushing the ghost span onto a second line instead of sitting
+     directly behind the absolutely-positioned value. The two spans below
+     keep white-space: pre for their own digit content. */
+}
+
+/* SDR#-style digit stepping affordance: ns-resize hints at the upper/lower-
+   half up/down step, and the hover glow (using the same --accent as the edit
+   input's border) shows the readout is live without depending on the cursor
+   icon rendering. */
+.seg-readout.editable {
+  cursor: ns-resize;
+}
+
+.seg-readout.editable:hover .seg-value {
+  text-shadow: 0 0 6px var(--accent);
+}
+
+.seg-ghost,
+.seg-value {
+  font: inherit;
+  letter-spacing: inherit;
+  white-space: pre;
+}
+
+.seg-ghost {
+  color: var(--freq-ghost);
+  visibility: visible;
+}
+
+.seg-value {
+  position: absolute;
+  inset: 0;
+  color: var(--freq);
+}
+
+.seg-fine-tune {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.seg-fine-tune button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 2px 5px;
+  font: 600 1em var(--mono);
+  line-height: 1;
+  touch-action: none;
+  user-select: none;
+}
+
+/* segment-readout's edit mode (click the readout, or press F): a plain mono
+   input in place of the ghost/value pair, same size so nothing reflows. */
+.seg-input {
+  font-family: var(--mono);
+  font-size: 2.4em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--freq);
+  background: var(--screen);
+  border: 1px solid var(--accent);
+  padding: 0 4px;
+  width: 8ch;
+}
+
+.seg-unit.invalid {
+  color: var(--danger);
+}
+
+
+/* readout: LABEL over a lit value, the recurring MODE/BW/ANT/LNA device */
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.readout .value {
+  font-family: var(--mono);
+  color: var(--accent);
+}
+
+.strip-context .strip-lna-value {
+  font-size: 0.78em;
+}
+
+/* frequency + S-meter row: the VFO digits on the left, the meter on the
+   right, vertically centered so the meter's bar lines up with the digit
+   row -- wraps under 900px (.panel-smeter drops to its own line). */
+.freq-meter-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+/* Keep the meter compact beside tuning controls. */
+.panel-smeter {
+  flex: 0 1 520px;
+  max-width: 45%;
+  min-width: 220px;
+}
+
+.panel-scanner-deck { min-width: 0; width: 100%; }
+
+@media (max-width: 900px) {
+  .panel-smeter {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+}
+
+/* classic S-meter: SNR/PWR readout + S reading, 36 x 3dB segments
+   (S1..S9 green, +60dB-over-S9 red), tick-marked scale beneath */
+.smeter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.smeter-text {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.85em;
+}
+
+.smeter-sreading {
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.smeter-bar,
+.smeter-scale {
+  display: flex;
+  gap: 6px;
+}
+
+.smeter-zone {
+  display: flex;
+  gap: 2px;
+}
+
+.smeter-zone-green {
+  flex: 16;
+}
+
+.smeter-zone-red {
+  flex: 20;
+}
+
+.smeter-bar .smeter-seg {
+  flex: 1;
+  min-width: 0;
+  /* matched to the frequency digit row (2.4em) so the bar and the VFO
+     readout read as one instrument when they share the top row */
+  height: 30px;
+  background: var(--meter-green-unlit);
+}
+
+.smeter-bar .smeter-zone-red .smeter-seg {
+  background: var(--meter-red-unlit);
+}
+
+.smeter-bar .smeter-seg.lit.green {
+  background: var(--meter-green);
+}
+
+.smeter-bar .smeter-seg.lit.red {
+  background: var(--meter-red);
+}
+
+.smeter-scale .smeter-zone {
+  justify-content: space-between;
+}
+
+.smeter-tick {
+  font-size: 0.75em;
+  color: var(--ink);
+}
+
+.smeter-tick.red {
+  color: var(--meter-red);
+}
+
+/* compact scanner deck (v0.14.2): a recessed sub-panel next to the S-meter,
+   same idea as .smeter but with a control row instead of a segmented bar. */
+.scanner-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  background: var(--panel-well);
+  border: 1px solid var(--line);
+  padding: 8px;
+}
+
+/* Radio work areas: the VFO, mode and receiver context stay together;
+   recording and scanning have a full-width control column on the right. */
+.receiver-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 38%);
+  gap: 16px;
+  margin-top: 10px;
+  align-items: start;
+}
+.receiver-primary, .receiver-operations { min-width: 0; }
+.receiver-operations {
+  display: grid;
+  gap: 8px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+.receiver-primary .strip-context,
+.receiver-primary .strip-tools { margin-top: 8px; }
+.receiver-operations .strip-recording {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--context-receiver);
+  background: color-mix(in srgb, var(--context-receiver) 5%, var(--panel));
+}
+.panel-scanner-deck > scanner-deck > .scanner-deck {
+  padding: 6px 8px;
+  border-left: 3px solid var(--context-receiver);
+  border-color: color-mix(in srgb, var(--context-receiver) 52%, var(--line));
+  border-left-color: var(--context-receiver);
+  background: color-mix(in srgb, var(--context-receiver) 5%, var(--panel));
+}
+.panel-scanner-deck .scanner-deck-line button { min-height: 24px; }
+.panel-scanner-deck .scanner-deck-line:first-of-type > .label { color: var(--context-receiver); }
+.panel-scanner-deck .scanner-deck-line .dim.mono { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1050px) {
+  .receiver-body { grid-template-columns: minmax(0, 1fr); }
+  .receiver-operations { border-left: 0; border-top: 1px solid var(--line); padding: 10px 0 0; }
+}
+
+/* The panel's notched clip would otherwise crop scanner overlays. Raise the
+   receiver only while its setup or hits list is open. */
+instrument-panel > #instrument-panel:has(#scanner-setup-modal, .scanner-deck-hits) {
+  clip-path: none;
+  position: relative;
+  z-index: 20;
+}
+
+.beacon-detail { margin-top: 9px; border-top: 1px solid var(--line); }
+.beacon-detail > summary { padding: 8px 2px; cursor: pointer; font-size: .88em; font-weight: 600; }
+.beacon-schedule { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 12px 18px; margin-top: 8px; align-items: start; }
+@media (max-width: 760px) { .beacon-schedule { grid-template-columns: 1fr; } }
+.beacon-schedule tr.on-air td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.beacon-schedule-note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 0; font-size: .8em; }
+.beacon-now-band { color: var(--accent); }
+.beacon-now-offset { display: inline-flex; align-items: center; gap: 4px; }
+.beacon-now-offset button { padding: 0 6px; }
+.lib-table td.on-air { outline: 1px solid var(--accent); outline-offset: -1px; }
+.beacon-detail > summary:hover { color: var(--context-panel-color, var(--accent)); }
+
+.scanner-deck-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scanner-deck-line .spacer {
+  min-width: 8px;
+}
+
+.scanner-deck-snr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.scanner-deck-snr-track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  background: var(--panel-well);
+  border: 1px solid var(--line);
+}
+
+.scanner-deck-snr-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+}
+
+.scanner-deck-controls {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.scanner-deck-controls button {
+  font-size: 0.8em;
+  padding: 4px 8px;
+}
+
+/* ▾ hit dropdown -- same idea as instrument-panel's LAYOUT ▾ menu, anchored
+   under the deck instead of above it. */
+.scanner-deck-hits {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  width: max(280px, 100%);
+  z-index: 5;
+}
+
+/* control row buttons, e.g. [ * STORE ] [ < BACK ] */
+.control-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.control-row button {
+  font-family: var(--mono);
+  padding: 8px 14px;
+}
+
+.control-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75em;
+  color: var(--ink);
+}
+
+/* U2 workspaces (LISTEN/DISCOVER/SATELLITES/LIBRARY): the tab strip directly
+   under the instrument panel -- see app.js's render()/_switchWorkspace.
+   Plain engraved-label tabs (same typographic device as .label), the active
+   one picked out with an accent underline; scrolls horizontally rather than
+   wrapping on a narrow viewport (see the media query below). */
+.workspace-switch {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.workspace-switch::-webkit-scrollbar {
+  display: none;
+}
+
+.workspace-tab {
+  flex: none;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 14px 6px;
+  font-family: var(--sans);
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.workspace-tab:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--fg);
+}
+
+.workspace-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.workspace-tab[data-workspace="catalog"]:hover:not(:disabled),
+.workspace-tab[data-workspace="catalog"].active {
+  color: var(--context-catalog);
+}
+.workspace-tab[data-workspace="listen"]:hover:not(:disabled),
+.workspace-tab[data-workspace="listen"].active {
+  color: var(--context-listen);
+}
+.workspace-tab[data-workspace="discover"]:hover:not(:disabled),
+.workspace-tab[data-workspace="discover"].active {
+  color: var(--context-survey);
+}
+
+.workspace-tab[data-workspace="catalog"].active {
+  border-bottom-color: var(--context-catalog);
+}
+.workspace-tab[data-workspace="listen"].active {
+  border-bottom-color: var(--context-listen);
+}
+.workspace-tab[data-workspace="discover"].active {
+  border-bottom-color: var(--context-survey);
+}
+
+@media (max-width: 900px) {
+  .workspace-switch {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* "Receiver lost" bar under the workspace tabs (components/receiver-lost-bar.js). */
+.receiver-lost-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--danger);
+  border-left-width: 4px;
+}
+.receiver-lost-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.receiver-lost-text {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.receiver-lost-text strong,
+.receiver-lost-error {
+  color: var(--danger);
+}
+.receiver-lost-notify {
+  font-size: 12px;
+  color: var(--ink);
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  min-height: 0;
+}
+
+/* Full-width band for layout.wide sections (survey by default), rendered
+   above .grid by app.js's _renderWideBand -- see .section-shell below for
+   the shared card chrome and its ⇔ WIDE / ⇥ CARD toggle. */
+.wide-band {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  margin-bottom: 16px;
+}
+
+/* getting-started.js is a direct child of .grid (so it sits above the three
+   columns without its own wrapper row) -- display:contents hands its panel
+   straight to the grid so grid-column can span it full-width. */
+.grid > getting-started {
+  display: contents;
+}
+
+#getting-started {
+  grid-column: 1 / -1;
+}
+
+/* Two-column laptop breakpoint: 900-1399px gets 2 tracks instead of 3 (full
+   3 columns is reserved for >=1400px, the default .grid rule above). Column
+   3's sections (data-col-index="2", set by app.js's _renderColumn) flow into
+   column 2's track, stacked below column 2's own sections -- layout.columns
+   itself is untouched, this is purely a CSS reflow of the same DOM. */
+@media (max-width: 1399px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .section-shell-col[data-col-index="0"] {
+    grid-column: 1;
+  }
+
+  .section-shell-col[data-col-index="1"],
+  .section-shell-col[data-col-index="2"] {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Reset the 2-column reflow's explicit column-3-into-column-2 placement --
+     a single track means grid-column: 2 would otherwise open an unwanted
+     implicit second column instead of stacking full-width. */
+  .section-shell-col[data-col-index="0"],
+  .section-shell-col[data-col-index="1"],
+  .section-shell-col[data-col-index="2"] {
+    grid-column: auto;
+  }
+}
+
+/* one rearrangeable section: a grip laid over the top-right corner of the
+   section's own existing panel/header (no separate rail row) -- see app.js's
+   _sectionShell. Columns are HTML5 drop targets; .drop-indicator is the
+   hairline shown between shells (or at the end of a column) while dragging. */
+.section-shell-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 40px;
+  min-width: 0;
+}
+
+.section-shell {
+  position: relative;
+}
+
+.section-shell.dragging {
+  opacity: 0.4;
+}
+
+/* Reserves a gutter clear of any component content (title text, the
+   collapse/star/refresh buttons catalog-view, passes-view, journal-view and
+   scans-view render in their own title row) for the grip (and, next to it,
+   the WIDE/CARD toggle) to sit in without editing those 9 components'
+   headings. S1: only while EDIT LAYOUT is on (.editing, see app.js's
+   _sectionShell) -- with the grip hidden the gutter would just be waste. */
+.section-shell.editing .panel {
+  padding-right: 68px;
+}
+
+.section-shell .grip {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  z-index: 1;
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  color: var(--ink);
+  letter-spacing: -0.15em;
+  cursor: grab;
+}
+
+.section-shell .grip:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.section-shell .grip:active {
+  cursor: grabbing;
+  background: transparent;
+  transform: none;
+}
+
+/* ⇔ WIDE / ⇥ CARD toggle (app.js's _sectionShell/_toggleWide): sits left of
+   the grip on a grid section (.has-grip), or in the grip's own spot on a
+   wide-band section, which has no grip. */
+.section-shell .wide-toggle {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  z-index: 1;
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  font-size: 0.75em;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.section-shell.has-grip .wide-toggle {
+  right: 38px;
+}
+
+.section-shell .wide-toggle:hover {
+  border-color: transparent;
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .section-shell .wide-toggle {
+    right: 10px;
+  }
+}
+
+.drop-indicator {
+  height: 2px;
+  background: var(--accent);
+  margin: 0 2px;
+}
+
+@media (max-width: 900px) {
+  .section-shell .grip {
+    display: none;
+  }
+}
+
+/* Screen-reader-only content: app.js's layout-move aria-live announcer. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 480px) {
+  .seg-readout {
+    font-size: 1.5em;
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--panel-well);
+}
+
+.row.dim {
+  color: var(--ink);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.empty {
+  color: var(--ink);
+  font-size: 0.95em;
+  padding: 6px 0;
+}
+
+/* short muted "why disabled + what to do" line, rendered inline next to or
+   under the control it explains (U4: inline reasons, not tooltips) */
+.hint {
+  display: block;
+  color: var(--ink);
+  font-size: 0.85em;
+  margin-top: 2px;
+  white-space: normal;
+}
+
+/* failure-note.js is a light-DOM custom element wrapping a single .row --
+   block so its host takes normal document flow (custom elements default to
+   inline), with margin on both sides so it reads as its own line wherever
+   a panel drops it in (see instrument-panel.js and friends). */
+failure-note {
+  display: block;
+  margin: 8px 0;
+}
+
+/* overlay: palette + drawer share this backdrop */
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  z-index: 10;
+}
+
+/* color/swatch row -- signal color (8) and tag color (6) pickers */
+.swatch-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  background: var(--sw, var(--led-unlit));
+}
+
+/* Swatches rendered as real <button>s (keyboard-operable) must not pick up
+   the generic button padding, or they stop being square. */
+button.swatch {
+  padding: 0;
+  min-width: 0;
+}
+
+.swatch.selected {
+  border-color: var(--fg);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.swatch.none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  color: var(--ink);
+  background: var(--panel-well);
+}
+
+/* SKY polar chart: engraved compass letters and accent rise/set/peak marks
+   on the inline SVG (see components/sky-view.js) */
+.sky-cardinal {
+  font-family: var(--sans);
+  font-size: 12px;
+  fill: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.sky-marker {
+  font-family: var(--sans);
+  font-size: 12px;
+  fill: var(--accent);
+}
+
+/* v0.10.0 LIBRARY: full-width memory table -- a real <table> (checkbox, LED,
+   name/frequency/mode, status, tags, heard count, last heard, tune) instead
+   of the panel .row/.list pattern the section columns use, since it needs
+   sortable columns and per-row selection. No new chrome beyond the existing
+   hairline (--line) the rest of the panel already uses. */
+.lib-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.lib-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.lib-table th {
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.lib-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.lib-table tbody tr {
+  cursor: pointer;
+}
+
+.lib-table tbody tr:hover {
+  background: var(--panel-well);
+}
+
+#status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 4px 2px;
+}
+
+.status-error {
+  color: var(--danger);
+}
+
+/* U1: receiver owner's ■ STOP, next to its lamp-cluster in the header --
+   small, like the link-problem shortcut; red like every other STOP
+   (run-stop, the START/STOP traffic light). */
+button.owner-stop {
+  font-size: 0.8em;
+  padding: 2px 8px;
+}
+
+/* U1: confirmInterrupt's inline "this will stop X, continue?" strip (app.js),
+   replacing window.confirm -- sits under the header row, above the failure
+   note. */
+.interrupt-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--panel-well);
+  border: 1px solid var(--accent);
+  font-size: 0.85em;
+}
+
+/* "⚠ LINK" shortcut to the diagnostics modal -- only rendered while a
+   connection check fails, so it reads as a warning lamp, not a control. */
+button.link-problem {
+  color: var(--danger);
+  border-color: var(--danger);
+  font-size: 0.8em;
+  padding: 2px 8px;
+}
+
+/* S1 shell (app.js render()): .app-body holds the workspace content
+   (.app-main) and, at >=1100px, the docked signal inspector beside it. Below
+   that width it's plain block flow and <signal-panel> stays an overlay sheet
+   (position: fixed via .overlay-backdrop), so its DOM position is moot. */
+.app-main {
+  min-width: 0;
+}
+
+/* The one <survey-view> for LISTEN/DISCOVER, fixed directly under the tab
+   strip so the same element survives a switch between the two. Spacing
+   matches .wide-band's; the surface heights themselves are survey-view's
+   own dimensions defaults. */
+.primary-spectrum {
+  margin: 4px 0 8px;
+  min-width: 0;
+}
+
+.decode-output-strip {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+}
+
+.decode-output-heading,
+.decode-output-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.decode-output-heading {
+  font-size: 0.75em;
+}
+
+.decode-output-line {
+  margin-top: 4px;
+  flex-wrap: nowrap;
+  font-size: 0.82em;
+  overflow: hidden;
+}
+
+.decode-output-line > .dim {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.decode-output-message {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.decode-output-line > .chip {
+  flex: 0 0 auto;
+}
+
+.decode-output-open {
+  font-size: 0.8em;
+  padding: 2px 8px;
+}
+
+/* LISTEN keeps its four quick workflows in one destination panel. Child
+   views retain their row behavior while their old standalone card chrome is
+   folded into this shared surface. */
+.listen-workbench {
+  padding: 0;
+  min-width: 0;
+  margin: 4px 0 8px;
+  container-type: inline-size;
+}
+
+.listen-workbench-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 560px);
+  align-items: start;
+  min-width: 0;
+}
+
+.listen-workbench-left {
+  min-width: 0;
+}
+
+.listen-workbench-toolbar {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+
+.listen-workbench-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.listen-workbench-tab {
+  min-height: 34px;
+  padding: 6px 12px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+}
+
+.listen-workbench-tab.active {
+  color: var(--context-listen);
+  border-bottom-color: var(--context-listen);
+}
+
+.listen-workbench-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.listen-favorite-hint {
+  margin: 4px 12px 0;
+  color: var(--ink);
+  font-size: 0.75em;
+}
+
+.listen-workbench-content {
+  min-width: 0;
+  max-height: 175px;
+  overflow: auto;
+}
+
+.listen-workbench-content > nearby-list > .panel,
+.listen-workbench-content > recent-list > .panel,
+.listen-workbench-content > listen-view > .panel,
+.listen-workbench-content > journal-view > .panel {
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+}
+
+.listen-workbench-content > nearby-list > .panel > h2,
+.listen-workbench-content > recent-list > .panel > h2,
+.listen-workbench-content > listen-view > .panel > h2,
+.listen-workbench-content > journal-view > .panel > h2 {
+  display: none;
+}
+
+.listen-workbench-content .row {
+  min-width: 0;
+}
+
+.listen-workbench-content recent-list .row > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listen-decode-controls {
+  min-width: 0;
+  padding: 6px 8px;
+  border-left: 1px solid color-mix(in srgb, var(--context-decode) 42%, var(--line));
+  background: color-mix(in srgb, var(--context-decode) var(--evidence-panel-tint), transparent);
+}
+
+.listen-decode-controls > decode-deck,
+.listen-decode-controls .scanner-deck {
+  width: 100%;
+}
+
+.listen-decode-controls .scanner-deck-line {
+  margin: 0;
+  min-height: 30px;
+}
+
+.listen-decode-controls .decode-last-event-line {
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
+
+.listen-decode-controls .decode-last-event-line > .chip {
+  flex-shrink: 0;
+}
+
+.listen-decode-controls .decode-last-event-line > .dim {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.decode-prepare-button { font-size: 0.72em; padding: 3px 6px; white-space: nowrap; }
+.decode-prepare-button.needs-attention { border-color: var(--warn); color: var(--warn); animation: prep-pulse 2s ease-in-out infinite; }
+@keyframes prep-pulse { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 33%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .decode-prepare-button.needs-attention { animation: none; } }
+
+@container (max-width: 900px) {
+  .listen-workbench-header { grid-template-columns: minmax(0, 1fr); }
+  .listen-decode-controls { border-left: 0; border-top: 1px solid color-mix(in srgb, var(--context-decode) 42%, var(--line)); }
+}
+
+.cw-transcript {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--panel-well);
+  padding: 8px;
+}
+
+.cw-transcript-scroll {
+  max-height: 240px;
+  overflow: auto;
+  user-select: text;
+}
+
+.cw-transcript-compact .cw-transcript-scroll { max-height: 110px; }
+.cw-transcript-group + .cw-transcript-group { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+.cw-transcript-meta { font-size: 0.75em; margin-bottom: 4px; }
+.cw-transcript-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+
+@media (max-width: 1100px) {
+  .listen-workbench-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .listen-decode-controls {
+    border-left: 0;
+    border-top: 1px solid color-mix(in srgb, var(--context-decode) 42%, var(--line));
+  }
+}
+
+/* Keep the full 100/24/18/150px survey canvas at 1280×800 while reclaiming
+   enough surrounding chrome for four label rows beneath the table header. */
+@media (min-width: 1280px) {
+  .primary-spectrum survey-view > .panel {
+    padding: 8px 10px;
+  }
+
+  .primary-spectrum .survey-controls {
+    margin-top: 6px;
+  }
+}
+
+/* With the inspector docked at 1280px, keep RESET on the display-controls
+   row so the occupancy header retains the required four-row viewport space. */
+@media (min-width: 1100px) and (max-width: 1399px) {
+  .primary-spectrum .survey-controls input[type="range"] {
+    width: 82px;
+    min-width: 82px;
+  }
+}
+
+signal-panel {
+  display: block;
+}
+
+@media (min-width: 1100px) {
+  .app-body {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .app-main {
+    flex: 1 1 auto;
+  }
+
+  /* Empty (renders nothing) while closed, so it takes no width then. */
+  .app-body > signal-panel {
+    flex: 0 0 auto;
+  }
+
+  /* Non-modal column: no backdrop, sticks to the viewport while the content
+     column scrolls so it spans the full visible content height (body has
+     16px padding top and bottom, hence the 32px). */
+  .signal-panel.docked {
+    position: sticky;
+    top: 16px;
+    width: 360px;
+    height: calc(100vh - 32px);
+    margin: 0;
+  }
+}
+
+/* Current-frequency details (signal-panel.js `wide`, opened by the receiver
+   strip's ⓘ): a full-width section directly under the receiver panel, not a
+   side column. Brighter surface and a receiver-coloured top edge so it reads
+   as attached to the radio; below the panel so it never adds to its 220 px
+   layout gate. Evidence/notes flow in columns at desktop widths. */
+signal-panel[wide] { display: block; }
+.signal-panel.wide {
+  width: auto;
+  height: auto;
+  margin: 0 0 16px;
+  /* One step above --panel with a faint receiver-blue cast: visibly a
+     separate, attached surface without a bright slab breaking the dark
+     instrument look (the surrounding panels stay #12151a). */
+  border: 1px solid color-mix(in srgb, var(--context-receiver) 35%, var(--line));
+  border-top: 3px solid var(--context-receiver);
+  background: color-mix(in srgb, var(--panel) 90%, var(--context-receiver) 10%);
+  border-radius: 6px;
+  overflow: visible;
+}
+.freq-details-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 2px; }
+.freq-details-name { font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; color: var(--context-receiver); }
+.freq-details-follow { font-size: 0.78em; color: var(--context-receiver); }
+.freq-details-updating { font-size: 0.78em; }
+/* Docked inspector body (signal-panel.js _wideBody): verdict, actions, an
+   Evidence / History switch, notes. One border level: the panel's. */
+.signal-panel.wide { gap: 10px; }
+.freq-details-hz { font-size: 1.05em; color: var(--fg); }
+.inspector-verdict { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.inspector-verdict > strong { font-size: 1.15em; line-height: 1.3; overflow-wrap: anywhere; }
+.inspector-verdict-state { font-size: 0.8em; }
+.signal-panel.wide .signal-panel-quick-actions { margin: 0; }
+/* One shared tab grammar: boxed tabs; selected takes the panel's context colour, else --accent. */
+.panel [role="tablist"] [role="tab"], .geo-toolbar[role="tablist"] [role="tab"] {
+  border: 1px solid var(--line); padding: 4px 10px; font-size: .95em; color: var(--ink);
+}
+.panel [role="tablist"] [role="tab"]:hover, .geo-toolbar[role="tablist"] [role="tab"]:hover { border-color: var(--accent); }
+.panel [role="tablist"] [role="tab"]:focus-visible, .geo-toolbar[role="tablist"] [role="tab"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.panel [role="tablist"] [role="tab"][aria-selected="true"], .geo-toolbar[role="tablist"] [role="tab"][aria-selected="true"] { border-color: var(--accent); color: var(--accent); }
+.inspector-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-top: 4px; }
+.panel .inspector-tabs[role="tablist"] > [role="tab"] {
+  border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent;
+  padding: 6px 10px; margin-bottom: -1px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim);
+}
+.panel .inspector-tabs[role="tablist"] > [role="tab"][aria-selected="true"] { color: var(--fg); border-bottom-color: var(--context-receiver); }
+.inspector-tabs > button:disabled { opacity: .45; }
+.inspector-tabpanel { min-width: 0; }
+.inspector-tabpanel .inspector-evidence-group:first-child { margin-top: 6px; }
+.inspector-tabpanel .inspector-secondary { margin: 0; }
+.inspector-tabpanel .inspector-secondary > summary { color: var(--fg); font-weight: 600; }
+.inspector-bundle { display: inline-block; margin-top: 6px; font-size: 0.85em; }
+.inspector-result-time { font-weight: 400; }
+.inspector-notes { border-top: 1px solid var(--line); padding-top: 8px; margin-top: auto; }
+.inspector-notes h2 { margin-top: 0; }
+.inspector-notes textarea { box-sizing: border-box; width: 100%; min-height: 64px; resize: vertical; }
+.inspector-add-note { font-size: 12px; }
+@media (min-width: 1100px) {
+  /* Wider than the 360 px signal-detail dock: evidence cards carry a line of
+     decoder output. */
+  .signal-panel.wide.docked { width: 420px; overflow-y: auto; }
+}
+
+/* U3 signal-detail panel (components/signal-panel.js): right-side slide-over
+   sharing .overlay-backdrop with the drawer/palette; a bottom sheet under
+   900px instead (a small operator screen has more usable width than height). */
+.signal-panel {
+  margin-left: auto;
+  width: min(420px, 92vw);
+  height: 100%;
+  border-radius: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .signal-panel {
+    margin: auto 0 0;
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+  }
+}
+
+.signal-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+/* Narrow (docked/overlay): identity and × on the first line, frequency
+   context underneath at full width. Wide mode puts context in the middle. */
+.signal-panel-identity { flex: 1 1 0; min-width: 0; }
+.signal-panel-context { flex: 1 1 100%; order: 3; min-width: 0; }
+.signal-panel-header > button { order: 2; }
+
+/* Live inspection panel (signal-instruments.js), under the ⓘ section:
+   a title/status/controls bar, then the embedded scope bench. */
+signal-instruments { display: block; }
+signal-workbench { display: block; margin-bottom: 16px; }
+signal-workbench:empty { display: none; }
+.live-inspection { margin: 0 0 16px; border-top: 2px solid var(--context-scope); }
+.live-inspection-toggle h2 { color: var(--context-scope); }
+.instruments-field-group { display: inline-flex; align-items: center; gap: 6px; }
+.live-inspection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.live-inspection-toggle { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 2px 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; min-height: 0; }
+.live-inspection-toggle:hover h2 { color: var(--accent); }
+.live-inspection-toggle h2 { margin: 0; }
+.live-inspection-caret { color: var(--dim); width: 1em; }
+.live-inspection:not(.open) { padding-top: 8px; padding-bottom: 8px; }
+.live-inspection-freq { font-size: 1.15em; }
+.live-inspection .instruments-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.live-inspection .instruments-field { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dim); }
+.live-inspection .instruments-field input { width: 90px; }
+.live-inspection .instruments-start { border-color: var(--context-scope); color: var(--context-scope); font-weight: 600; }
+.live-inspection .instruments-stop { border-color: var(--danger); color: var(--danger); }
+.live-inspection .instruments-help-btn { margin-left: auto; }
+.instruments-state { font-size: 12px; color: var(--dim); }
+.instruments-state.on { color: var(--ok); font-weight: 600; }
+.instruments-state.elsewhere { color: var(--warn); font-weight: 600; }
+.live-inspection .instruments-hint { margin: 6px 0 10px; font-size: 12px; }
+.live-inspection .instruments-error { margin: 6px 0; padding: 6px 10px; border-left: 3px solid var(--danger); background: #ff5f5f12; }
+.live-inspection-dsp { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 4px; }
+.live-inspection-dsp > summary { cursor: pointer; padding: 6px 0; font-weight: 600; }
+
+/* Embedded scope bench (scope-panel.js `embedded`). */
+.scope-bench { display: grid; gap: 16px; font-size: 13px; }
+@media (min-width: 1100px) { .scope-bench { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; } }
+.scope-bench-main { min-width: 0; }
+.scope-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-bottom: 8px; font-size: 12px; }
+.scope-toolbar label { display: inline-flex; align-items: center; gap: 5px; color: var(--dim); }
+.scope-axis { font-size: 11px; margin-top: 4px; }
+.scope-cursors { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 6px; font-size: 12px; }
+.scope-cursors label { display: inline-flex; align-items: center; gap: 6px; color: var(--warn); }
+.scope-bench-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.scope-card { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.scope-card h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.scope-card p { margin: 4px 0; font-size: 12px; }
+.scope-readout { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 0; font-size: 12px; }
+.scope-readout dt { color: var(--dim); }
+.scope-readout dd { margin: 0; text-align: right; }
+.scope-drift label { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; }
+.scope-drift label input[type="number"] { width: 80px; }
+.scope-drift button { margin-top: 4px; }
+
+/* Live inspection help (signal-instruments.js), same dialog pattern as the
+   allocation modal. */
+.instruments-help-panel { margin: 6vh auto 0; width: min(920px, 94vw); height: auto; max-height: 86vh; overflow: auto; padding: 18px 20px; align-self: flex-start; }
+.instruments-help-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.instruments-help-head > div { flex: 1; min-width: 0; }
+.instruments-help-head h2 { margin: 0; font-size: 20px; }
+.instruments-help-head p { margin: 3px 0 0; }
+.instruments-help-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.instruments-help-card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.45; }
+.instruments-help-card h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.instruments-help-card p { margin: 0; }
+.instruments-help-card ol { margin: 0; padding-left: 20px; }
+.instruments-help-card li + li { margin-top: 4px; }
+.instruments-help-card dl { margin: 0; }
+.instruments-help-card dt { font-weight: 600; margin-top: 6px; }
+.instruments-help-card dt:first-child { margin-top: 0; }
+.instruments-help-card dd { margin: 1px 0 0; color: var(--dim); }
+.instruments-help-start { grid-column: 1 / -1; border-color: var(--accent); }
+.instruments-help-foot { margin: 12px 0 0; font-size: 12px; }
+.scope-plot-empty {
+  display: flex; align-items: center; justify-content: center; height: 190px; margin: 6px 0;
+  border: 1px solid var(--line); color: var(--dim); font-size: 13px;
+  background: repeating-linear-gradient(0deg, transparent 0 37px, #ffffff08 37px 38px),
+    repeating-linear-gradient(90deg, transparent 0 79px, #ffffff08 79px 80px), var(--bg, #111);
+}
+
+/* U3 evidence kinds (msdr/api/signal_detail.py evidence[].kind) -- a small
+   bordered chip, never a filled background, matching the rest of the panel's
+   hairline-only chrome (.tag-chip, .swatch, .lib-table). Reused as-is by
+   signal-panel.js's Evidence list and survey-view.js's BAND PLAN/CATALOG/
+   FAMILY cells (see format.js's evidenceClass). */
+.ev-decoded,
+.ev-memory,
+.ev-scheduled,
+.ev-bandplan,
+.ev-analyzer {
+  display: inline-block;
+  padding: 0 5px;
+  font-size: 0.85em;
+  border: 1px solid var(--line);
+}
+
+.ev-decoded {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ev-memory {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.ev-scheduled {
+  border-color: var(--line);
+  color: var(--fg);
+}
+
+.ev-bandplan {
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.ev-analyzer {
+  border-style: dashed;
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* signal-panel.js's Evidence list: one bordered block per item (glyph + kind
+   chip, title, detail line, timestamp) -- not the small inline .ev-* chip
+   itself, which sits inside as the kind label. */
+.evidence-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+}
+
+/* START/STOP "traffic light": the control you can press right now is lit --
+   solid green to start, solid red to stop -- so the state reads from across
+   the room; the disabled half of a START/STOP pair stays the grey outline.
+   Hover keeps the fill and only brightens it (the generic cyan hover would
+   hide the state). */
+button.run-start:not(:disabled),
+button.run-stop:not(:disabled) {
+  color: #0b0d10;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+button.run-start:not(:disabled) {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+button.run-stop:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+button.run-start:hover:not(:disabled),
+button.run-stop:hover:not(:disabled) {
+  color: #0b0d10;
+  filter: brightness(1.15);
+}
+button.run-start:active:not(:disabled) {
+  background: var(--ok);
+}
+button.run-stop:active:not(:disabled) {
+  background: var(--danger);
+}
+
+/* "● RUNNING m:ss" next to a running control (run-indicator.js). */
+run-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ok);
+  white-space: nowrap;
+}
+run-indicator .run-dot {
+  animation: led-blink 1.6s ease-in-out infinite;
+}
+run-indicator.rec {
+  color: var(--danger);
+}
+@media (prefers-reduced-motion: reduce) {
+  run-indicator .run-dot {
+    animation: none;
+  }
+}
+run-indicator.paused {
+  color: var(--led-yellow);
+}
+run-indicator.paused .run-dot {
+  animation: none;
+}
+/* REC is red by convention even before it runs: outlined when armed and
+   ready, solid red (run-stop) while recording. */
+button.run-rec:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+  font-weight: 700;
+}
+button.run-rec:hover:not(:disabled) {
+  color: #0b0d10;
+  background: var(--danger);
+}
+
+/* Survey results table: fits the page instead of scrolling sideways -- fixed
+   layout (column widths from survey-view.js's <colgroup>; text columns share
+   the rest), long values crop with an ellipsis and the cell's title shows
+   them in full. */
+.lib-table.survey-table {
+  table-layout: fixed;
+}
+.lib-table.survey-table th,
+.lib-table.survey-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lib-table.survey-table td > * {
+  max-width: 100%;
+}
+/* the decode popover must escape its cell's clipping */
+.lib-table.survey-table td[style*="position:relative"] {
+  overflow: visible;
+}
+/* a label no longer tracked, kept in the sticky table */
+.lib-table.survey-table tr.gone {
+  opacity: 0.45;
+}
+.lib-table.survey-table tr.gone.selected {
+  opacity: 0.85;
+}
+.lib-table.survey-table tr.new-divider td {
+  color: var(--ink);
+  font-size: 0.8em;
+  text-align: center;
+  padding: 3px 8px;
+  background: var(--panel-well);
+}
+.lib-table.survey-table tr.new-divider {
+  cursor: default;
+}
+
+/* Survey header: grouped controls with engraved labels in a left column
+   (SPAN / IDENTIFY / STATUS / DISPLAY), stacking on narrow screens. */
+.survey-topbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.survey-topbar h2 { flex:none; }
+.survey-tune { min-width:0; margin-left:8px; padding-left:12px; border-left:1px solid var(--line); }
+.survey-span-row { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.survey-span-row select, .survey-span-row input, .survey-span-row button { font-size:.85em; min-height:28px; }
+.survey-span-row input { width:105px !important; }
+.survey-span-row .survey-group-label { font-size:.65em; }
+@media (max-width: 760px) { .survey-tune { margin-left:0; padding-left:0; border-left:0; flex-basis:100%; } }
+.survey-controls {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 14px;
+  align-items: center;
+  margin-top: 10px;
+}
+.survey-controls > .control-row {
+  margin: 0;
+}
+.survey-group-label {
+  font-family: var(--sans);
+  font-size: 0.7em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+}
+.survey-dims {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  column-gap: 12px;
+}
+.survey-subgroup {
+  font-family: var(--mono);
+  font-size: 0.72em;
+  color: var(--disabled);
+}
+.survey-divider {
+  align-self: stretch;
+  width: 1px;
+  min-height: 18px;
+  background: var(--line);
+  margin: 0 4px;
+}
+/* recessed readout for the ANALYZER / RDS progress lines */
+.survey-status {
+  background: var(--panel-well);
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  font-size: 0.8em;
+  line-height: 1.6;
+  color: var(--ink);
+}
+@media (max-width: 720px) {
+  .survey-controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .survey-group-label {
+    margin-top: 6px;
+  }
+}
+/* not on air right now: readable but recedes, so live signals stand out */
+.lib-table.survey-table tr.quiet td {
+  color: var(--ink);
+}
+
+/* Selected or tuned table row: the accent remains while the receiver stays on
+   its frequency, including when a quiet row is retained. */
+.lib-table.survey-table tr.selected {
+  background: color-mix(in srgb, var(--accent) 24%, var(--panel-well));
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+.lib-table.survey-table tr.selected td:first-child {
+  color: var(--accent);
+  font-weight: 700;
+}
+.survey-listening-mark { color: var(--accent); }
+
+/* Task B: matching badge-lane chip for the selected label. */
+.survey-badge.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* decode-deck's ⚙ modal decoder rows: installed/tested/session readiness
+   facts kept as separate short words (never one "available" verdict) --
+   wraps at narrow (modal) widths rather than truncating. */
+.decoder-facts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  font-size: 0.75em;
+}
+
+.decoder-category + .decoder-category {
+  margin-top: 10px;
+}
+
+.decoder-category-title {
+  margin: 8px 0 3px;
+  color: var(--ink);
+  font: 600 0.72em var(--sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.decoder-option {
+  cursor: help;
+}
+
+.decoder-option-category {
+  font-size: 0.72em;
+  white-space: nowrap;
+}
+/* S1 receiver strip (instrument-panel.js, recorder-control.js, s-meter.js,
+   segment-readout.js) -- see docs/epics/listening-workbench/S1-ui-contract.md
+   §"Receiver strip". New file (W2), merged into styles.css by the
+   coordinator. Extends the base .panel/.lamp-cluster/.freq-meter-row/
+   .readout/.control-row rules in styles.css rather than replacing them, so
+   ordering after styles.css in the merge is required for the compact
+   overrides below (.seg-wrap.compact, .smeter.compact) to win. */
+
+/* row 1: nameplate/lamps/chips on the left, transport buttons on the right --
+   ≈28px tall (button min-height), wraps under narrow widths rather than
+   overflowing. */
+.strip-row1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.strip-row1 .strip-icon-button {
+  min-width: 30px;
+  padding: 4px 6px;
+}
+
+.strip-row1 #decode-button {
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+/* row1 status chips (source, record state): bordered mono tags, same
+   recessed-well idiom as a readout value rather than a rounded pill. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 0.8em;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-well);
+  color: var(--fg);
+  border-radius: var(--radius-pill);
+}
+
+button.chip {
+  cursor: pointer;
+}
+
+button.chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.record-chip.armed {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.record-chip.rec {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Three clear priorities: receiver state, tuning/recording, then context and
+   tools. Context stays visible without pushing the primary VFO down. */
+.strip-primary-actions,
+.strip-context,
+.strip-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.strip-primary-actions button,
+.strip-tools button { font-size: 0.8em; }
+.strip-primary-actions .history-nav {
+  min-width: 34px;
+  min-height: 32px;
+  padding: 2px 6px;
+  font-size: 1.35em;
+  line-height: 1;
+  font-family: system-ui, sans-serif;
+}
+.strip-primary-actions #favorite-current-button:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.strip-context,
+.strip-tools {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.strip-context { gap: 14px; }
+.strip-context .readout { flex-direction: row; gap: 5px; }
+.strip-context detect-readout { min-width: 0; flex: 1 1 260px; }
+.strip-context .detect-readout { display: flex; align-items: center; gap: 6px; }
+.strip-context .detect-readout > .row { min-width: 0; }
+.strip-group-label { color: var(--ink); font-size: 0.7em; letter-spacing: .12em; }
+
+/* compact segment-readout (row 2): shrink the digit size well below the
+   default 2.4em free-standing readout; .seg-unit/.label stay their normal
+   size (see segment-readout.js's `compact` property). */
+.seg-wrap.compact .seg-readout,
+.seg-wrap.compact .seg-input {
+  font-size: 1.6em;
+}
+
+/* compact s-meter (row 2): shorter bar, smaller text, tick scale dropped
+   entirely to save vertical space (see s-meter.js's `compact` property). */
+.smeter.compact .smeter-text {
+  font-size: 0.75em;
+}
+
+.smeter.compact .smeter-sreading {
+  font-size: 1em;
+}
+
+.smeter.compact .smeter-bar .smeter-seg {
+  height: 16px;
+}
+
+.smeter.compact .smeter-scale {
+  display: none;
+}
+/* S1: styles for review-view.js, preset-picker.js and setup-drawer.js's new
+   groups (recordings-view.js/survey-view.js reuse existing global classes
+   from styles.css -- .lib-table, .ev-*, .control-row, .run-start/-stop,
+   .row, .readout, .empty, .dim, button:disabled -- with no changes needed
+   here). Merged into styles.css by the coordinator. */
+
+/* REVIEW's recordings list: same selected-row treatment as the SURVEY
+   table (styles.css's .lib-table.survey-table tr.selected), scoped to its
+   own class so it doesn't affect other .lib-table users (recordings-view.js,
+   library-view.js) that don't have row selection. */
+.lib-table.review-table tr.selected {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* PRESET picker: each preset's plan as a compact bullet list, not the
+   browser's default (larger gap, indent) spacing. */
+preset-picker ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+preset-picker li {
+  color: var(--fg);
+}
+
+/* Cap the S-meter so it shares the tuning zone with frequency and mode. */
+.freq-meter-row .panel-smeter {
+  flex: 0 1 280px;
+  max-width: 27%;
+  min-width: 170px;
+}
+
+.strip-recording recorder-control {
+  min-width: 0;
+}
+
+.strip-recording #recorder-control .control-row {
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.strip-recording #recorder-control .control-row button {
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.strip-recording .record-chip {
+  flex: none;
+  font-size: 0.68em;
+  white-space: nowrap;
+}
+
+.strip-recording #recorder-control .dim {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Keep recorder diagnostics readable inside narrow receiver columns. */
+#recorder-control .capture-health {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 6px;
+  font-size: .75rem;
+  line-height: 1.4;
+  white-space: normal;
+}
+.capture-health > summary { cursor: pointer; font-size: inherit; }
+/* Open: one tinted strip of label·value pairs with a ? for the caveat,
+   instead of five spaced-out columns and a sentence underneath. */
+.capture-health[open] { padding: 4px 8px 5px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-well); }
+.capture-health-metrics {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 3px 14px;
+  margin: 4px 0 0;
+}
+.capture-health-metrics > div { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.capture-health-metrics dt { color: var(--ink); font-size: .68rem; }
+.capture-health-metrics dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.capture-health-metrics > div.warn dd { color: var(--warn); }
+.capture-health-metrics .help-mark { width: 15px; height: 15px; font-size: 10px; }
+.strip-recording #recorder-control .capture-health .dim {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  font-size: .72rem;
+  margin: 6px 0 0;
+}
+
+/* S1 chrome-compaction pass (docs/epics/listening-workbench/S1-ui-contract.md):
+   pins the survey table's row height at a compact ~28px (padding 5px top/
+   bottom + this line-height + 1px border) rather than the browser's default
+   line-height for 0.9em text, so four rows reliably fit in ~120px under the
+   collapsed OPTIONS chrome. Font size is unchanged (.lib-table's 0.9em). */
+.lib-table.survey-table td {
+  line-height: 18px;
+}
+
+/* S1: the collapsed OPTIONS summary is one line -- the text yields (ellipsis,
+   full text in its title) so the toggle and START ANALYZER never wrap into a
+   second/third line and eat the 1280x800 row budget. */
+.survey-options-line {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.survey-options-summary {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Setup drawer: a readable workspace for the large set of app preferences.
+   Navigation and Save remain available while the operator moves through it. */
+.setup-drawer {
+  margin-left: auto;
+  width: min(620px, 94vw);
+  height: 100%;
+  border-radius: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  scroll-behavior: smooth;
+}
+
+.setup-drawer-header {
+  position: sticky;
+  top: -18px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: -18px -18px 0;
+  padding: 16px 18px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.setup-title {
+  margin: 0;
+  color: var(--fg);
+  font-size: 1em;
+}
+
+.setup-drawer-header .setup-help {
+  margin: 5px 0 0;
+  max-width: 52ch;
+}
+
+.setup-close {
+  flex: none;
+  min-width: 34px;
+  font-size: 1.2em;
+  line-height: 1;
+}
+
+.setup-nav {
+  position: sticky;
+  top: 70px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.setup-nav button {
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 0.78em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.setup-nav button[data-setup-section="setup-catalog"] {
+  color: var(--context-catalog);
+  border-color: color-mix(in srgb, var(--context-catalog) 45%, var(--line));
+}
+
+.setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+.setup-form > .setup-section {
+  min-width: 0;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 130px;
+}
+
+.setup-form > .setup-section > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 9px 4px;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.setup-form > #setup-catalog > summary,
+.setup-form > #setup-catalog[open] > summary::before {
+  color: var(--context-catalog);
+}
+
+.setup-form > #setup-catalog[open] > summary::before {
+  border-color: var(--context-catalog);
+}
+
+.setup-form > .setup-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.setup-form > .setup-section > summary::before {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: 0.95em var(--mono);
+}
+
+.setup-form > .setup-section[open] > summary::before {
+  content: "−";
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.setup-form > .setup-section[open] > summary {
+  margin-bottom: 8px;
+}
+
+.setup-form > .setup-section > h2 {
+  scroll-margin-top: 130px;
+  margin: 16px 0 8px;
+  padding-bottom: 7px;
+  color: var(--accent);
+  font-size: 0.78em;
+}
+
+.setup-help {
+  color: var(--ink);
+  font-size: 0.82em;
+  line-height: 1.45;
+}
+
+.setup-form input:not([type="checkbox"]),
+.setup-form select,
+.setup-form textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.setup-form > label {
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.setup-catalog-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setup-catalog-group > .setup-help {
+  margin: 0 0 2px;
+}
+
+.setup-catalog-source {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--catalog-source-color, var(--line));
+  background: var(--panel-well);
+}
+
+.setup-catalog-source-head,
+.setup-catalog-source-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.setup-catalog-source-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.setup-catalog-source-copy > .dim {
+  font-size: 0.8em;
+  line-height: 1.35;
+}
+
+.setup-catalog-reference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+  font-size: 0.78em;
+}
+
+.setup-catalog-url-value {
+  min-width: 0;
+  flex: 1 1 100%;
+  overflow-wrap: anywhere;
+  color: var(--fg);
+  font-size: 0.92em;
+}
+
+.setup-catalog-reference a {
+  color: var(--catalog-source-color, var(--accent));
+}
+
+.setup-catalog-state {
+  flex: none;
+  padding: 3px 5px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  font: 0.68em var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.setup-catalog-state.is-stale {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.setup-catalog-state.is-error,
+.setup-catalog-error {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.setup-catalog-url {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.8em;
+}
+
+.setup-catalog-url input {
+  width: 100%;
+  min-width: 0;
+}
+
+.setup-catalog-static {
+  padding: 7px 8px;
+  border-left: 2px solid var(--line);
+  font-size: 0.8em;
+}
+
+.setup-catalog-source-foot .dim {
+  min-width: 0;
+  font-size: 0.72em;
+  overflow-wrap: anywhere;
+}
+
+.setup-catalog-error {
+  display: inline-block;
+  max-width: 32ch;
+  border: 0;
+  overflow-wrap: anywhere;
+}
+
+.setup-catalog-refresh {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  font-size: 0.8em;
+}
+
+.setup-catalog-refresh:disabled {
+  max-width: 124px;
+  font-size: 0.72em;
+  line-height: 1.2;
+}
+
+/* Source identities repeat consistently in Setup, result rails, and source
+   filters. Color stays on the edge or label so dense catalog data stays calm. */
+.catalog-source-eibi { --catalog-source-color: #e7a86d; }
+.catalog-source-aoki { --catalog-source-color: #6fc6a8; }
+.catalog-source-hfcc { --catalog-source-color: #b69be8; }
+.catalog-source-ndxc { --catalog-source-color: #7faee8; }
+.catalog-source-noaa_radiofax { --catalog-source-color: #65c2ce; }
+.catalog-source-sigidwiki { --catalog-source-color: #d28eb6; }
+.catalog-source-priyom { --catalog-source-color: #d5c56d; }
+.catalog-source-satnogs { --catalog-source-color: #8cc978; }
+
+catalog-view .catalog-entry[class*="catalog-source-"] {
+  box-shadow: inset 3px 0 0 var(--catalog-source-color, var(--line));
+}
+
+catalog-view .catalog-entry-source {
+  color: var(--catalog-source-color, var(--ink));
+}
+
+catalog-view .catalog-source-filters .catalog-source-hint button {
+  color: var(--catalog-source-color, var(--ink));
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--catalog-source-color, var(--line)) 70%, transparent);
+  background: color-mix(in srgb, var(--catalog-source-color, transparent) 6%, transparent);
+}
+
+catalog-view .catalog-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 0.8em;
+}
+
+catalog-view .catalog-range-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  color: var(--ink);
+  font-size: 0.8em;
+}
+
+catalog-view .catalog-range-filter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+catalog-view .catalog-range-filter input {
+  width: 12ch;
+  min-width: 0;
+  padding: 4px 6px;
+  font: 1em var(--mono);
+}
+
+catalog-view .catalog-range-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.8em;
+}
+
+/* "current <f> at <time>" badge (docs/reference-catalogs.md) -- distinct
+   from the fixed-frequency/range text next to it, and from .is-stale
+   (border/color flip once current_freq_at is older than 24h). */
+catalog-view .catalog-current-freq {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+catalog-view .catalog-current-freq.is-stale {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+catalog-view .catalog-state-word {
+  color: var(--accent);
+}
+
+catalog-view .catalog-source-hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+catalog-view .catalog-source-tooltip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 5px);
+  left: 0;
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  width: min(340px, 85vw);
+  padding: 10px 12px;
+  border: 1px solid var(--catalog-source-color, var(--line));
+  background: var(--panel);
+  color: var(--ink);
+  font: 0.8rem/1.4 var(--sans);
+  white-space: normal;
+  text-align: left;
+  box-shadow: 0 6px 24px #0009;
+  pointer-events: none;
+}
+
+catalog-view .catalog-entry-source .catalog-source-tooltip {
+  left: auto;
+  right: 0;
+}
+
+catalog-view .catalog-source-hint:hover .catalog-source-tooltip,
+catalog-view .catalog-source-hint:focus-within .catalog-source-tooltip {
+  display: flex;
+}
+
+catalog-view .catalog-source-tooltip strong {
+  color: var(--catalog-source-color, var(--ink));
+}
+
+.setup-savebar {
+  position: sticky;
+  bottom: -8px;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  margin: 8px -18px -18px;
+  padding: 10px 18px 16px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+
+.setup-savebar button {
+  min-width: 110px;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+@media (max-width: 560px) {
+  .setup-drawer {
+    width: 100vw;
+    padding: 14px;
+  }
+
+  .setup-drawer-header {
+    top: -14px;
+    margin: -14px -14px 0;
+    padding: 12px 14px 9px;
+  }
+
+  .setup-nav {
+    top: 72px;
+  }
+
+  .setup-form > .setup-section {
+    scroll-margin-top: 128px;
+  }
+
+  .setup-savebar {
+    margin: 8px -14px -14px;
+    padding: 10px 14px 12px;
+  }
+}
+
+/* S3 review-view.js: the replay TIMELINE bar (runs + gaps) and its position
+   marker -- see review-view.js's _renderTimeline. Each .timeline-seg's width
+   is set inline (flex-grow, proportional to duration); this file only
+   supplies the per-kind fills and the hatch pattern for an unknown gap. */
+.review-timeline {
+  position: relative;
+  display: flex;
+  height: 18px;
+  border: 1px solid var(--line);
+  background: var(--panel-well);
+  overflow: hidden;
+}
+
+.timeline-seg {
+  height: 100%;
+  min-width: 2px;
+  cursor: pointer;
+  border-right: 1px solid var(--bg);
+}
+
+.timeline-seg.run {
+  background: var(--unlit);
+}
+
+.timeline-seg.run:hover {
+  background: color-mix(in srgb, var(--accent) 30%, var(--unlit));
+}
+
+.timeline-seg.gap-known {
+  background: var(--bg);
+  cursor: default;
+}
+
+.timeline-seg.gap-unknown {
+  cursor: default;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--bg),
+    var(--bg) 3px,
+    var(--panel-well) 3px,
+    var(--panel-well) 6px
+  );
+}
+
+.timeline-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+/* S4 decode integrity badge (.chip's recessed-well styling, sized down for a
+   message row) -- text only, never a percentage; color only for the two
+   verdicts that are actually correctness claims (passed/failed). See
+   docs/epics/listening-workbench/S4-decode-contract.md §5 and format.js's
+   integrityBadge(). */
+.integrity-badge {
+  font-size: 0.75em;
+  padding: 2px 6px;
+}
+
+.integrity-badge.integrity-passed {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.integrity-badge.integrity-failed {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Small marker on a message row decoded from a replay session rather than
+   the live receiver -- distinct from (and never counted toward) live decode
+   totals. */
+.tag-replay {
+  font-size: 0.75em;
+  padding: 2px 6px;
+  color: var(--ink);
+  opacity: 0.8;
+}
+
+/* Discover's linked geographic views. Leaflet panes stay below app dialogs. */
+.discover-geography { margin: 12px 0; min-width: 0; }
+.geo-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.geo-toolbar label { display: flex; gap: 6px; align-items: center; }
+.geo-toolbar input:not([type=checkbox]) { width: min(260px, 100%); }
+.discover-views { margin: 10px 0; }
+.discover-map-frame { position: relative; height: clamp(320px, 52vh, 620px); width: 100%; max-width: 100%; min-height: 240px; }
+.discover-map-frame[hidden] { display: none; }
+.discover-map-canvas { height: 100%; width: 100%; background: #17232c; isolation: isolate; z-index: 0; }
+/* Signal measurements: the wrap scrolls inside a capped height; the header
+   stays put. The grab bar sits in normal flow under the table (an absolute
+   corner handle ended up under the scrollbar and rows), full width so it is
+   always visible and clickable. */
+.survey-table-frame .lib-table-wrap thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+.table-resize-bar { display: block; width: 100%; min-height: 0; height: 18px; margin: 0 0 6px; padding: 0 8px; text-align: right;
+  border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--radius) var(--radius); background: var(--panel-well);
+  color: var(--ink); font: 700 10px/16px var(--mono); letter-spacing: .06em; cursor: ns-resize; touch-action: none; user-select: none; }
+.table-resize-bar:hover, .table-resize-bar:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.map-resize-handle { position: absolute; right: 0; bottom: 0; z-index: 1; width: 28px; height: 28px; padding: 0; cursor: nwse-resize; touch-action: none; color: var(--accent); background: var(--panel-well); border: 1px solid var(--line); border-radius: 5px 0 0 0; }
+.discover-map-frame .leaflet-bottom.leaflet-right { right: 30px; }
+.geo-summary { margin: 10px 0; font-size: 12px; }
+.geo-table-scroll { overflow: auto; max-height: 60vh; }
+.geo-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.geo-table th, .geo-table td { padding: 9px; text-align: left; border-bottom: 1px solid #303a45; vertical-align: top; }
+.geo-table th { position: sticky; top: 0; background: #171c24; }
+.geo-table td:first-child { min-width: 180px; max-width: 380px; overflow-wrap: anywhere; }
+.geo-table tr.selected { background: #22383e; }
+.geo-select { text-align: left; }
+.geo-detail { margin-top: 12px; padding: 12px; border: 1px solid #37414c; }
+.geo-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 250px; overflow: auto; }
+.discover-geography .leaflet-control a { color: #222; }
+.discover-geography .leaflet-control-attribution { color: #222; }
+
+
+.survey-evidence-badges { display:inline-flex; flex-wrap:wrap; gap:4px; }
+.survey-evidence-badge {
+  display:inline-block; color:var(--evidence-color); border:1px solid var(--evidence-color);
+  border-radius:3px; padding:1px 5px; font-size:0.78em; white-space:nowrap;
+  background:var(--panel-well);
+}
+.survey-evidence-legend { margin:6px 0; font-size:0.85em; }
+.survey-evidence-legend summary { cursor:pointer; color:var(--dim); }
+.survey-evidence-legend .survey-evidence-badge { margin:5px 4px 5px 0; }
+.survey-ml-section { margin: 8px 0; border: 1px solid var(--line); border-radius: 4px; }
+.survey-ml-section > summary { padding: 7px 10px; color: #c6a0ff; font: 0.85em var(--mono); cursor: pointer; }
+.survey-ml-section-content { padding: 0 9px 8px; }
+.survey-ml-section-content > p { margin: 3px 0 7px; font-size: 0.85em; }
+.survey-ml-proposals { margin:6px 0; border:1px solid var(--line); border-radius:3px; }
+.survey-ml-proposals summary { padding:5px 8px; cursor:pointer; color:#c6a0ff; font-family:var(--mono); font-size:0.85em; }
+.survey-ml-meta { padding:4px 8px 7px; font-size:0.8em; line-height:1.4; }
+.survey-ml-table { width:100%; }
+.survey-ml-table th, .survey-ml-table td { padding:5px 7px; white-space:nowrap; }
+.survey-ml-table td:nth-child(2) { white-space:normal; }
+.survey-ml-table button { font-size:0.8em; margin-right:3px; }
+.survey-ml-status { display:flex; flex-wrap:wrap; align-items:center; gap:4px 14px; margin:7px 0 3px;
+  padding:6px 8px; border:1px solid var(--line); background:var(--panel-well); font:0.78em var(--mono); }
+.survey-ml-worker { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.survey-ml-worker strong { color:#c6a0ff; font-weight:600; }
+.survey-ml-phase { padding:1px 5px; border:1px solid var(--line); border-radius:3px; color:var(--dim); white-space:nowrap; }
+.survey-ml-phase.phase-result-received { border-color:#c6a0ff; color:#c6a0ff; }
+.survey-ml-phase.phase-error { border-color:var(--danger); color:var(--danger); }
+.survey-ml-help { color:var(--dim); }
+.survey-ml-help summary { cursor:pointer; }
+.survey-ml-help span { display:block; max-width:850px; padding:5px 0 2px; line-height:1.4; }
+
+.survey-ml-toggle { display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+.survey-ml-toggle input { accent-color:#c6a0ff; }
+.survey-ml-help pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+
+.survey-validation, .survey-signal-shortcuts { border: 1px solid var(--survey-secondary-line); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.survey-validation {
+  --validation-color: #8caec7;
+  margin: 10px 0;
+  padding: 9px 13px 11px;
+  border-color: color-mix(in srgb, var(--validation-color) 54%, var(--line));
+  border-left: 3px solid var(--validation-color);
+  background: color-mix(in srgb, var(--validation-color) 6%, var(--panel));
+}
+.survey-validation > summary,
+.survey-signal-shortcuts-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 9px; color: var(--survey-secondary-ink); cursor: pointer; list-style: none; }
+.survey-validation > summary::-webkit-details-marker,
+.survey-signal-shortcuts-heading::-webkit-details-marker { display: none; }
+.survey-validation-title::before,
+.survey-signal-shortcuts-title::before { content: "▸"; margin-right: 2px; color: var(--survey-secondary-ink); }
+.survey-validation[open] .survey-validation-title::before,
+.survey-signal-shortcuts[open] .survey-signal-shortcuts-title::before { content: "▾"; }
+.survey-validation[open] > summary,
+.survey-signal-shortcuts[open] .survey-signal-shortcuts-heading { border-bottom: 1px solid var(--survey-secondary-line); }
+.survey-validation-title,
+.survey-signal-shortcuts-title { display: inline-flex; flex-wrap: nowrap; white-space: nowrap; }
+.survey-validation-title { font-weight: 600; }
+.survey-validation > summary { color: var(--validation-color); }
+.survey-validation[open] > summary { border-bottom-color: color-mix(in srgb, var(--validation-color) 54%, var(--line)); }
+.survey-validation-title::before { color: var(--validation-color); }
+.survey-validation-purpose { color: var(--ink); font-size: .78em; font-weight: 400; }
+.survey-validation-help { margin: 10px 0 6px; color: var(--fg); font-size: .84em; }
+.survey-validation form { display: grid; grid-template-columns: minmax(180px, 1.2fr) minmax(125px, .6fr) minmax(160px, .8fr) minmax(180px, 1fr) auto; gap: 8px; align-items: end; }
+.survey-validation label { display: block; min-width: 0; color: color-mix(in srgb, var(--validation-color) 75%, var(--fg)); font-size: .78em; font-weight: 600; }
+.survey-validation label .dim { font-weight: 400; }
+.survey-validation select, .survey-validation input { display: block; box-sizing: border-box; width: 100%; margin-top: 4px; color: var(--fg); font-size: 1.12em; }
+.survey-validation-save { border-color: var(--validation-color); color: var(--validation-color); white-space: nowrap; }
+.survey-validation-note { margin: 8px 0 0; font-size: .74em; }
+.survey-validation-result { margin-top: 8px; padding: 6px 8px; border-left: 2px solid var(--validation-color); background: color-mix(in srgb, var(--validation-color) 8%, transparent); overflow-wrap: anywhere; font-size: .8em; }
+@media (max-width: 980px) { .survey-validation form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .survey-validation form { grid-template-columns: 1fr; } }
+
+.reception-direction-marker { display: grid; place-items: center; background: transparent; border: 0; filter: drop-shadow(0 1px 2px #000a); }
+.reception-direction-marker.aircraft { color: #55bfff; }
+.reception-direction-marker.maritime { color: #31d6c4; }
+.reception-direction-marker.selected { border-radius: 50%; outline: 2px solid var(--accent); background: #101820b3; }
+.reception-direction-marker .direction-symbol { display: block; width: 30px; height: 30px; transform-origin: center; }
+.reception-direction-marker .type-symbol { position: relative; display: grid; place-items: center; width: 30px; height: 30px; font-size: 24px; line-height: 1; }
+.reception-direction-marker .direction-unknown-badge { position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 13px; height: 13px; border: 1px solid currentColor; border-radius: 50%; background: var(--panel); color: var(--fg); font: bold 10px var(--mono); }
+.reception-direction-marker svg { width: 100%; height: 100%; fill: currentColor; stroke: #071018; stroke-width: 1.2; stroke-linejoin: round; }
+.reception-direction-marker .direction-deck { fill: none; stroke: #071018; stroke-width: 1.5; }
+.reception-direction-marker.fresh::before {
+  content: ""; position: absolute; inset: -6px; border-radius: 50%;
+  background: radial-gradient(circle, #52d7ff99 0%, #52d7ff44 42%, transparent 72%);
+  animation: map-fix-glow 120s ease-out both;
+  animation-delay: var(--fresh-age, 0s);
+  pointer-events: none;
+}
+.reception-point-marker.fresh {
+  animation: map-point-glow 120s ease-out both;
+  animation-delay: var(--fresh-age, 0s);
+}
+@keyframes map-fix-glow { from { opacity: 1; transform: scale(1.25); } to { opacity: 0; transform: scale(1); } }
+@keyframes map-point-glow { from { filter: drop-shadow(0 0 8px #58dfff); } to { filter: drop-shadow(0 0 0 transparent); } }
+@media (prefers-reduced-motion: reduce) {
+  .reception-direction-marker.fresh::before, .reception-point-marker.fresh { animation: none; }
+}
+
+/* Live evidence changes must not move the following Survey rows. */
+.survey-evidence-viewport { height:48px; overflow-y:auto; overflow-x:hidden; }
+.survey-evidence-viewport .survey-evidence-badges { align-content:flex-start; }
+
+/* Compact, local spectrum controls; keep resize grips easy to grab. */
+.spectrum-toolbar { font-size: 11px !important; }
+.spectrum-toolbar button { min-height: 24px; padding: 2px 6px; font-size: 11px; }
+.spectrum-toolbar input[type="range"] { width: 90px; }
+.survey-band-step {
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; max-width: 100%;
+  margin-right: 8px; padding: 5px 7px; border: 1px solid var(--accent);
+  border-radius: 6px; background: color-mix(in srgb, var(--accent) 9%, var(--panel-well));
+}
+.spectrum-toolbar .survey-band-step button {
+  min-height: 32px; padding: 5px 9px; border-color: var(--accent); border-radius: 4px;
+  color: var(--accent); background: var(--panel); font: 700 12px var(--mono); white-space: nowrap;
+}
+.spectrum-toolbar .survey-band-step button:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 18%, var(--panel)); color: var(--fg); }
+.survey-band-step-center {
+  min-width: 126px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px;
+  color: var(--fg); background: var(--panel-well); font: 700 12px var(--mono); text-align: center; white-space: nowrap;
+}
+.survey-peak-threshold {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px;
+  color: var(--accent); background: var(--panel-well); font: 700 11px var(--mono);
+}
+.survey-peak-threshold select { width: 145px; min-height: 27px; font: inherit; }
+.spectrum-toolbar .survey-peak-threshold button { min-width: 23px; padding: 2px 4px; font-size: 14px; }
+
+
+.survey-signal-shortcuts { margin: 6px 0 8px; }
+.survey-signal-shortcuts-heading { font-size: 11px; }
+.survey-signal-shortcuts .survey-badge-lane { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; max-height: 108px; overflow-y: auto; padding: 6px; }
+.survey-signal-shortcuts .survey-badge-lane > .dim { grid-column: 1 / -1; }
+.survey-signal-shortcuts .survey-badge { display: flex; min-width: 0; border: 1px solid var(--line); border-radius: 5px; background: var(--panel-well); }
+.survey-signal-shortcuts .survey-badge.selected { border-color: var(--accent); outline: 1px solid var(--accent); }
+.survey-signal-tune { display: flex; flex: 1; align-items: center; gap: 6px; min-width: 0; min-height: 28px; padding: 3px 6px; border: 0; background: transparent; text-align: left; font-size: 11px; }
+.survey-signal-family { flex: 1; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.survey-signal-info { align-self: center; flex-shrink: 0; border: 0; background: transparent; padding: 3px 5px; font-size: 12px; min-height: 28px; }
+.signal-active { color: var(--accent); }
+
+.inspector-bandplan { color: #f2c94c; margin-top: 8px; font-size: 0.82em; }
+.inspector-bandplan small { display: block; margin-top: 3px; opacity: 0.8; }
+.inspector-evidence { padding: 10px 12px; margin-bottom: 8px; display: grid; gap: 6px; overflow-wrap: anywhere; }
+.inspector-output { white-space: pre-wrap; font-size: 0.95em; max-height: 150px; overflow: auto; }
+.inspector-secondary { margin: 8px 0; font-size: 0.85em; }
+.inspector-secondary > summary { cursor: pointer; padding: 7px 0; color: var(--dim); }
+.inspector-secondary p { margin: 6px 0; line-height: 1.45; }
+.inspector-catalog > summary { color: #d3ac72; }
+
+/* Signal inspector: source colors, explicit text labels and separate freshness. */
+.inspector-evidence-group { margin: 12px 0; }
+.inspector-evidence-group h3 { color: var(--evidence-source-color); font-size: 0.78em; margin: 0 0 5px; letter-spacing: .03em; }
+.inspector-evidence-group .inspector-evidence { margin-top: 5px; }
+/* B: source outline only. C (default): same outline with a restrained tint.
+   Text labels identify the source independently of color and confidence. */
+:root { --evidence-panel-tint: 7%; }
+:root[data-evidence-panel-style="outline"] { --evidence-panel-tint: 0%; }
+/* Each workflow has one restrained structural hue. Receiver is neutral,
+   listening is blue, decoding is warm, and spectrum surveying is cyan;
+   green/red remain reserved for running/recording/error states. */
+instrument-panel > #instrument-panel { --context-panel-color: var(--context-receiver); }
+.listen-evidence-panel,
+.section-shell[data-section-id="listen"] { --context-panel-color: var(--context-listen); }
+.primary-spectrum > survey-view > .panel,
+.section-shell[data-section-id="survey"] { --context-panel-color: var(--context-survey); }
+.listen-decode-controls .scanner-deck,
+.decode-evidence-panel,
+decode-output-strip > .decode-output-strip,
+.section-shell[data-section-id="decode"] { --context-panel-color: var(--context-decode); }
+.decode-message-filters {
+  display: grid;
+  grid-template-columns: minmax(135px, 2fr) minmax(120px, 1.6fr) minmax(135px, 1.2fr) max-content max-content;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+}
+.decode-message-filters > select,
+.decode-message-filters > input { width: 100%; min-width: 0; box-sizing: border-box; }
+.decode-message-filters > button { white-space: nowrap; }
+.decode-new-pill-anchor {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 0;
+  margin-bottom: -10px; /* cancel the panel's flex gap so the anchor takes no space */
+  display: flex;
+  justify-content: center;
+  overflow: visible;
+}
+.decode-new-pill {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--panel, var(--bg));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.section-shell[data-section-id="recent"],
+.section-shell[data-section-id="log"],
+.section-shell[data-section-id="library"] { --context-panel-color: #92afd5; }
+.section-shell[data-section-id="nearby"],
+.section-shell[data-section-id="inbox"],
+.section-shell[data-section-id="passes"],
+.section-shell[data-section-id="sky"],
+.section-shell[data-section-id="scans"],
+.section-shell[data-section-id="beacons"],
+.section-shell[data-section-id="finds"],
+.section-shell[data-section-id="scan"],
+.discovery-inbox > .panel { --context-panel-color: #efc16b; }
+.section-shell[data-section-id="catalog"] { --context-panel-color: var(--context-catalog); }
+.section-shell[data-section-id="review"] { --context-panel-color: #bb9aff; }
+
+catalog-view > .panel > div:first-child > h2,
+catalog-view .catalog-results-status .dim {
+  color: var(--context-catalog);
+}
+
+catalog-view > .panel > div:first-child > button,
+catalog-view .catalog-source-clear {
+  color: var(--context-catalog);
+  border-color: color-mix(in srgb, var(--context-catalog) 55%, var(--line));
+}
+.listen-evidence-panel,
+.listen-decode-controls .scanner-deck,
+.decode-evidence-panel,
+decode-output-strip > .decode-output-strip,
+.primary-spectrum > survey-view > .panel,
+instrument-panel > #instrument-panel,
+.discovery-inbox > .panel,
+.section-shell[data-section-id] > * > .panel {
+  border: 1px solid color-mix(in srgb, var(--context-panel-color, var(--line)) 52%, var(--line));
+  border-left: 3px solid var(--context-panel-color, var(--line));
+  background: color-mix(in srgb, var(--context-panel-color, var(--line)) var(--evidence-panel-tint), var(--panel));
+}
+.listen-decode-controls .scanner-deck > .scanner-deck-line:first-of-type > .label {
+  color: var(--context-decode);
+}
+.primary-spectrum > survey-view > .panel .survey-topbar > h2 {
+  color: var(--context-survey);
+}
+.survey-ml-status, .survey-ml-proposals { --evidence-source-color: #bb9aff; }
+.inspector-evidence-group .inspector-evidence,
+.survey-ml-status, .survey-ml-proposals {
+  border: 1px solid var(--evidence-source-color);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--evidence-source-color) var(--evidence-panel-tint), var(--panel));
+}
+.inspector-source-label { color: var(--evidence-source-color); font-size: .78em; font-weight: 600; }
+.inspector-result-meta { font-size: .75em; margin: 2px 0; }
+.inspector-analysis-history { margin-top: 6px; }
+
+/* Compact vehicle names: translucent fill, opaque text, details on selection. */
+.leaflet-tooltip.vehicle-map-label {
+  padding: 2px 7px;
+  border: 1px solid #55bfff66;
+  border-radius: var(--radius-pill);
+  background: rgb(14 23 31 / 72%);
+  color: #e8f4fa;
+  font: 11px/1.3 var(--sans, sans-serif);
+  box-shadow: none;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.leaflet-tooltip.maritime-map-label { border-color: #31d6c466; }
+.leaflet-tooltip.vehicle-map-label::before { display: none; }
+
+.vehicle-label-button { display: block; width: 100%; min-height: 0; padding: 0; margin: 0; border: 0; background: transparent; color: inherit; font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.leaflet-tooltip.vehicle-hover-card {
+  box-sizing: border-box; width: min(320px, calc(100vw - 24px)); max-width: none;
+  padding: 10px 12px; border: 1px solid #55bfff88; border-radius: 9px;
+  background: rgb(14 23 31 / 94%); color: #e8f4fa; font-size: 12px;
+  white-space: normal; box-shadow: 0 3px 16px #0006; pointer-events: auto;
+}
+.vehicle-hover-card::before { display: none; }
+.vehicle-hover-card dl {
+  display: grid; grid-template-columns: minmax(84px, max-content) minmax(0, 1fr);
+  gap: 3px 12px; margin: 7px 0;
+}
+.vehicle-hover-card dt, .vehicle-detail-facts dt { color: var(--dim); }
+.vehicle-hover-card dd, .vehicle-detail-facts dd { margin: 0; overflow-wrap: anywhere; }
+.vehicle-hover-card small { color: #a9c8d5; }
+.vehicle-hover-link { display: inline-block; margin-top: 8px; padding: 4px 8px; border: 1px solid #55bfff; border-radius: 5px; color: #89d7ff; text-decoration: none; }
+.vehicle-hover-link:hover, .vehicle-hover-link:focus-visible { background: #55bfff33; color: #fff; }
+.geo-detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.vehicle-detail-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px 16px; font-size: 12px; }
+.vehicle-track-history { margin: 12px 0; }
+.vehicle-track-history ol { padding-left: 22px; }
+.vehicle-track-history button { text-align: left; font-size: 12px; }
+
+.vehicle-lookups { margin: 12px 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
+.vehicle-lookup-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.vehicle-lookup-buttons > div { display: grid; gap: 3px; }
+.vehicle-lookup-link { display: inline-block; padding: 6px 10px; border: 1px solid var(--accent); border-radius: 5px; color: var(--accent); text-decoration: none; }
+.vehicle-lookup-buttons small { color: var(--dim); }
+
+.tuned-saved-context { display: flex; flex-wrap: wrap; gap: 5px; max-width: min(420px, 75vw); }
+.tuned-saved-name {
+  display: inline-block; max-width: 100%; padding: 3px 10px;
+  border: 1px solid #4d9de0aa; border-radius: var(--radius-pill);
+  background: #4d9de01a; color: #b9dcfa; font-size: 12px;
+  line-height: 1.35; overflow-wrap: anywhere;
+}
+.tuned-saved-name--favorite { border-color: #3ddbd9aa; background: #3ddbd91a; color: #a5f0ed; }
+.frequency-allocation {
+  display: inline-block; max-width: min(420px, 75vw); width: fit-content;
+  padding: 4px 11px; border: 1px solid #efb34faa; border-radius: 18px;
+  background: #efb34f19; color: #f4c976; font-size: 12px;
+  line-height: 1.35; overflow-wrap: anywhere;
+}
+/* One-line pill beside the digits: the full text stays in the title attribute. */
+button.frequency-allocation {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+  font: inherit; font-size: 12px; text-align: left;
+}
+button.frequency-allocation:disabled { cursor: default; opacity: .7; }
+/* Context strip under the frequency digits: allocation summary with its
+   actions, plus the band-plan hints beside it. */
+.frequency-context-strip {
+  display: flex; flex-direction: column; gap: 2px; margin-top: 2px;
+  color: #f4c976; font-size: 12px; min-width: 0;
+}
+.frequency-context-strip .allocation-summary--compact {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+}
+.frequency-context-strip .allocation-actions button {
+  min-height: 22px; padding: 0 8px; font-size: 11px; line-height: 20px;
+}
+.frequency-context-strip .band-plan-hints {
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 11px; color: #d6b982;
+}
+.frequency-context-strip .band-plan-hints .frequency-context-label { display: inline; margin-right: 6px; }
+.frequency-context-strip .band-plan-hints small { font-size: 11px; color: #d6b982; }
+.frequency-context-label { display: block; color: var(--warn); font-size: 10px; letter-spacing: .04em; }
+.frequency-allocation small { display: block; color: #d6b982; font-size: 10px; }
+.frequency-allocation--empty { border-color: #7d859077; background: #7d859011; color: var(--dim); }
+.frequency-allocation--empty .frequency-context-label,
+.frequency-allocation--empty small { color: var(--dim); }
+
+/* Receiver height budget (test_layout_gate: panel <= 220 px with real
+   content loaded). workspace-layout.css loads after this file, so these
+   overrides are scoped under the instrument-panel element to win on
+   specificity rather than on order. */
+/* The context strip is a single line: Details / Open chart, then the
+   band-plan hints ellipsised (full list in its title). */
+instrument-panel .frequency-context-strip {
+  flex-direction: row; align-items: center; gap: 8px; margin-top: 0;
+  white-space: nowrap; overflow: hidden;
+}
+instrument-panel .frequency-context-strip > allocation-summary { flex: none; }
+instrument-panel .frequency-context-strip .allocation-status-message {
+  display: block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; font-size: 11px;
+}
+instrument-panel .frequency-context-strip .band-plan-hints { flex: 1 1 auto; }
+/* Meter and step controls share one line. */
+instrument-panel .receiver-signal-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+instrument-panel .receiver-signal-row .receiver-signal-level { flex: 1 1 170px; min-width: 150px; padding: 0; }
+instrument-panel .receiver-signal-row .step-row { flex: 0 1 auto; flex-wrap: nowrap; margin: 0; min-width: 0; }
+/* Left column keeps digits + unit + minimum pill (~430 px) on one row; the
+   settings column is just wide enough for label-left selects. */
+instrument-panel .frequency-and-receiver { grid-template-columns: minmax(430px, 1fr) minmax(176px, 0.4fr); gap: 12px; }
+instrument-panel .receiver-inline-context { padding-left: 10px; }
+/* ANT / LNA on one line; MODE and BANDWIDTH labels left of their selects. */
+instrument-panel .receiver-inline-context > .receiver-group-title { margin-bottom: 2px; }
+instrument-panel .receiver-antenna-line { display: flex; flex-wrap: wrap; gap: 4px 8px; flex-basis: 100%; min-width: 0; white-space: nowrap; }
+instrument-panel .receiver-antenna-line > .readout { flex: none; }
+instrument-panel .receiver-antenna-line .readout { flex-direction: row; align-items: baseline; gap: 5px; }
+instrument-panel .receiver-lock { align-self: center; padding: 1px 3px; line-height: 0; border: 1px solid transparent; background: none; color: var(--ink); }
+instrument-panel .receiver-lock[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+/* Profile gets its own line (the visible group title is gone) so a long
+   profile name stays readable; it still ellipsises past the column. */
+instrument-panel .receiver-antenna-line { flex-wrap: nowrap; }
+instrument-panel .receiver-antenna-line .step-profile { flex: 1 1 0; margin: 0; min-width: 0; overflow: hidden; }
+instrument-panel .receiver-antenna-line .step-profile .readout { min-width: 0; }
+instrument-panel .receiver-antenna-line .step-profile .value { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Audio line (AGC/NR/SQL + Levels…): moved here from listen-workbench.js's
+   Audio & DSP card, which sat above the station list -- quieter than that
+   card's checkbox/status-word rows, with the receiver's other live
+   settings. aria-pressed toggles fill with the accent when on, stay an
+   outline when off; "confirmed" is never printed, only a pending ellipsis
+   or a rejection note. */
+instrument-panel .receiver-audio-line { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px 6px; flex-basis: 100%; min-width: 0; position: relative; }
+instrument-panel .receiver-audio-line > .label { flex: none; }
+instrument-panel .receiver-audio-toggles { display: flex; gap: 3px; }
+instrument-panel .receiver-dsp-toggle {
+  min-width: 0; min-height: 0; height: 18px; padding: 0 5px; line-height: 16px; border-radius: 8px;
+  border: 1px solid var(--line); background: transparent; color: var(--dim);
+  font-size: 10px; font-weight: 600; letter-spacing: .02em;
+}
+instrument-panel .receiver-dsp-toggle[aria-pressed="true"] {
+  border-color: var(--accent); background: var(--accent); color: var(--bg, #0b0f12);
+}
+instrument-panel .receiver-dsp-toggle[data-status="pending"] { opacity: .7; }
+instrument-panel .receiver-dsp-toggle:disabled { opacity: .45; cursor: default; }
+instrument-panel .receiver-dsp-levels-toggle { min-height: 0; height: 18px; line-height: 16px; font-size: 11px; color: var(--dim); background: transparent; border: 0; padding: 0 2px; cursor: pointer; }
+instrument-panel .receiver-dsp-levels-toggle:hover { color: var(--ink); }
+instrument-panel .receiver-dsp-note { color: var(--danger); font-size: 11px; }
+/* Levels open as a popover over the panel, so opening them never changes the
+   receiver strip's height. */
+/* Levels popover: one line of three short labelled controls plus a ? for
+   the SDRconnect caveat, instead of two rows and a paragraph. */
+instrument-panel .receiver-dsp-levels {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+  width: max-content; max-width: min(560px, 90vw); white-space: nowrap;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel, #1c1f26); box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
+}
+instrument-panel .receiver-dsp-field { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink); }
+instrument-panel .receiver-dsp-field input[type="number"] { width: 60px; height: 24px; min-height: 0; padding: 0 4px; font-size: 12px; }
+instrument-panel .receiver-dsp-range-wrap { display: flex; align-items: center; gap: 5px; }
+instrument-panel .receiver-dsp-range-wrap input[type="range"] { width: 90px; margin: 0; }
+instrument-panel .receiver-dsp-range-wrap output { min-width: 26px; text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 11px; }
+instrument-panel .receiver-dsp-levels .help-mark { width: 16px; height: 16px; font-size: 10px; }
+instrument-panel .receiver-inline-context .receiver-demodulation { padding-top: 4px; gap: 4px; }
+instrument-panel .receiver-inline-context .receiver-demodulation .readout {
+  display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 6px;
+}
+instrument-panel .receiver-inline-context .receiver-demodulation select { min-height: 0; height: 26px; padding-top: 0; padding-bottom: 0; }
+instrument-panel .receiver-inline-context .receiver-demodulation select { font-size: 12px; padding-left: 4px; }
+instrument-panel .receiver-inline-context .receiver-demodulation .label { font-size: 10px; }
+/* Right column: a closed channel-scanner disclosure shares its line with
+   TOOLS; opened, it takes the full width again and TOOLS drops below. */
+instrument-panel .receiver-operations { grid-template-columns: auto minmax(0, 1fr); gap: 6px; }
+instrument-panel .receiver-operations > * { grid-column: 1 / -1; }
+instrument-panel .receiver-operations > .channel-scanner-disclosure:not([open]) { grid-column: 1; align-self: center; }
+instrument-panel .receiver-operations > .channel-scanner-disclosure:not([open]) + .strip-tools {
+  grid-column: 2; border-top: 0; padding-top: 0;
+}
+/* Recorder: the closed Capture health disclosure sits beside the buttons;
+   opened (or with a recovery notice) it wraps to full width. */
+instrument-panel .strip-recording #recorder-control { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+instrument-panel .strip-recording #recorder-control > * { flex: 1 1 100%; min-width: 0; margin: 0; }
+instrument-panel .strip-recording #recorder-control > .control-row { flex: 0 1 auto; }
+instrument-panel .strip-recording #recorder-control > .capture-health:not([open]) { flex: 0 0 auto; }
+instrument-panel .receiver-band-scan { padding-top: 3px; padding-bottom: 3px; }
+instrument-panel .receiver-band-scan button { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+
+/* Instrument panel layout B: row 1 status bar (.strip-row1), row 2 readout
+   strip (.readout-strip), row 3 settings strip (.settings-strip). Rows use
+   flex + gap and wrap rather than truncate, so narrow widths (< 760px) just
+   stack; no status text is ellipsised here. */
+/* The ⋯ tools popover overflows the panel's notched clip, same as scanner overlays. */
+instrument-panel > #instrument-panel:has(.strip-overflow-menu[open]) { clip-path: none; position: relative; z-index: 20; }
+instrument-panel .strip-sep { width: 1px; align-self: stretch; min-height: 16px; background: var(--line); }
+instrument-panel .strip-primary-actions { gap: 6px; }
+instrument-panel .strip-primary-actions button,
+instrument-panel .strip-overflow-menu > summary { font-size: 1em; min-width: 30px; min-height: 28px; padding: 2px 6px; }
+instrument-panel .strip-primary-actions .history-nav { font-size: 1.15em; }
+instrument-panel .strip-overflow-menu { position: relative; }
+instrument-panel .strip-overflow-menu > summary {
+  display: inline-flex; align-items: center; justify-content: center; list-style: none; cursor: pointer;
+  box-sizing: border-box; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--fg);
+}
+instrument-panel .strip-overflow-menu > summary::-webkit-details-marker { display: none; }
+instrument-panel .strip-overflow-menu[open] > summary { border-color: var(--accent); color: var(--accent); }
+instrument-panel .strip-overflow-menu > .strip-tools {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; width: max-content;
+  flex-direction: column; align-items: stretch; gap: 4px; margin: 0; padding: 6px;
+  border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
+}
+instrument-panel .strip-overflow-menu > .strip-tools button { font-size: 1em; text-align: left; }
+
+/* Row 2 (mock B): [digits · MHz · ±] [◂ step ▸] [meter · SNR PWR S] … spacer … [band plan · pill · Details · Open chart · ⓘ].
+   One flex row that wraps as a whole; nothing inside is exploded with
+   display:contents except the context strip, so the pill, hints and
+   actions can be ordered as siblings inside .band-info. */
+instrument-panel .readout-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; }
+instrument-panel .readout-strip segment-readout { flex: none; }
+instrument-panel .readout-strip .seg-wrap { flex-wrap: nowrap; align-items: center; gap: 8px; }
+instrument-panel .readout-strip .seg-wrap.compact .seg-readout,
+instrument-panel .readout-strip .seg-wrap.compact .seg-input { font-size: 2em; }
+instrument-panel .readout-strip .seg-unit-wrap { position: static; }
+/* Step and fine-tune: bordered groups, one control style. */
+instrument-panel .readout-strip .step-group,
+instrument-panel .readout-strip .seg-fine-tune {
+  display: inline-flex; align-items: stretch; gap: 0; flex: none;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-well); overflow: hidden;
+}
+instrument-panel .readout-strip .step-group button,
+instrument-panel .readout-strip .seg-fine-tune button {
+  min-width: 30px; min-height: 28px; border: 0; border-radius: 0; background: transparent; color: var(--ink);
+}
+instrument-panel .readout-strip .step-group button + button,
+instrument-panel .readout-strip .seg-fine-tune button + button { border-left: 1px solid var(--line); }
+instrument-panel .readout-strip .step-group #step-size { min-width: 74px; white-space: nowrap; font-family: var(--mono); color: var(--accent); }
+/* S-meter: short bar, then "SNR · PWR · S" on the same line; no tick scale. */
+instrument-panel .readout-strip .receiver-signal-level { flex: none; padding: 0; min-width: 0; }
+instrument-panel .readout-strip .panel-smeter { flex: none; width: auto; max-width: none; min-width: 0; }
+instrument-panel .readout-strip .smeter.compact { flex-direction: row; align-items: center; gap: 10px; }
+instrument-panel .readout-strip .smeter.compact .smeter-bar { flex: none; width: 170px; gap: 4px; }
+instrument-panel .readout-strip .smeter.compact .smeter-bar .smeter-seg { height: 12px; }
+instrument-panel .readout-strip .smeter.compact .smeter-scale { display: none; }
+instrument-panel .readout-strip .smeter.compact .smeter-text { order: 1; white-space: nowrap; font-size: 12px; gap: 8px; }
+instrument-panel .readout-strip .smeter.compact .smeter-sreading { font-size: 1em; }
+instrument-panel .readout-strip > .spacer { flex: 1 1 0; min-width: 0; }
+/* Band info, right-aligned: plan name · allocation pill · Details / Open chart · ⓘ. */
+instrument-panel .readout-strip .band-info { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+instrument-panel .readout-strip .band-info detect-readout,
+instrument-panel .readout-strip .band-info .frequency-context-strip { display: contents; }
+instrument-panel .readout-strip .band-info .band-plan-hints { order: 1; flex: none; white-space: nowrap; overflow: visible; text-overflow: clip; font-size: 12px; }
+instrument-panel .readout-strip .band-info button.frequency-allocation { order: 2; flex: none; max-width: none; overflow: visible; text-overflow: clip; white-space: nowrap; border-radius: var(--radius-pill); }
+instrument-panel .readout-strip .band-info allocation-summary { order: 3; display: inline-flex; align-items: center; }
+instrument-panel .readout-strip .band-info .allocation-summary--compact { margin: 0; }
+instrument-panel .readout-strip .band-info .seg-info-button { order: 4; position: static; min-height: 26px; min-width: 26px; border-color: var(--line); background: var(--panel-well); border-radius: var(--radius); }
+
+/* Row 3. */
+instrument-panel .settings-strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  margin-top: 10px; padding: 8px 0 0; border-top: 1px solid var(--line);
+}
+instrument-panel .settings-strip .strip-group-label { font-size: 10px; text-transform: uppercase; color: var(--dim); }
+instrument-panel .settings-strip .readout { flex-direction: row; align-items: center; gap: 5px; }
+instrument-panel .settings-strip .receiver-demodulation { display: contents; }
+instrument-panel .settings-strip .step-profile { flex: none; overflow: visible; }
+instrument-panel .settings-strip .step-profile .value { white-space: nowrap; }
+instrument-panel .settings-strip select { min-height: 26px; height: 26px; padding: 0 4px; font-size: 12px; }
+instrument-panel .settings-strip .receiver-audio-line { flex: none; flex-wrap: wrap; }
+instrument-panel .settings-strip .receiver-dsp-levels-toggle { height: 26px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-well); color: var(--ink); }
+instrument-panel .settings-strip .receiver-operations {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0; border: 0;
+}
+instrument-panel .settings-strip .strip-ops-button { min-height: 26px; padding: 2px 10px; white-space: nowrap; border-radius: var(--radius); }
+instrument-panel .settings-strip .strip-ops-button[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+instrument-panel .settings-strip .strip-recording { padding: 0; border: 0; background: none; }
+/* Band-scan / channel-scan disclosures sit below the strip in normal flow. */
+instrument-panel .receiver-band-scan { margin-top: 8px; justify-content: flex-start; }
+instrument-panel .receiver-band-scan-fields { position: static; width: auto; flex: 1 1 100%; padding: 0; border: 0; box-shadow: none; }
+instrument-panel .receiver-band-scan span { overflow: visible; text-overflow: clip; white-space: normal; }
+instrument-panel .channel-scanner-disclosure { margin-top: 8px; }
+instrument-panel .channel-scanner-disclosure[hidden] { display: none; }
+.inspector-header-allocation { margin: 7px 0; max-width: 100%; }
+/* Allocation line and its Details / Open chart actions on one row, with the
+   actions sized like the TUNE/DECODE row above instead of full-size buttons. */
+.inspector-header-allocation .allocation-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.inspector-header-allocation .allocation-actions { margin: 0 !important; gap: 5px; }
+.inspector-header-allocation .allocation-actions button { font-size: 11px; padding: 3px 7px; min-height: 26px; }
+
+.suggested-tuning-pill {
+  display: inline-block; max-width: 100%; margin-top: 6px; padding: 4px 11px;
+  border: 1px solid #3fb950aa; border-radius: var(--radius-pill);
+  background: #3fb9501a; color: #a6e9ad; font-size: 12px;
+  line-height: 1.35; overflow-wrap: anywhere;
+}
+.signal-test-result {
+  display: block; box-sizing: border-box; width: 100%; margin-top: 8px;
+  padding: 10px 12px; border: 1px solid #3fb950aa; border-radius: 8px;
+  background: #3fb9501a; color: #a6e9ad; font-size: 12px;
+  line-height: 1.45; overflow-wrap: anywhere;
+}
+.signal-test-result strong { display: block; margin-bottom: 4px; }
+.signal-test-result > div + div { margin-top: 3px; }
+.listen-list-controls {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-bottom: 8px;
+}
+.listen-list-controls input { flex: 1 1 150px; min-width: 0; }
+.listen-list-controls select { flex: 0 1 auto; max-width: 100%; }
+
+.nearby-saved-pill {
+  display: inline-block; max-width: 100%; margin: 6px 0 2px; padding: 4px 10px;
+  border: 1px solid #4d9de0aa; border-radius: var(--radius-pill);
+  background: #4d9de01a; color: #b9dcfa; font-size: 12px;
+  line-height: 1.35; overflow-wrap: anywhere;
+}
+band-scan-inbox { display: block; margin-top: 10px; }
+band-scan-inbox .band-scan-session { padding: 7px 0; border-top: 1px solid var(--line); }
+band-scan-inbox .band-scan-session summary { display: flex; flex-wrap: wrap; gap: 12px; cursor: pointer; font: 12px var(--mono); }
+band-scan-inbox .band-scan-session summary span { color: var(--ink); }
+band-scan-inbox .band-scan-uncovered { color: var(--danger, #ff766e); font-size: 12px; }
+band-scan-inbox .band-scan-results { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+band-scan-inbox .band-scan-result { min-width: 180px; padding: 7px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-well); }
+band-scan-inbox .band-scan-result > summary { display: grid; gap: 3px; cursor: pointer; }
+band-scan-inbox .band-scan-result > summary span { color: var(--ink); font: 10px var(--mono); }
+band-scan-inbox .band-scan-open { margin-top: 6px; padding: 3px 5px; font-size: 10px; }
+band-scan-inbox .band-scan-observations { display: grid; gap: 4px; margin-top: 7px; }
+band-scan-inbox .band-scan-observation { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px; padding: 5px 0; border-top: 1px solid var(--line); font: 10px var(--mono); }
+band-scan-inbox .band-scan-observation time { grid-column: 1 / -1; color: var(--ink); }
+
+/* Optional external receive/status applications */
+.integration-group { display: grid; gap: 12px; }
+.integration-card { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
+.integration-card-head, .integration-message-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.integration-card h3, .integration-group > h3 { margin: 0; }
+.integration-state { color: var(--muted); font: 11px var(--mono); }
+.integration-state.is-connected { color: var(--good, #66c78a); }
+.integration-toggle { display: flex; gap: 8px; align-items: center; }
+.integration-fields { display: grid; grid-template-columns: 1fr 120px; gap: 10px; }
+.integration-fields label, .integration-card > label:not(.integration-toggle) { display: grid; gap: 5px; }
+.integration-card > .integration-toggle { display: flex; justify-content: flex-start; gap: 8px; }
+.integration-toggle input { width: auto; margin: 0; }
+.integration-card > button { justify-self: start; }
+.integration-card p { margin: 0; font-size: 12px; line-height: 1.5; }
+.integration-fields input, .integration-url { width: 100%; }
+.integration-messages { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.integration-messages li { border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: grid; gap: 6px; overflow-wrap: anywhere; }
+.integration-messages p { margin: 0; white-space: pre-wrap; }
+.integration-messages small, .integration-message-head span { color: var(--muted); font-size: 0.8em; }
+.integration-error { color: var(--danger); }
+
+/* Exact-frequency memories share one disclosure, without deleting aliases. */
+.tuned-saved-details { min-width: 0; max-width: 100%; }
+.tuned-saved-details > summary { display: list-item; cursor: pointer; list-style-position: inside; }
+.tuned-saved-details > summary:focus-visible { outline: 2px solid var(--context-listen); outline-offset: 2px; }
+.tuned-saved-details ul { margin: 6px 0 0; padding-left: 20px; color: var(--dim); font-size: 12px; }
+
+/* Aircraft and vessel paths use distinct high-contrast colors. Selected
+   trajectories gain weight and a dark underlay without relying on hue alone. */
+.reception-direction-marker.aircraft { color: #69b6ff; }
+.reception-direction-marker.maritime { color: #365bd2; }
+.leaflet-tooltip.aircraft-map-label { border-color: #69b6ff99; }
+.leaflet-tooltip.maritime-map-label { border-color: #365bd299; }
+.selected-vehicle-track { filter: drop-shadow(0 0 4px #080f17); }
+
+/* Remote ID (docs/remote-id.md "Map"): distinct shapes per position kind so
+   drone/operator/takeoff are tellable apart without relying on hue alone. */
+.remoteid-marker { display: block; width: 14px; height: 14px; border: 2px solid #0b1118; box-shadow: 0 1px 2px #000a; }
+.remoteid-marker.drone { background: #ff5577; transform: rotate(45deg); }
+.remoteid-marker.operator { background: #5fd3bc; border-radius: 50%; }
+.remoteid-marker.takeoff { background: #ffd166; border-radius: 3px; }
+.remoteid-marker.stale { opacity: .45; }
+.remoteid-marker-wrap.selected .remoteid-marker { outline: 2px solid var(--accent); outline-offset: 2px; }
+.remoteid-link-line { pointer-events: none; }
+.leaflet-tooltip.remoteid-hover-card { border-color: #ff557799; font-size: .82em; line-height: 1.4; }
+.leaflet-tooltip.remoteid-hover-card small { color: #a9c8d5; }
+.vehicle-map-card {
+  position: absolute; z-index: 1000; top: 12px; width: min(390px, calc(100% - 24px));
+  max-height: calc(100% - 24px); overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid #6b7f90; border-radius: 8px;
+  background: #111922; color: var(--fg); box-shadow: 0 9px 28px #000b;
+}
+.vehicle-map-card.on-left { left: 64px; width: min(390px, calc(100% - 76px)); }
+.vehicle-map-card.on-right { right: 12px; }
+.vehicle-map-card .geo-detail { margin: 0; border: 0; padding: 15px; min-width: 0; overflow-wrap: anywhere; }
+.vehicle-map-card .geo-detail-heading strong { font-size: 17px; }
+.vehicle-map-card .vehicle-detail-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; }
+.vehicle-map-card .vehicle-lookups { margin: 9px 0; }
+.vehicle-track-summary { padding: 8px 10px; border-left: 3px solid currentColor; color: #a9cdef; background: #69b6ff12; font-size: 12px; line-height: 1.4; }
+
+.vehicle-track-summary button { display: block; margin-top: 7px; padding: 3px 8px; border-color: currentColor; color: inherit; background: transparent; font-size: 11px; }
+
+.receiver-band-scan {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 7px;
+  min-width: 0; padding: 5px 8px; border: 1px solid color-mix(in srgb,var(--context-survey) 65%,var(--line));
+  border-left: 3px solid var(--context-survey); background: color-mix(in srgb,var(--context-survey) 8%,var(--panel));
+}
+.receiver-band-scan > div { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.receiver-band-scan strong { color: var(--context-survey); font: 700 11px var(--mono); letter-spacing: .09em; }
+.receiver-band-scan span { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.receiver-band-scan button { white-space: nowrap; border-color: var(--context-survey); color: var(--context-survey); }
+.channel-scanner-disclosure { min-width: 0; border: 1px solid var(--line); background: var(--panel); }
+.channel-scanner-disclosure > summary { cursor: pointer; padding: 5px 9px; color: var(--dim); font: 700 11px var(--mono); }
+.channel-scanner-disclosure > summary span { font-weight: 400; font-size: 10px; margin-left: 6px; }
+.channel-scanner-disclosure .panel-scanner-deck { margin-top: 4px; }
+
+.receiver-band-scan-quick { position: relative; min-width: 0; }
+.receiver-band-scan-quick > summary { cursor: pointer; color: var(--context-survey); font: 700 11px var(--mono); white-space: nowrap; }
+.receiver-band-scan-fields {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 500;
+  display: flex; flex-wrap: wrap; gap: 8px; width: min(540px, 90vw); padding: 10px;
+  border: 1px solid var(--context-survey); background: var(--panel); box-shadow: 0 10px 28px #0008;
+}
+.receiver-band-scan-fields label { display: grid; gap: 3px; color: var(--dim); font-size: 10px; }
+.receiver-band-scan-fields input, .receiver-band-scan-fields select { width: 105px; min-height: 27px; font: 11px var(--mono); }
+.receiver-band-scan-fields select[aria-label="Quick band-scan duration"] { width: 125px; }
+.receiver-quick-peak { display: grid; gap: 3px; flex-basis: 100%; color: var(--dim); font: 10px var(--mono); }
+.receiver-quick-peak-controls { display: flex; align-items: center; gap: 3px; }
+.receiver-quick-peak-controls select { width: 145px; }
+.receiver-quick-peak-controls button { min-width: 24px; padding: 3px; }
+.receiver-quick-peak small { font: inherit; }
+.receiver-quick-dwell { display: flex; gap: 2px; align-items: center; }
+.receiver-quick-dwell input { width: 55px; text-align: center; }
+.receiver-quick-dwell button { min-width: 24px; padding: 3px; }
+.receiver-band-scan .receiver-band-scan-start:not(.run-stop) { color: var(--panel); border-color: var(--context-survey); background: var(--context-survey); }
+instrument-panel > #instrument-panel:has(.receiver-band-scan-quick[open]) { clip-path: none; z-index: 200; }
+
+/* Primary workspace selection is a bold outlined tab; Discover subviews are
+   quiet underlined tabs so the two navigation levels read distinctly. */
+.workspace-switch { gap: 5px; padding: 6px 5px 0; }
+.workspace-tab {
+  border: 1px solid transparent; border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0; padding: 7px 13px 6px; font-weight: 700;
+}
+.workspace-tab.active {
+  border-color: var(--accent); border-bottom-color: var(--accent);
+  background: color-mix(in srgb,var(--accent) 9%,var(--panel));
+}
+.workspace-tab[data-workspace="catalog"].active {
+  border-color: var(--context-catalog); border-bottom-color: var(--context-catalog);
+  background: color-mix(in srgb,var(--context-catalog) 9%,var(--panel));
+}
+.workspace-tab[data-workspace="listen"].active {
+  border-color: var(--context-listen); border-bottom-color: var(--context-listen);
+  background: color-mix(in srgb,var(--context-listen) 9%,var(--panel));
+}
+.workspace-tab[data-workspace="discover"].active {
+  border-color: var(--context-survey); border-bottom-color: var(--context-survey);
+  background: color-mix(in srgb,var(--context-survey) 9%,var(--panel));
+}
+.discover-views { gap: 5px; border-bottom: 1px solid var(--line); }
+.geo-toolbar.discover-views[role="tablist"] [role="tab"][aria-selected="true"] { border-color: var(--context-survey); color: var(--context-survey); }
+
+.workspace-tab:hover:not(:disabled) {
+  color: var(--accent); border-color: color-mix(in srgb,var(--accent) 55%,var(--line));
+  background: color-mix(in srgb,var(--accent) 7%,var(--panel));
+}
+.workspace-tab.active:hover:not(:disabled) {
+  color: var(--accent); border-color: var(--accent);
+  background: color-mix(in srgb,var(--accent) 12%,var(--panel));
+}
+.workspace-tab[data-workspace="catalog"]:hover:not(:disabled) {
+  color: var(--context-catalog);
+  border-color: color-mix(in srgb,var(--context-catalog) 55%,var(--line));
+  background: color-mix(in srgb,var(--context-catalog) 7%,var(--panel));
+}
+.workspace-tab[data-workspace="catalog"].active:hover:not(:disabled) {
+  border-color: var(--context-catalog);
+  background: color-mix(in srgb,var(--context-catalog) 12%,var(--panel));
+}
+
+.ui-help-tooltip {
+  position: fixed; z-index: 3000; width: max-content; max-width: min(300px, calc(100vw - 16px));
+  padding: 7px 10px; border: 1px solid color-mix(in srgb,var(--accent) 55%,var(--line));
+  border-radius: 4px; background: #10171d; color: var(--fg);
+  box-shadow: 0 8px 24px #0009; font: 12px/1.4 var(--sans);
+  pointer-events: none; overflow-wrap: anywhere;
+}
+.ui-help-tooltip[hidden] { display: none; }
+
+/* Source buttons navigate unless the user explicitly combines sources. */
+catalog-view .catalog-source-filters button[aria-pressed="true"] {
+  outline: 2px solid var(--catalog-source-color, var(--accent));
+  outline-offset: 1px;
+  background: color-mix(in srgb, var(--catalog-source-color, var(--accent)) 22%, var(--panel));
+  font-weight: 700;
+}
+/* ON AIR / MY LANGUAGES / NEARBY: .tag-chip has no pressed look of its own,
+   so without this a toggled filter is indistinguishable from an idle one. */
+catalog-view .tag-chip[aria-pressed="true"]:not([data-source]) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+  font-weight: 700;
+}
+catalog-view .catalog-source-filters .catalog-source-hint:focus-within:not(:hover) .catalog-source-tooltip {
+  display: none;
+}
+catalog-view .catalog-source-filters .catalog-source-hint:has(button:focus-visible) .catalog-source-tooltip {
+  display: flex;
+}
+
+/* Allocation details modal (allocation-summary.js). */
+.allocation-modal-panel {
+  margin: 48px auto 0; width: min(780px, 94vw); max-height: 86vh; overflow: auto;
+  align-self: flex-start; padding: 18px 22px 16px; font-size: 13px; line-height: 1.45;
+}
+.allocation-modal-head { display: flex; align-items: flex-start; gap: 12px; }
+.allocation-modal-head > div { flex: 1; min-width: 0; }
+.allocation-modal-head h2 { margin: 0; font-size: 22px; letter-spacing: .02em; }
+.allocation-modal-head p { margin: 2px 0 0; }
+.allocation-modal-line { margin: 10px 0 14px; padding: 8px 10px; border-radius: 8px;
+  background: #efb34f14; color: #f4c976; overflow-wrap: anywhere; }
+.allocation-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.allocation-column, .allocation-section { padding: 10px 12px; border: 1px solid #ffffff14; border-radius: 10px; margin-top: 10px; }
+.allocation-column { margin-top: 0; }
+.allocation-column h4, .allocation-section h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.allocation-hint { margin: -4px 0 8px; font-size: 12px; }
+.allocation-services { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.allocation-services li { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.allocation-services--inline { flex-direction: row; flex-wrap: wrap; gap: 6px 16px; }
+.allocation-service { flex: 0 1 auto; }
+.allocation-priority { font-size: 10px; letter-spacing: .04em; min-width: 58px; text-align: center; }
+.allocation-priority--secondary { opacity: .65; }
+.allocation-refs { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.allocation-ref { font-size: 10.5px; padding: 0 5px; border-radius: 6px; background: #ffffff12; color: var(--dim); text-decoration: none; }
+.allocation-ref:hover { color: var(--ink); background: #ffffff22; }
+.allocation-meta { margin: 8px 0 0; font-size: 12px; }
+.allocation-meta .dim { margin-right: 6px; }
+.allocation-footnotes { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; }
+.allocation-footnotes dt { margin: 0; white-space: nowrap; }
+.allocation-footnotes dt small { display: block; font-size: 10px; white-space: normal; }
+.allocation-footnotes dd { margin: 0; overflow-wrap: anywhere; }
+.allocation-fold summary { cursor: pointer; }
+.allocation-fold[open] summary { color: var(--dim); font-size: 12px; }
+.allocation-fold p { margin: 4px 0 0; }
+.allocation-disagreements { padding: 8px 12px; }
+.allocation-citations { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.allocation-modal-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.allocation-modal-foot .allocation-sources { flex: 1 1 320px; margin-top: 0; }
+@media (max-width: 640px) {
+  .allocation-modal-panel { margin: 16px auto 0; width: 96vw; padding: 14px; }
+  .allocation-footnotes { grid-template-columns: 1fr; gap: 2px; }
+  .allocation-footnotes dd { margin-bottom: 8px; }
+}
+
+/* Inline text-style action inside a sentence (empty states: "clear filters"). */
+button.link {
+  display: inline; min-height: 0; padding: 0 2px; border: 0; background: none;
+  color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer;
+}
+button.link:hover { color: var(--ink); }
+
+/* Channel watch (signal-workbench.js): header bar, then two columns (what to
+   watch | options) at desktop widths; no nested boxes. */
+.signal-workbench { border-top: 2px solid var(--context-watch); }
+/* Hosted in the Listen panel's Watch tab: the tab is the chrome, so drop the card's own border/padding. */
+.listen-workbench .signal-workbench { border: 0; padding: 0; background: transparent; margin: 0; }
+.signal-workbench > details > .wb-summary { display: flex; align-items: baseline; gap: 10px; cursor: pointer; list-style: none; padding: 2px 0; }
+.signal-workbench > details > .wb-summary::-webkit-details-marker { display: none; }
+.signal-workbench .wb-caret { color: var(--dim); width: 1em; }
+.signal-workbench .wb-title { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--context-watch); }
+.signal-workbench .wb-summary-state { font-size: 12px; }
+.signal-workbench .wb-help { margin-left: auto; font-size: 12px; }
+.signal-workbench .wb-columns { display: grid; gap: 0 32px; }
+@media (min-width: 1100px) {
+  .signal-workbench .wb-columns { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  .signal-workbench .wb-columns > .wb-step { border-top: 1px solid #ffffff12; }
+}
+.signal-workbench .wb-link { border: 0; background: transparent; padding: 0; min-height: 0; font-size: inherit; color: var(--context-scope); text-decoration: underline; cursor: pointer; }
+.signal-workbench .wb-primary { border-color: var(--context-watch); color: var(--context-watch); }
+.signal-workbench .wb-step { padding: 10px 0; border-top: 1px solid #ffffff12; }
+.signal-workbench .wb-step:first-of-type { border-top: 0; }
+.signal-workbench h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.signal-workbench .wb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 14px; }
+.signal-workbench .wb-wide { grid-column: 1 / -1; }
+.signal-workbench .wb-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.signal-workbench .wb-field > span:first-child { font-size: 12px; }
+.signal-workbench .wb-field input, .signal-workbench .wb-field select { width: 100%; min-width: 0; }
+.signal-workbench .wb-field small { font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+.signal-workbench .wb-input-unit { display: flex; align-items: center; gap: 6px; }
+.signal-workbench .wb-input-unit small { color: var(--dim); white-space: nowrap; }
+.signal-workbench .wb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+.signal-workbench .wb-actions small { flex: 1 1 260px; font-size: 12px; overflow-wrap: anywhere; }
+.signal-workbench .wb-primary { font-weight: 600; }
+.signal-workbench .wb-stop { border-color: var(--danger); color: var(--danger); }
+.signal-workbench .wb-problem { color: var(--warn); }
+.signal-workbench .wb-problem::before { content: "⚠ "; }
+.signal-workbench .wb-alert { margin: 8px 0; padding: 6px 10px; border-left: 3px solid var(--danger); background: #ff5f5f12; }
+.signal-workbench .wb-alert::before { content: "Problem: "; font-weight: 600; }
+.signal-workbench .wb-check { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0; cursor: pointer; }
+.signal-workbench .wb-check input { margin-top: 3px; }
+.signal-workbench .wb-check small { display: block; font-size: 11.5px; line-height: 1.35; }
+.signal-workbench .wb-indent { margin: 4px 0 6px 26px; max-width: 360px; }
+.signal-workbench .wb-more { margin-top: 8px; }
+.signal-workbench .wb-more > summary { cursor: pointer; font-size: 12px; }
+.signal-workbench .wb-more[open] > summary { margin-bottom: 8px; }
+.signal-workbench .wb-hint { margin: 0 0 8px; font-size: 12px; }
+.signal-workbench .wb-status { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; align-items: center; }
+/* Compact pass: 13px base, 28px controls, the four "what to watch" fields on
+   one row (frequencies widest), option descriptions inline after their
+   title, status rows with their button on the same line. */
+.signal-workbench { font-size: 13px; }
+.signal-workbench .wb-columns { gap: 0 24px; }
+.signal-workbench .wb-step { padding: 6px 0; }
+.signal-workbench h4 { margin: 0 0 6px; }
+.signal-workbench .wb-step[aria-labelledby="wb-what"] > .wb-grid { grid-template-columns: minmax(200px, 2.2fr) repeat(3, minmax(120px, 1fr)); gap: 6px 10px; }
+.signal-workbench .wb-step[aria-labelledby="wb-what"] > .wb-grid > .wb-wide { grid-column: auto; }
+@media (max-width: 900px) {
+  .signal-workbench .wb-step[aria-labelledby="wb-what"] > .wb-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .signal-workbench .wb-step[aria-labelledby="wb-what"] > .wb-grid > .wb-wide { grid-column: 1 / -1; }
+}
+.signal-workbench .wb-field { gap: 2px; }
+.signal-workbench .wb-field > span:first-child { font-size: 11px; color: var(--ink); }
+.signal-workbench .wb-field input, .signal-workbench .wb-field select { min-height: 28px; height: 28px; padding: 0 6px; font-size: 12px; }
+.signal-workbench .wb-field small { font-size: 10.5px; }
+.signal-workbench .wb-actions { margin-top: 8px; }
+.signal-workbench .wb-actions .wb-primary { min-height: 28px; padding: 2px 12px; }
+.signal-workbench .wb-check { margin: 4px 0; align-items: baseline; gap: 7px; }
+.signal-workbench .wb-check input { margin-top: 0; }
+.signal-workbench .wb-check small { display: inline; margin-left: 6px; color: var(--ink); font-size: 11px; }
+.signal-workbench .wb-more { margin-top: 6px; }
+.signal-workbench .wb-status { gap: 4px 12px; font-size: 12px; }
+.signal-workbench .wb-status dt { color: var(--ink); }
+.signal-workbench .wb-status dd { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; min-width: 0; }
+.signal-workbench .wb-status dd button { min-height: 26px; padding: 2px 8px; font-size: 12px; }
+.signal-workbench .wb-status dt { color: var(--dim); font-size: 12px; }
+.signal-workbench .wb-status dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
+.signal-workbench .wb-status dd > span { flex: 1 1 220px; overflow-wrap: anywhere; }
+.signal-workbench .wb-table { margin-top: 8px; }
+.signal-workbench button:focus-visible, .signal-workbench input:focus-visible,
+.signal-workbench select:focus-visible, .signal-workbench summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .signal-workbench .wb-status { grid-template-columns: 1fr; }
+  .signal-workbench .wb-status dt { margin-top: 6px; }
+}
+
+/* Narrow screens: the 0.55.5 compaction's two-column receiver grid needs ~620 px,
+   so stack the frequency and settings columns instead of overflowing the page. */
+@media (max-width: 720px) {
+  instrument-panel .frequency-and-receiver { grid-template-columns: minmax(0, 1fr); }
+  instrument-panel .receiver-signal-row { flex-wrap: wrap; }
+  instrument-panel .receiver-signal-row .receiver-signal-level { min-width: 0; }
+  instrument-panel .frequency-context-strip .band-plan-hints { max-width: 100%; }
+  .strip-recording #recorder-control .control-row { flex-wrap: wrap; }
+  instrument-panel .receiver-dsp-field { flex-basis: 100%; }
+}
+
+/* Passive Wi-Fi reception (docs/wifi.md): Discover's Wi-Fi tab, its Setup
+   card, and Review's Wi-Fi sessions list. Reuses lib-table/panel/chip/
+   control-row/button.link/dim throughout; only what's specific to this
+   feature lives here. */
+.wifi-view .wifi-header { font-size: 0.9em; }
+.wifi-view .wifi-filters { margin: 8px 0; align-items: center; }
+.wifi-view .wifi-filters input[type="search"] { min-width: 200px; }
+.wifi-marker { margin-left: 4px; font-size: 0.75em; }
+.lib-table.wifi-table tbody tr.selected { background: var(--panel-well); outline: 1px solid var(--accent); outline-offset: -1px; }
+.wifi-detail { margin-top: 12px; }
+.wifi-detail .wifi-sparkline { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.wifi-detail .wifi-sparkline svg { background: var(--panel-well); border: 1px solid var(--line); }
+.wifi-detail .wifi-provenance { margin-top: 10px; font-size: 0.8em; }
+.wifi-detail .wifi-ies table, .wifi-detail .wifi-recent ul { margin-top: 6px; }
+.wifi-detail .wifi-recent ul { list-style: none; padding: 0; }
+.wifi-detail .wifi-recent li { padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 0.85em; }
+.wifi-record { align-items: center; margin: 6px 0; }
+.wifi-setup .control-row { margin: 8px 0; }
+.wifi-sessions { margin-top: 16px; }
+
+/* Wi-Fi live frame feed (wifi-view.js). */
+.wifi-view .wifi-tabs { display: flex; gap: 6px; margin: 4px 0 8px; }
+.wifi-view .wifi-live-controls { flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.wifi-view .wifi-live-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 60vh; overflow: auto; font-size: 12px; }
+.wifi-view .wifi-live-list li { display: grid; grid-template-columns: 90px 90px 1fr; gap: 8px; padding: 2px 4px; border-bottom: 1px solid #ffffff0d; overflow-wrap: anywhere; }
+.wifi-view .wifi-live-list li.bad { opacity: .55; }
+.wifi-view .wifi-live-kind { color: var(--dim); }
+@media (max-width: 640px) { .wifi-view .wifi-live-list li { grid-template-columns: 1fr; gap: 0; } }
+.wifi-view .wifi-sort, .remoteid-view .wifi-sort { all: unset; cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+.wifi-view .wifi-sort:hover, .remoteid-view .wifi-sort:hover { color: var(--ink); }
+.wifi-view .wifi-sort:focus-visible, .remoteid-view .wifi-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wifi-view th[aria-sort="ascending"], .wifi-view th[aria-sort="descending"] { color: var(--accent); }
+
+/* Wi-Fi channel survey (docs/history.md "Wi-Fi channel survey"): preset/
+   dwell/rounds controls, progress line, results table with a frames/s bar,
+   and the per-channel network list shown on row click. */
+.wifi-view .wifi-survey-controls { flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; }
+.wifi-view .wifi-survey-controls input[type="number"] { width: 5em; }
+.wifi-view .wifi-survey-controls input[type="text"] { width: 10em; }
+.wifi-view .wifi-survey-progress { font-size: 0.9em; color: var(--dim); margin: 4px 0; }
+.wifi-view .wifi-survey-table tbody tr { cursor: pointer; }
+.wifi-view .wifi-survey-table tr.wifi-survey-live td { background: color-mix(in srgb, var(--context-wifi) 10%, transparent); }
+.wifi-view .wifi-survey-status { white-space: nowrap; }
+.wifi-view .wifi-survey-why { margin-top: 8px; font-size: 0.92em; }
+.wifi-view .wifi-survey-why summary { cursor: pointer; color: var(--dim); }
+.wifi-view .wifi-survey-why h4 { margin: 10px 0 2px; font-size: 1em; }
+.wifi-view .wifi-survey-why ul { margin: 0 0 4px; padding-left: 18px; }
+.wifi-view .wifi-survey-why li { margin: 2px 0; }
+.wifi-view .wifi-table tr.wifi-group-row td { background: var(--panel-well); padding-top: 10px; cursor: default; }
+.wifi-view .wifi-signal { white-space: nowrap; }
+.wifi-view .wifi-table tr.wifi-rare td { opacity: 0.55; }
+/* Same look as the BLE RSSI bar (.ble-rssi-bar); a raw-code bar is drawn
+   striped because it's relative, not a calibrated strength. */
+.wifi-view .wifi-signal-bar { display: inline-block; width: 42px; height: 6px; margin-left: 6px; border-radius: 3px; overflow: hidden; background: var(--panel-well); vertical-align: middle; }
+.wifi-view .wifi-signal-bar-fill { display: block; height: 100%; background: var(--context-wifi); }
+.wifi-view .wifi-signal-bar-fill.raw { background: repeating-linear-gradient(90deg, var(--context-wifi) 0 4px, color-mix(in srgb, var(--context-wifi) 55%, transparent) 4px 6px); }
+.wifi-view .wifi-vendor { font-family: var(--sans); font-size: 0.8em; white-space: normal; }
+/* Survey activity marker: pulsing dot = listening, spinning ring = helper
+   restarting on the next channel. */
+.wifi-view .wifi-survey-indicator { display: inline-block; width: 8px; height: 8px; margin-right: 6px; vertical-align: middle; border-radius: 50%; }
+.wifi-view .wifi-survey-indicator.listening { background: var(--context-wifi); animation: wifi-survey-pulse 1.2s ease-in-out infinite; }
+.wifi-view .wifi-survey-indicator.switching { border: 2px solid var(--context-wifi); border-right-color: transparent; animation: wifi-survey-spin 0.8s linear infinite; }
+@keyframes wifi-survey-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.7); } }
+@keyframes wifi-survey-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .wifi-view .wifi-survey-indicator { animation: none; }
+}
+.wifi-view .wifi-rate-bar { display: inline-block; width: 60px; height: 8px; vertical-align: middle;
+  background: var(--panel-well); border-radius: 4px; overflow: hidden; margin-right: 6px; }
+.wifi-view .wifi-rate-bar-fill { display: block; height: 100%; background: var(--accent); }
+.wifi-view .wifi-survey-networks { margin-top: 12px; padding: 10px 12px; border: 1px solid #ffffff14; border-radius: 10px; }
+.wifi-view .wifi-survey-networks h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.wifi-view .wifi-survey-honesty { font-size: 0.8em; margin-top: 10px; }
+
+/* Recordings modal: a list of two-line entries instead of a wide table. */
+recordings-view .rec-list { list-style: none; margin: 0; padding: 0; }
+recordings-view .rec-item { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+  padding: 10px 2px; border-bottom: 1px solid #ffffff14; }
+recordings-view .rec-main { flex: 1 1 320px; min-width: 0; }
+recordings-view .rec-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+recordings-view .rec-facts { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 3px; font-size: 12px; color: var(--dim); }
+recordings-view .rec-problem { color: var(--warn); }
+recordings-view .rec-problem::before { content: "⚠ "; }
+recordings-view .rec-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: 0 1 auto; margin-left: auto; }
+recordings-view .rec-created { font-size: 12px; white-space: nowrap; }
+recordings-view .rec-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+recordings-view .rec-actions button { min-height: 26px; padding: 2px 10px; font-size: 12px; }
+recordings-view .rec-danger { border-color: var(--danger); color: var(--danger); }
+@media (max-width: 640px) {
+  recordings-view .rec-side { align-items: flex-start; margin-left: 0; width: 100%; }
+  recordings-view .rec-actions { justify-content: flex-start; }
+}
+.wifi-view .wifi-controls { flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; }
+.wifi-view .wifi-start { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.wifi-view .wifi-stop { border-color: var(--danger); color: var(--danger); }
+.wifi-view .wifi-problem { color: var(--warn); font-size: 12px; }
+span.timeline-clear { color: var(--warn); font-size: 12px; display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wifi-view .wifi-problem::before { content: "⚠ "; }
+
+/* Wi-Fi network details (wifi-view.js _renderDetail). */
+.wifi-view .wifi-detail { margin-top: 12px; padding: 14px 16px; }
+.wifi-view .wifi-detail-head, .remoteid-view .wifi-detail-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.wifi-view .wifi-detail-head h3, .remoteid-view .wifi-detail-head h3 { margin: 0; font-size: 18px; }
+.wifi-view .wifi-detail-close, .remoteid-view .wifi-detail-close { margin-left: auto; min-height: 26px; padding: 0 10px; }
+.wifi-view .wifi-detail-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.wifi-view .wifi-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.wifi-view .wifi-detail-grid section, .wifi-view .wifi-recent { padding: 10px 12px; border: 1px solid #ffffff14; border-radius: 10px; }
+.wifi-view .wifi-recent { margin-top: 12px; }
+.wifi-view .wifi-detail h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.wifi-view .wifi-facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
+.wifi-view .wifi-facts dt { color: var(--dim); }
+.wifi-view .wifi-facts dd { margin: 0; overflow-wrap: anywhere; }
+.wifi-view .wifi-spark { display: block; margin-top: 4px; }
+.wifi-view .wifi-recent-summary { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
+.wifi-view .wifi-ies { margin-top: 12px; }
+.wifi-view .wifi-hex { display: block; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; max-height: 160px; overflow: auto; }
+.wifi-view .wifi-provenance { margin: 10px 0 0; font-size: 12px; }
+@media (max-width: 640px) { .wifi-view .wifi-facts { grid-template-columns: 1fr; } }
+/* Details beside the table on wide screens, sticky so it stays in view. */
+@media (min-width: 1100px) {
+  .wifi-view .wifi-body.has-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 440px); gap: 14px; align-items: start; }
+  .wifi-view .wifi-body.has-detail .wifi-detail { margin-top: 0; position: sticky; top: 8px; max-height: calc(100vh - 24px); overflow: auto; }
+  .wifi-view .wifi-body.has-detail .wifi-detail-grid { grid-template-columns: 1fr; }
+}
+
+/* Wi-Fi context colour (coral orange; distinct from receiver, listen, survey,
+   decode, recording, catalog and the amber allocation chips). */
+.wifi-view.panel { border-top: 3px solid var(--context-wifi); }
+.wifi-view > h2 { color: var(--context-wifi); }
+.wifi-view .wifi-tabs [role="tab"][aria-selected="true"] { border-color: var(--context-wifi); color: var(--context-wifi); }
+.wifi-view .wifi-table tr.selected { outline: 1px solid var(--context-wifi); outline-offset: -1px;
+  background: color-mix(in srgb, var(--context-wifi) 8%, transparent); }
+.wifi-view th[aria-sort="ascending"], .wifi-view th[aria-sort="descending"] { color: var(--context-wifi); }
+.wifi-view .wifi-detail { border-left: 3px solid var(--context-wifi); }
+.wifi-view .wifi-detail-head h3 { font-weight: 700; }
+.wifi-view .wifi-detail-chips .chip { border-color: color-mix(in srgb, var(--context-wifi) 55%, var(--line));
+  background: color-mix(in srgb, var(--context-wifi) 10%, var(--panel)); color: var(--ink); }
+.wifi-view .wifi-detail h4 { color: var(--context-wifi); font-weight: 700; }
+.wifi-view .wifi-detail-grid section, .wifi-view .wifi-recent { border-color: color-mix(in srgb, var(--context-wifi) 22%, var(--line)); }
+.wifi-view .wifi-facts dt { color: var(--dim); font-weight: 400; }
+.wifi-view .wifi-facts dd { color: var(--ink); font-weight: 600; }
+.wifi-view .wifi-facts dd .dim { font-weight: 400; }
+.wifi-view .wifi-recent-summary .chip { background: color-mix(in srgb, var(--context-wifi) 8%, var(--panel)); }
+.wifi-view .wifi-recent-summary .chip strong { color: var(--context-wifi); }
+.wifi-view .wifi-survey-table tr.selected { outline: 1px solid var(--context-wifi); outline-offset: -1px;
+  background: color-mix(in srgb, var(--context-wifi) 8%, transparent); }
+.wifi-view .wifi-rate-bar-fill { background: var(--context-wifi); }
+.wifi-view .wifi-survey-networks { border-color: color-mix(in srgb, var(--context-wifi) 22%, var(--line)); }
+.wifi-view .wifi-survey-networks h4 { color: var(--context-wifi); font-weight: 700; }
+
+/* Wi-Fi activity heatmap (docs/wifi.md "Wi-Fi activity"): a read-only view
+   of the history database -- never a receiver control, so it carries no
+   start/stop affordances of its own. */
+.wifi-view .wifi-activity-sentence { font-size: 0.85em; color: var(--dim); max-width: 60em; }
+/* Small "?" disc that carries a caveat in its hover help instead of a
+   paragraph of its own (Activity tab's "packets received, not spectrum"). */
+.help-mark { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--ink); color: var(--ink); font-size: 11px; font-weight: 600; cursor: help; user-select: none; }
+.help-mark:hover, .help-mark:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.wifi-view .wifi-activity-controls { margin: 6px 0 10px; }
+.wifi-view .wifi-activity-chart { overflow-x: auto; }
+.wifi-view .wifi-activity-chart svg { display: block; }
+.wifi-view .wifi-activity-chhdr, .wifi-view .wifi-activity-tlabel { fill: var(--fg); }
+.wifi-view .wifi-activity-band { fill: var(--context-wifi); font-weight: 600; }
+.wifi-view .wifi-activity-chhdr { font-weight: 600; fill: var(--ink, currentColor); }
+.wifi-view .wifi-activity-mhz { fill: var(--accent); }
+.wifi-view .wifi-activity-key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 0.8em; margin: 6px 0 2px; }
+.wifi-view .wifi-activity-ramp { width: 120px; height: 10px; border-radius: 2px;
+  background: linear-gradient(to right, color-mix(in srgb, var(--accent) 7%, transparent), var(--accent)); }
+.wifi-view .wifi-activity-hatch-key { width: 16px; height: 10px; margin-left: 10px; border: 1px solid var(--line);
+  background: repeating-linear-gradient(45deg, var(--panel-well) 0 4px, var(--line) 4px 5px); }
+.wifi-view .wifi-activity-bucket { font-size: 0.8em; margin: 2px 0; }
+.wifi-view .wifi-activity-cell { cursor: pointer; stroke: transparent; stroke-width: 1; }
+.wifi-view .wifi-activity-cell.hover { stroke: var(--fg); }
+.wifi-view .wifi-activity-rule { stroke: var(--line); stroke-width: 1; opacity: 0.8; pointer-events: none; }
+.wifi-view .wifi-activity-footer { margin-top: 6px; }
+.wifi-view .wifi-activity-tooltip { font-size: 0.85em; min-height: 1.2em; }
+.wifi-view .wifi-activity-scale, .wifi-view .wifi-activity-legend { font-size: 0.8em; margin: 2px 0; }
+.wifi-view .wifi-activity-empty { padding: 12px 0; }
+
+/* Labeled control groups shared by the Wi-Fi and BLE tabs: a small caps
+   label column (RECEIVER / RECORD / LIST) beside each row, so tuning,
+   recording and list filtering read as separate jobs. */
+.ctl-groups { display: grid; grid-template-columns: max-content 1fr; gap: 10px 16px; align-items: center; margin: 10px 0 12px; }
+.ctl-groups:empty { display: none; }
+.ctl-groups > .control-row { align-items: center; gap: 8px 12px; margin: 0; }
+.ctl-label { font-size: 0.7em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); }
+.ctl-sep { width: 1px; align-self: stretch; background: var(--line); }
+.ctl-groups .pager { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+/* Pager steps are controls, not links: give them the small-button look. */
+.pager button.link { border: 1px solid var(--line); padding: 2px 8px; border-radius: var(--radius, 0); text-decoration: none; }
+.state-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius-pill); font-size: 0.85em; color: var(--fg); white-space: nowrap; }
+.state-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--disabled); }
+.state-pill.on::before { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.state-pill.warn::before { background: var(--warn); }
+@media (max-width: 640px) {
+  .ctl-groups { grid-template-columns: 1fr; gap: 4px; }
+  .ctl-groups .pager { margin-left: 0; }
+}
+
+/* Passive BLE reception (docs/ble.md): Discover's BLE tab and its Setup
+   card. Mirrors the Wi-Fi rules above 1:1 (lib-table/panel/chip/control-row/
+   button.link/dim throughout); only what's specific to this feature lives
+   here. */
+.ble-view .ble-header { font-size: 0.85em; margin: 4px 0; cursor: help; }
+.lib-table.ble-table tbody tr.selected { background: var(--panel-well); outline: 1px solid var(--accent); outline-offset: -1px; }
+.ble-setup .control-row { margin: 8px 0; }
+.ble-devices { list-style: none; margin: 4px 0; padding: 0; font-size: 0.85em; }
+.ble-devices li { padding: 2px 0; }
+
+/* Advertisers table: compact Device column (label/name/company + address),
+   right-aligned numeric columns, Identity chip and RSSI bar (ble-view.js
+   _row()). Keeps the table from overflowing at the ~1100px details-beside-
+   table breakpoint below. */
+.ble-view .ble-table th.num, .ble-view .ble-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ble-view .ble-device-cell { min-width: 120px; }
+.ble-view .ble-device-primary { display: flex; align-items: center; gap: 6px; }
+.ble-view .ble-device-secondary { font-size: 0.8em; }
+.ble-view .ble-identity-chip.muted { color: var(--dim); border-color: var(--line); background: transparent; }
+/* Summary tiles (survey verdict):
+   a big count + label per tile, optional small breakdown line inside. */
+.summary-tiles { margin: 4px 0 10px; }
+.summary-tiles .summary-lead { margin: 0 0 6px; }
+.summary-tiles .summary-groups { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.summary-tiles .summary-group { border: 1px solid var(--line); padding: 6px 10px; min-width: 120px; }
+.summary-tiles .summary-count { font-size: 1.3em; font-weight: 700; margin-right: 6px; }
+.summary-tiles .summary-sub { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.85em; color: var(--dim); display: flex; flex-wrap: wrap; gap: 2px 12px; }
+/* Summary blocks (BLE device summary, Wi-Fi network summary): small tables
+   side by side in a wrapping flex row. */
+.summary-blocks { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; margin: 4px 0 10px; }
+.summary-block { border-collapse: collapse; min-width: 120px; max-width: min(100%, 280px); }
+.summary-block th, .summary-block td { padding: 2px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.summary-block thead th { background: var(--panel-well); font-size: 0.8em; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.summary-block .num { text-align: right; white-space: nowrap; }
+.summary-block thead .num { text-transform: none; letter-spacing: 0; }
+.summary-block thead .mono { color: var(--fg); font-size: 1.15em; font-weight: 700; }
+.summary-block .share-bar { display: inline-block; width: 40px; height: 6px; margin-left: 8px; border-radius: 3px; overflow: hidden; background: var(--panel-well); vertical-align: middle; }
+.summary-block .share-bar > span { display: block; height: 100%; background: var(--context-ble); }
+.wifi-summary .summary-block .share-bar > span { background: var(--context-wifi); }
+.summary-block tr.total .label { font-weight: 600; }
+.summary-block tr.total .num { font-weight: 700; }
+.summary-block tr.warn .label, .summary-block tr.warn .num { color: var(--danger); }
+.ble-view .ble-rssi-bar { display: inline-block; width: 42px; height: 6px; margin-left: 6px; border-radius: 3px; overflow: hidden; background: var(--panel-well); vertical-align: middle; }
+.ble-view .ble-rssi-bar-fill { display: block; height: 100%; background: var(--context-ble); }
+
+/* BLE live report feed (ble-view.js). */
+.ble-view .ble-tabs { display: flex; gap: 6px; margin: 4px 0 8px; }
+.ble-view .ble-live-controls { flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.ble-view .ble-live-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 60vh; overflow: auto; font-size: 12px; }
+.ble-view .ble-live-list li { display: grid; grid-template-columns: 90px 90px 1fr; gap: 8px; padding: 2px 4px; border-bottom: 1px solid #ffffff0d; overflow-wrap: anywhere; }
+.ble-view .ble-live-kind { color: var(--dim); }
+@media (max-width: 640px) { .ble-view .ble-live-list li { grid-template-columns: 1fr; gap: 0; } }
+.ble-view .ble-sort { all: unset; cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+.ble-view .ble-sort:hover { color: var(--ink); }
+.ble-view .ble-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ble-view th[aria-sort="ascending"], .ble-view th[aria-sort="descending"] { color: var(--accent); }
+.ble-view .ble-controls { flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; }
+.ble-view .ble-start { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.ble-view .ble-stop { border-color: var(--danger); color: var(--danger); }
+.ble-view .ble-problem { color: var(--warn); font-size: 12px; }
+.ble-view .ble-problem::before { content: "⚠ "; }
+
+/* BLE advertiser details (ble-view.js _renderDetail). */
+.ble-view .ble-detail { margin-top: 12px; padding: 14px 16px; }
+.ble-view .ble-detail-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ble-view .ble-detail-head h3 { margin: 0; font-size: 18px; }
+.ble-view .ble-detail-close { margin-left: auto; min-height: 26px; padding: 0 10px; }
+.ble-view .ble-detail-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.ble-view .ble-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.ble-view .ble-detail-grid section, .ble-view .ble-recent, .ble-view .ble-payloads { padding: 10px 12px; border: 1px solid #ffffff14; border-radius: 10px; }
+.ble-view .ble-recent, .ble-view .ble-payloads { margin-top: 12px; }
+.ble-view .ble-detail h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.ble-view .ble-facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
+.ble-view .ble-facts dt { color: var(--dim); }
+.ble-view .ble-facts dd { margin: 0; overflow-wrap: anywhere; }
+.ble-view .ble-spark { display: block; margin-top: 4px; }
+.ble-view .ble-payloads ul { list-style: none; margin: 0; padding: 0; }
+.ble-view .ble-payloads li { padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 0.85em; }
+.ble-view .ble-hex { display: block; overflow-wrap: anywhere; font-size: 11px; }
+.ble-view .ble-provenance { margin: 10px 0 0; font-size: 12px; }
+@media (max-width: 640px) { .ble-view .ble-facts { grid-template-columns: 1fr; } }
+/* Details beside the table on wide screens, sticky so it stays in view. */
+@media (min-width: 1100px) {
+  .ble-view .ble-body.has-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 440px); gap: 14px; align-items: start; }
+  .ble-view .ble-body.has-detail .ble-detail { margin-top: 0; position: sticky; top: 8px; max-height: calc(100vh - 24px); overflow: auto; }
+  .ble-view .ble-body.has-detail .ble-detail-grid { grid-template-columns: 1fr; }
+}
+
+/* BLE context colour (violet; distinct from receiver, listen, survey,
+   decode, recording, catalog, Wi-Fi and the amber allocation chips). */
+.ble-view.panel { border-top: 3px solid var(--context-ble); }
+.ble-view > h2 { color: var(--context-ble); }
+
+/* Sensor beacon decoding (docs/ble.md "Sensors", msdr/ble/sensors.py): the
+   table's Sensor chip and the details pane's readings section. */
+.ble-view .ble-sensor-chip { background: color-mix(in srgb, var(--context-ble) 20%, transparent); border-color: var(--context-ble); }
+.ble-view .ble-sensor-chip.encrypted { color: var(--dim); border-color: var(--line); background: transparent; }
+.ble-view .ble-sensor-readings { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 12px; margin: 0; font-size: 13px; }
+.ble-view .ble-sensor-readings dt { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.ble-view .ble-sensor-readings dd { margin: 0; font-variant-numeric: tabular-nums; }
+.ble-view .ble-tabs [role="tab"][aria-selected="true"] { border-color: var(--context-ble); color: var(--context-ble); }
+.ble-view .ble-table tr.selected { outline: 1px solid var(--context-ble); outline-offset: -1px;
+  background: color-mix(in srgb, var(--context-ble) 8%, transparent); }
+.ble-view th[aria-sort="ascending"], .ble-view th[aria-sort="descending"] { color: var(--context-ble); }
+.ble-view .ble-detail { border-left: 3px solid var(--context-ble); }
+.ble-view .ble-detail-head h3 { font-weight: 700; }
+.ble-view .ble-detail-chips .chip { border-color: color-mix(in srgb, var(--context-ble) 55%, var(--line));
+  background: color-mix(in srgb, var(--context-ble) 10%, var(--panel)); color: var(--ink); }
+.ble-view .ble-detail h4 { color: var(--context-ble); font-weight: 700; }
+.ble-view .ble-detail-grid section, .ble-view .ble-recent, .ble-view .ble-payloads { border-color: color-mix(in srgb, var(--context-ble) 22%, var(--line)); }
+.ble-view .ble-facts dt { color: var(--dim); font-weight: 400; }
+.ble-view .ble-facts dd { color: var(--ink); font-weight: 600; }
+.ble-view .ble-facts dd .dim { font-weight: 400; }
+
+/* Label + history sections added to ble-view's and wifi-view's detail panes
+   -- same card look as .ble-detail-grid section, just outside that grid so
+   a wide chart isn't squeezed into one of its columns. */
+.ble-label, .ble-history, .wifi-label, .wifi-history { margin-top: 12px; padding: 10px 12px; border: 1px solid #ffffff14; border-radius: 10px; }
+.ble-history h4, .wifi-history h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+
+/* device-label-editor.js: the mine/known/ignore form shared by ble-view,
+   wifi-view and timeline-view's detail panes. */
+.device-label-editor h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.device-label-field { display: block; margin-bottom: 8px; font-size: 12px; color: var(--dim); }
+.device-label-field input, .device-label-field textarea {
+  display: block; width: 100%; margin-top: 2px; font: inherit; color: var(--fg);
+  background: var(--panel-well); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px;
+}
+.device-label-class { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.device-label-chip { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.device-label-chip input { margin: 0; }
+.device-label-chip-mine { border-color: color-mix(in srgb, var(--label-mine) 55%, var(--line)); }
+.device-label-chip-known { border-color: color-mix(in srgb, var(--label-known) 55%, var(--line)); }
+.device-label-chip-ignore { border-color: color-mix(in srgb, var(--label-ignore) 55%, var(--line)); }
+
+/* Label class chips, read-only (BLE/Wi-Fi tables, timeline-view rows). */
+.timeline-class-chip { font-size: 11px; }
+.timeline-class-mine { border-color: color-mix(in srgb, var(--label-mine) 55%, var(--line));
+  background: color-mix(in srgb, var(--label-mine) 12%, var(--panel)); color: var(--label-mine); }
+.timeline-class-known { border-color: color-mix(in srgb, var(--label-known) 55%, var(--line));
+  background: color-mix(in srgb, var(--label-known) 12%, var(--panel)); color: var(--label-known); }
+.timeline-class-ignore { border-color: color-mix(in srgb, var(--label-ignore) 55%, var(--line));
+  background: color-mix(in srgb, var(--label-ignore) 12%, var(--panel)); color: var(--label-ignore); }
+
+/* device-history-chart.js: min/max band + avg line, reports strip, hatched
+   "receiver not listening" columns. */
+.history-chart svg { display: block; width: 100%; height: auto; }
+.history-chart-legend { margin: 4px 0 0; font-size: 11px; }
+.history-chart-tick { fill: var(--ink); }
+.history-chart-empty { margin: 8px 0; }
+
+/* timeline-view.js: the shared Wi-Fi + BLE device history timeline
+   (docs/history.md "Shared timeline (UI)"). Row colour reuses
+   --context-wifi/--context-ble so a device's receiver reads the same way
+   it does in wifi-view.js/ble-view.js. */
+.timeline-view .timeline-header { font-size: 0.9em; color: var(--dim); }
+.timeline-view .timeline-filters { flex-wrap: wrap; gap: 10px 16px; align-items: flex-start; margin: 8px 0; }
+.timeline-view .timeline-filters fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; margin: 0; }
+.timeline-view .timeline-filters legend { font-size: 11px; color: var(--dim); padding: 0 4px; }
+.timeline-view .timeline-filters label { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.timeline-view .timeline-receiver-chip { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.timeline-view .timeline-receiver-wifi { border-color: color-mix(in srgb, var(--context-wifi) 55%, var(--line));
+  background: color-mix(in srgb, var(--context-wifi) 12%, var(--panel)); color: var(--context-wifi); }
+.timeline-view .timeline-receiver-ble { border-color: color-mix(in srgb, var(--context-ble) 55%, var(--line));
+  background: color-mix(in srgb, var(--context-ble) 12%, var(--panel)); color: var(--context-ble); }
+
+.timeline-view .timeline-coverage { margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+.timeline-view .timeline-coverage-band { display: flex; align-items: center; gap: 8px; }
+.timeline-view .timeline-coverage-band svg { flex: 1; min-width: 0; }
+.timeline-view .timeline-coverage-gap { stroke: var(--line); stroke-width: 0.5; } /* fill set per-rect to its <pattern> */
+.timeline-view .timeline-coverage-channel { fill: var(--dim); }
+
+.timeline-view .timeline-rows { display: flex; gap: 8px; margin-top: 6px; }
+.timeline-view .timeline-labels { flex: 0 0 220px; min-width: 0; }
+.timeline-view .timeline-label {
+  display: flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 12px; cursor: pointer;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-radius: 4px;
+}
+.timeline-view .timeline-label:hover { background: var(--panel-well); }
+.timeline-view .timeline-label.selected { outline: 1px solid var(--accent); outline-offset: -1px; }
+.timeline-view .timeline-grid-wrap { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.timeline-view canvas.timeline-grid { display: block; width: 100%; height: 100%; cursor: pointer; }
+
+/* Axis labels sit under the grid, offset by the label column's width + gap. */
+.timeline-view .timeline-axis { display: flex; gap: 8px; margin-top: 2px; font-size: 11px; color: var(--dim); }
+.timeline-view .timeline-axis-spacer { flex: 0 0 220px; }
+.timeline-view .timeline-axis-ticks { flex: 1; min-width: 0; position: relative; height: 16px; }
+.timeline-view .timeline-axis-tick { position: absolute; top: 0; padding-left: 3px; border-left: 1px solid var(--line); white-space: nowrap; }
+.timeline-view .timeline-legend { margin: 6px 0 0; font-size: 12px; }
+/* Matches .ui-help-tooltip; fixed so it follows the pointer outside the clipped grid wrap. */
+.timeline-tooltip {
+  position: fixed; z-index: 3000; width: max-content; max-width: 240px;
+  padding: 7px 10px; border: 1px solid color-mix(in srgb,var(--accent) 55%,var(--line));
+  border-radius: 4px; background: #10171d; color: var(--fg);
+  box-shadow: 0 8px 24px #0009; font: 12px/1.4 var(--sans);
+  pointer-events: none; overflow-wrap: anywhere;
+}
+
+.timeline-view .timeline-footer { margin-top: 10px; font-size: 12px; }
+.timeline-view .timeline-detail { margin-top: 12px; padding: 14px 16px; border-left: 3px solid var(--accent); }
+.timeline-view .timeline-detail-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.timeline-view .timeline-detail-close { margin-left: auto; min-height: 26px; padding: 0 10px; }
+.timeline-view .timeline-detail device-label-editor, .timeline-view .timeline-detail device-history-chart { display: block; margin-top: 12px; }
+@media (min-width: 1100px) {
+  .timeline-view .timeline-body.has-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 440px); gap: 14px; align-items: start; }
+  .timeline-view .timeline-body.has-detail .timeline-detail { margin-top: 0; position: sticky; top: 8px; max-height: calc(100vh - 24px); overflow: auto; }
+}
+
+/* Compare mode (docs/history.md "Capture comparison"): mode tabs, the two
+   window pickers, and the appeared/disappeared/changed lists. */
+.timeline-view .timeline-tabs { display: flex; gap: 6px; margin: 4px 0 8px; }
+.timeline-view .compare-presets { align-items: center; gap: 8px 12px; margin: 6px 0; }
+.timeline-view .compare-ranges { flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; margin: 6px 0 10px; }
+.timeline-view .compare-ranges fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; margin: 0; display: flex; gap: 10px; }
+.timeline-view .compare-ranges legend { font-size: 11px; color: var(--dim); padding: 0 4px; }
+.timeline-view .compare-ranges label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.timeline-view .compare-note { margin: 4px 0; }
+.timeline-view .compare-coverage { display: flex; gap: 8px; margin: 8px 0; }
+.timeline-view .compare-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 10px; }
+.timeline-view .compare-lists h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.timeline-view .compare-list { list-style: none; margin: 0; padding: 0; }
+.timeline-view .compare-list li { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.timeline-view .compare-list li.not-comparable { opacity: 0.7; }
+.timeline-view .compare-flag { color: var(--warn); border-color: var(--warn); font-size: 10px; }
+
+/* ---- Themes: tokens only (plus the few extra rules noted). Switched with
+   the ◐ button in the instrument strip; theme.js sets data-theme on <html>. ---- */
+
+:root[data-theme="midnight"] {
+  --bg: #0a1020;
+  --panel: #111a2e;
+  --panel-well: #0c1426;
+  --line: #263352;
+  --fg: #d6deee;
+  --ink: #8d9bb8;
+  --disabled: #4a567a;
+  --accent: #4da3ff;
+  --unlit: #13284a;
+  --freq: #eaf3ff;
+  --freq-ghost: #16233d;
+  --trace: #4da3ff;
+  --ok: #4fd18a;
+  --danger: #ff6b7a;
+  --warn: #f2b134;
+  --context-wifi: #ffb169;
+  --context-ble: #c29cff;
+  --context-survey: #4da3ff;
+  --context-listen: #8fb3f5;
+  --sans: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "DM Mono", "SF Mono", Menlo, monospace;
+  --radius: 6px;
+  --radius-pill: 999px;
+  --panel-clip: none;
+}
+:root[data-theme="midnight"] .panel { box-shadow: 0 8px 24px #0006; }
+
+:root[data-theme="blueprint"] {
+  --bg: #0b2545;
+  --panel: #0f2d54;
+  --panel-well: #0a2140;
+  --line: #3b6a9a;
+  --fg: #eaf2fb;
+  --ink: #9fbfe0;
+  --disabled: #4b6f93;
+  --accent: #cfe6ff;
+  --unlit: #163a66;
+  --freq: #fff;
+  --freq-ghost: #1d4a80;
+  --trace: #fff;
+  --ok: #8ee6a1;
+  --danger: #ff8f80;
+  --warn: #ffd166;
+  --context-wifi: #ffd166;
+  --context-ble: #ffa3e1;
+  --context-survey: #cfe6ff;
+  --context-listen: #9fd0ff;
+  --sans: "Overpass", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "Overpass Mono", "SF Mono", Menlo, monospace;
+  --radius: 0;
+  --radius-pill: 0;
+  --panel-clip: none;
+}
+:root[data-theme="blueprint"] body {
+  background-image: linear-gradient(rgba(59,106,154,.28) 1px, transparent 1px), linear-gradient(90deg, rgba(59,106,154,.28) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+:root[data-theme="avionics"] {
+  --bg: #0c0e0b;
+  --panel: #151913;
+  --panel-well: #0e110d;
+  --line: #39422f;
+  --fg: #d8dcc9;
+  --ink: #9aa38a;
+  --disabled: #4f5847;
+  --accent: #ffbf3c;
+  --unlit: #3b2e10;
+  --freq: #ffd36b;
+  --freq-ghost: #2a2410;
+  --trace: #8fe36a;
+  --ok: #8fe36a;
+  --danger: #ff5544;
+  --warn: #ff8a3d;
+  --context-wifi: #7fd3ff;
+  --context-ble: #d8a6ff;
+  --context-survey: #8fe36a;
+  --context-listen: #b9d98f;
+  --sans: "B612", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "B612 Mono", "SF Mono", Menlo, monospace;
+  --radius: 0;
+  --radius-pill: 2px;
+  --panel-clip: none;
+}
+:root[data-theme="avionics"] h2,
+:root[data-theme="avionics"] .lib-table th { color: var(--accent); }
+
+:root[data-theme="monochrome"] {
+  --bg: #141414;
+  --panel: #1d1d1d;
+  --panel-well: #171717;
+  --line: #3a3a3a;
+  --fg: #ececec;
+  --ink: #9c9c9c;
+  --disabled: #555;
+  --accent: #fff;
+  --unlit: #2a2a2a;
+  --freq: #fff;
+  --freq-ghost: #2e2e2e;
+  --trace: #fff;
+  --ok: #ececec;
+  --danger: #e5484d;
+  --warn: #e5484d;
+  --context-wifi: #ececec;
+  --context-ble: #ececec;
+  --context-survey: #ececec;
+  --context-listen: #ececec;
+  --sans: "Libre Franklin", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "Courier Prime", "Courier New", "SF Mono", Menlo, monospace;
+  --radius: 0;
+  --radius-pill: 0;
+  --panel-clip: none;
+}
+/* Hue is gone, so the two radios are told apart by edge style instead. */
+:root[data-theme="monochrome"] .panel.ble-view { border-left-style: double; }
+
+.setup-ndb-picker { margin: 0.4em 0; }
+.setup-ndb-toolbar { display: flex; gap: 0.6em; align-items: center; margin: 0.4em 0; }
+.setup-ndb-toolbar input { width: 5em; }
+.setup-ndb-table { width: 100%; font-size: 0.85em; border-collapse: collapse; }
+.setup-ndb-table td { padding: 0.15em 0.4em; }

@@ -1,0 +1,1605 @@
+[
+  {
+    "name": "NOAA Weather Radio WX2",
+    "lo_hz": 162400000,
+    "hi_hz": 162400000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      11000,
+      16000
+    ],
+    "category": "bc",
+    "kind": "channel",
+    "note": "NOAA weather/all-hazards broadcast"
+  },
+  {
+    "name": "NOAA Weather Radio WX4",
+    "lo_hz": 162425000,
+    "hi_hz": 162425000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      11000,
+      16000
+    ],
+    "category": "bc",
+    "kind": "channel",
+    "note": "NOAA weather/all-hazards broadcast"
+  },
+  {
+    "name": "NOAA Weather Radio WX5",
+    "lo_hz": 162450000,
+    "hi_hz": 162450000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      11000,
+      16000
+    ],
+    "category": "bc",
+    "kind": "channel",
+    "note": "NOAA weather/all-hazards broadcast"
+  },
+  {
+    "name": "NOAA Weather Radio WX3",
+    "lo_hz": 162475000,
+    "hi_hz": 162475000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      11000,
+      16000
+    ],
+    "category": "bc",
+    "kind": "channel",
+    "note": "NOAA weather/all-hazards broadcast"
+  },
+  {
+    "name": "NOAA Weather Radio WX6",
+    "lo_hz": 162500000,
+    "hi_hz": 162500000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      11000,
+      16000
+    ],
+    "category": "bc",
+    "kind": "channel",
+    "note": "NOAA weather/all-hazards broadcast"
+  },
+  {
+    "name": "NOAA Weather Radio WX7",
+    "lo_hz": 162525000,
+    "hi_hz": 162525000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      11000,
+      16000
+    ],
+    "category": "bc",
+    "kind": "channel",
+    "note": "NOAA weather/all-hazards broadcast"
+  },
+  {
+    "name": "NOAA Weather Radio WX1",
+    "lo_hz": 162550000,
+    "hi_hz": 162550000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      11000,
+      16000
+    ],
+    "category": "bc",
+    "kind": "channel",
+    "note": "NOAA weather/all-hazards broadcast"
+  },
+  {
+    "name": "FRS/GMRS 1",
+    "lo_hz": 462562500,
+    "hi_hz": 462562500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 2",
+    "lo_hz": 462587500,
+    "hi_hz": 462587500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 3",
+    "lo_hz": 462612500,
+    "hi_hz": 462612500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 4",
+    "lo_hz": 462637500,
+    "hi_hz": 462637500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 5",
+    "lo_hz": 462662500,
+    "hi_hz": 462662500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 6",
+    "lo_hz": 462687500,
+    "hi_hz": 462687500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 7",
+    "lo_hz": 462712500,
+    "hi_hz": 462712500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 8",
+    "lo_hz": 467562500,
+    "hi_hz": 467562500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 9",
+    "lo_hz": 467587500,
+    "hi_hz": 467587500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 10",
+    "lo_hz": 467612500,
+    "hi_hz": 467612500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 11",
+    "lo_hz": 467637500,
+    "hi_hz": 467637500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 12",
+    "lo_hz": 467662500,
+    "hi_hz": 467662500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 13",
+    "lo_hz": 467687500,
+    "hi_hz": 467687500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 14",
+    "lo_hz": 467712500,
+    "hi_hz": 467712500,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 15",
+    "lo_hz": 462550000,
+    "hi_hz": 462550000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 16",
+    "lo_hz": 462575000,
+    "hi_hz": 462575000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 17",
+    "lo_hz": 462600000,
+    "hi_hz": 462600000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 18",
+    "lo_hz": 462625000,
+    "hi_hz": 462625000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 19",
+    "lo_hz": 462650000,
+    "hi_hz": 462650000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 20",
+    "lo_hz": 462675000,
+    "hi_hz": 462675000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 21",
+    "lo_hz": 462700000,
+    "hi_hz": 462700000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "FRS/GMRS 22",
+    "lo_hz": 462725000,
+    "hi_hz": 462725000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (FRS/GMRS)"
+  },
+  {
+    "name": "MURS 1",
+    "lo_hz": 151820000,
+    "hi_hz": 151820000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (MURS)"
+  },
+  {
+    "name": "MURS 2",
+    "lo_hz": 151880000,
+    "hi_hz": 151880000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (MURS)"
+  },
+  {
+    "name": "MURS 3",
+    "lo_hz": 151940000,
+    "hi_hz": 151940000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (MURS)"
+  },
+  {
+    "name": "MURS 4",
+    "lo_hz": 154570000,
+    "hi_hz": 154570000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (MURS)"
+  },
+  {
+    "name": "MURS 5",
+    "lo_hz": 154600000,
+    "hi_hz": 154600000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      6250,
+      12500
+    ],
+    "category": null,
+    "kind": "channel",
+    "note": "personal radio (MURS)"
+  },
+  {
+    "name": "2 m calling",
+    "lo_hz": 146520000,
+    "hi_hz": 146520000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "channel",
+    "note": "2 m FM calling frequency"
+  },
+  {
+    "name": "70 cm calling",
+    "lo_hz": 446000000,
+    "hi_hz": 446000000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "channel",
+    "note": "70 cm FM calling frequency"
+  },
+  {
+    "name": "APRS (US/NA)",
+    "lo_hz": 144390000,
+    "hi_hz": 144390000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "channel",
+    "note": "APRS digital packet"
+  },
+  {
+    "name": "ISS voice downlink",
+    "lo_hz": 145800000,
+    "hi_hz": 145800000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": "sat",
+    "kind": "channel",
+    "note": "ISS ham voice downlink"
+  },
+  {
+    "name": "ISS APRS",
+    "lo_hz": 145825000,
+    "hi_hz": 145825000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": "sat",
+    "kind": "channel",
+    "note": "ISS APRS digipeater"
+  },
+  {
+    "name": "ISS cross-band repeater downlink",
+    "lo_hz": 437800000,
+    "hi_hz": 437800000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      10000,
+      20000
+    ],
+    "category": "sat",
+    "kind": "channel",
+    "note": "ISS FM voice repeater output (uplink 145.990 MHz, 67 Hz tone)"
+  },
+  {
+    "name": "NOAA-15 APT",
+    "lo_hz": 137620000,
+    "hi_hz": 137620000,
+    "modes": [
+      "WFM",
+      "NFM"
+    ],
+    "bw_hz": [
+      30000,
+      40000
+    ],
+    "category": "sat",
+    "kind": "channel",
+    "note": "NOAA-15 APT weather image downlink"
+  },
+  {
+    "name": "NOAA-18 APT",
+    "lo_hz": 137912500,
+    "hi_hz": 137912500,
+    "modes": [
+      "WFM",
+      "NFM"
+    ],
+    "bw_hz": [
+      30000,
+      40000
+    ],
+    "category": "sat",
+    "kind": "channel",
+    "note": "NOAA-18 APT weather image downlink"
+  },
+  {
+    "name": "NOAA-19 APT",
+    "lo_hz": 137100000,
+    "hi_hz": 137100000,
+    "modes": [
+      "WFM",
+      "NFM"
+    ],
+    "bw_hz": [
+      30000,
+      40000
+    ],
+    "category": "sat",
+    "kind": "channel",
+    "note": "NOAA-19 APT weather image downlink"
+  },
+  {
+    "name": "Meteor M2-x LRPT (137.100 MHz)",
+    "lo_hz": 137100000,
+    "hi_hz": 137100000,
+    "modes": null,
+    "bw_hz": [
+      100000,
+      140000
+    ],
+    "category": "sat",
+    "kind": "channel",
+    "note": "Meteor-M2 LRPT digital weather image downlink"
+  },
+  {
+    "name": "Meteor M2-x LRPT (137.900 MHz)",
+    "lo_hz": 137900000,
+    "hi_hz": 137900000,
+    "modes": null,
+    "bw_hz": [
+      100000,
+      140000
+    ],
+    "category": "sat",
+    "kind": "channel",
+    "note": "Meteor-M2 LRPT digital weather image downlink"
+  },
+  {
+    "name": "AIS 1",
+    "lo_hz": 161975000,
+    "hi_hz": 161975000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      12500,
+      25000
+    ],
+    "category": "marine",
+    "kind": "channel",
+    "note": "AIS (automatic identification system)"
+  },
+  {
+    "name": "AIS 2",
+    "lo_hz": 162025000,
+    "hi_hz": 162025000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": [
+      12500,
+      25000
+    ],
+    "category": "marine",
+    "kind": "channel",
+    "note": "AIS (automatic identification system)"
+  },
+  {
+    "name": "Aviation radionavigation (DME / transponders)",
+    "lo_hz": 960000000,
+    "hi_hz": 1215000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "air",
+    "kind": "band",
+    "note": "Aeronautical radionavigation allocation, not an identification of the received signal. Source: https://redbook.ntia.gov/view/4-17"
+  },
+  {
+    "name": "ADS-B 1090ES",
+    "lo_hz": 1090000000,
+    "hi_hz": 1090000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "air",
+    "kind": "channel",
+    "note": "ADS-B extended squitter (aircraft position)"
+  },
+  {
+    "name": "UAT 978",
+    "lo_hz": 978000000,
+    "hi_hz": 978000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "air",
+    "kind": "channel",
+    "note": "UAT 978 -- US ADS-B alternative"
+  },
+  {
+    "name": "WWV / WWVH (time signal) 2.5 MHz",
+    "lo_hz": 2500000,
+    "hi_hz": 2500000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "channel",
+    "note": "time signal: WWV (Fort Collins, CO) and WWVH (Kekaha, HI) share this frequency"
+  },
+  {
+    "name": "WWV / WWVH (time signal) 5 MHz",
+    "lo_hz": 5000000,
+    "hi_hz": 5000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "channel",
+    "note": "time signal: WWV (Fort Collins, CO) and WWVH (Kekaha, HI) share this frequency"
+  },
+  {
+    "name": "WWV / WWVH (time signal) 10 MHz",
+    "lo_hz": 10000000,
+    "hi_hz": 10000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "channel",
+    "note": "time signal: WWV (Fort Collins, CO) and WWVH (Kekaha, HI) share this frequency"
+  },
+  {
+    "name": "WWV / WWVH (time signal) 15 MHz",
+    "lo_hz": 15000000,
+    "hi_hz": 15000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "channel",
+    "note": "time signal: WWV (Fort Collins, CO) and WWVH (Kekaha, HI) share this frequency"
+  },
+  {
+    "name": "WWV 20 MHz",
+    "lo_hz": 20000000,
+    "hi_hz": 20000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "channel",
+    "note": "time signal: WWV only (2.5 kW); WWVH does not broadcast on 20 MHz"
+  },
+  {
+    "name": "WWV 25 MHz (experimental)",
+    "lo_hz": 25000000,
+    "hi_hz": 25000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "channel",
+    "note": "time signal: WWV only, experimental since 2014 (2.5 kW), may be suspended without notice; WWVH does not broadcast on 25 MHz"
+  },
+  {
+    "name": "CHU 3.33 MHz",
+    "lo_hz": 3330000,
+    "hi_hz": 3330000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "channel",
+    "note": "time signal (CHU Canada)"
+  },
+  {
+    "name": "CHU 7.85 MHz",
+    "lo_hz": 7850000,
+    "hi_hz": 7850000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "channel",
+    "note": "time signal (CHU Canada)"
+  },
+  {
+    "name": "CHU 14.67 MHz",
+    "lo_hz": 14670000,
+    "hi_hz": 14670000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "channel",
+    "note": "time signal (CHU Canada)"
+  },
+  {
+    "name": "Aviation guard/emergency",
+    "lo_hz": 121500000,
+    "hi_hz": 121500000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "air",
+    "kind": "channel",
+    "note": "international aeronautical emergency frequency"
+  },
+  {
+    "name": "Military guard/emergency",
+    "lo_hz": 243000000,
+    "hi_hz": 243000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "mil",
+    "kind": "channel",
+    "note": "military UHF emergency frequency"
+  },
+  {
+    "name": "Marine VHF ch16 (distress/calling)",
+    "lo_hz": 156800000,
+    "hi_hz": 156800000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": "marine",
+    "kind": "channel",
+    "note": "distress, safety and calling"
+  },
+  {
+    "name": "ISM 315 MHz",
+    "lo_hz": 315000000,
+    "hi_hz": 315000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "digital",
+    "kind": "channel",
+    "note": "ISM/remote control (short-range devices)"
+  },
+  {
+    "name": "ISM 433.92 MHz",
+    "lo_hz": 433920000,
+    "hi_hz": 433920000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "digital",
+    "kind": "channel",
+    "note": "ISM/remote control (short-range devices)"
+  },
+  {
+    "name": "ISM 915 MHz",
+    "lo_hz": 915000000,
+    "hi_hz": 915000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "digital",
+    "kind": "channel",
+    "note": "ISM/remote control (short-range devices)"
+  },
+  {
+    "name": "60 m channel 5.332 MHz",
+    "lo_hz": 5332000,
+    "hi_hz": 5332000,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "channel",
+    "note": "60 m channelized (USB, carrier + 1.5 kHz)"
+  },
+  {
+    "name": "60 m channel 5.348 MHz",
+    "lo_hz": 5348000,
+    "hi_hz": 5348000,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "channel",
+    "note": "60 m channelized (USB, carrier + 1.5 kHz)"
+  },
+  {
+    "name": "60 m channel 5.3585 MHz",
+    "lo_hz": 5358500,
+    "hi_hz": 5358500,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "channel",
+    "note": "60 m channelized (USB, carrier + 1.5 kHz)"
+  },
+  {
+    "name": "60 m channel 5.373 MHz",
+    "lo_hz": 5373000,
+    "hi_hz": 5373000,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "channel",
+    "note": "60 m channelized (USB, carrier + 1.5 kHz)"
+  },
+  {
+    "name": "60 m channel 5.405 MHz",
+    "lo_hz": 5405000,
+    "hi_hz": 5405000,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "channel",
+    "note": "60 m channelized (USB, carrier + 1.5 kHz)"
+  },
+  {
+    "name": "2 m FM simplex",
+    "lo_hz": 146400000,
+    "hi_hz": 146580000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "2 m FM simplex"
+  },
+  {
+    "name": "FM broadcast",
+    "lo_hz": 88000000,
+    "hi_hz": 108000000,
+    "modes": [
+      "WFM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "FM broadcast band"
+  },
+  {
+    "name": "TV VHF-lo (ch 2-6)",
+    "lo_hz": 54000000,
+    "hi_hz": 88000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "tv",
+    "kind": "band",
+    "note": "broadcast TV, VHF-lo"
+  },
+  {
+    "name": "TV VHF-hi (ch 7-13)",
+    "lo_hz": 174000000,
+    "hi_hz": 216000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "tv",
+    "kind": "band",
+    "note": "broadcast TV, VHF-hi"
+  },
+  {
+    "name": "TV UHF (ch 14-36)",
+    "lo_hz": 470000000,
+    "hi_hz": 608000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "tv",
+    "kind": "band",
+    "note": "broadcast TV, UHF (post-repack)"
+  },
+  {
+    "name": "Airband (118-137 MHz)",
+    "lo_hz": 118000000,
+    "hi_hz": 137000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "air",
+    "kind": "band",
+    "note": "civil aviation voice"
+  },
+  {
+    "name": "VOR/ILS navigation",
+    "lo_hz": 108000000,
+    "hi_hz": 118000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "air",
+    "kind": "band",
+    "note": "VOR/ILS navigation beacons"
+  },
+  {
+    "name": "Marine VHF (156-162.025 MHz)",
+    "lo_hz": 156000000,
+    "hi_hz": 162025000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": "marine",
+    "kind": "band",
+    "note": "marine VHF voice"
+  },
+  {
+    "name": "160 m CW/data",
+    "lo_hz": 1800000,
+    "hi_hz": 1840000,
+    "modes": [
+      "CW"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "160 m amateur band, CW/data segment"
+  },
+  {
+    "name": "160 m phone",
+    "lo_hz": 1840000,
+    "hi_hz": 2000000,
+    "modes": [
+      "LSB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "160 m amateur band, phone segment"
+  },
+  {
+    "name": "80 m CW/data",
+    "lo_hz": 3500000,
+    "hi_hz": 3600000,
+    "modes": [
+      "CW"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "80 m amateur band, CW/data segment"
+  },
+  {
+    "name": "80 m phone",
+    "lo_hz": 3600000,
+    "hi_hz": 4000000,
+    "modes": [
+      "LSB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "80 m amateur band, phone segment"
+  },
+  {
+    "name": "40 m CW/data",
+    "lo_hz": 7000000,
+    "hi_hz": 7125000,
+    "modes": [
+      "CW"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "40 m amateur band, CW/data segment"
+  },
+  {
+    "name": "40 m phone",
+    "lo_hz": 7125000,
+    "hi_hz": 7300000,
+    "modes": [
+      "LSB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "40 m amateur band, phone segment"
+  },
+  {
+    "name": "20 m CW/data",
+    "lo_hz": 14000000,
+    "hi_hz": 14150000,
+    "modes": [
+      "CW"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "20 m amateur band, CW/data segment"
+  },
+  {
+    "name": "20 m phone",
+    "lo_hz": 14150000,
+    "hi_hz": 14350000,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "20 m amateur band, phone segment"
+  },
+  {
+    "name": "17 m CW/data",
+    "lo_hz": 18068000,
+    "hi_hz": 18110000,
+    "modes": [
+      "CW"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "17 m amateur band, CW/data segment"
+  },
+  {
+    "name": "17 m phone",
+    "lo_hz": 18110000,
+    "hi_hz": 18168000,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "17 m amateur band, phone segment"
+  },
+  {
+    "name": "15 m CW/data",
+    "lo_hz": 21000000,
+    "hi_hz": 21200000,
+    "modes": [
+      "CW"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "15 m amateur band, CW/data segment"
+  },
+  {
+    "name": "15 m phone",
+    "lo_hz": 21200000,
+    "hi_hz": 21450000,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "15 m amateur band, phone segment"
+  },
+  {
+    "name": "12 m CW/data",
+    "lo_hz": 24890000,
+    "hi_hz": 24930000,
+    "modes": [
+      "CW"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "12 m amateur band, CW/data segment"
+  },
+  {
+    "name": "12 m phone",
+    "lo_hz": 24930000,
+    "hi_hz": 24990000,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "12 m amateur band, phone segment"
+  },
+  {
+    "name": "10 m CW/data",
+    "lo_hz": 28000000,
+    "hi_hz": 28300000,
+    "modes": [
+      "CW"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "10 m amateur band, CW/data segment"
+  },
+  {
+    "name": "10 m phone",
+    "lo_hz": 28300000,
+    "hi_hz": 29700000,
+    "modes": [
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "10 m amateur band, phone segment"
+  },
+  {
+    "name": "30 m",
+    "lo_hz": 10100000,
+    "hi_hz": 10150000,
+    "modes": [
+      "CW"
+    ],
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "30 m amateur band (WARC, no phone)"
+  },
+  {
+    "name": "6 m (50-54 MHz)",
+    "lo_hz": 50000000,
+    "hi_hz": 54000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "6 m amateur band"
+  },
+  {
+    "name": "2 m (144-148 MHz)",
+    "lo_hz": 144000000,
+    "hi_hz": 148000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "2 m amateur band"
+  },
+  {
+    "name": "1.25 m (222-225 MHz)",
+    "lo_hz": 222000000,
+    "hi_hz": 225000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "1.25 m amateur band"
+  },
+  {
+    "name": "70 cm (420-450 MHz)",
+    "lo_hz": 420000000,
+    "hi_hz": 450000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "70 cm amateur band"
+  },
+  {
+    "name": "33 cm (902-928 MHz)",
+    "lo_hz": 902000000,
+    "hi_hz": 928000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "33 cm amateur band"
+  },
+  {
+    "name": "23 cm (1240-1300 MHz)",
+    "lo_hz": 1240000000,
+    "hi_hz": 1300000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "ham",
+    "kind": "band",
+    "note": "23 cm amateur band, incl. ATV/digital voice"
+  },
+  {
+    "name": "Citizens Band (CB)",
+    "lo_hz": 26965000,
+    "hi_hz": 27405000,
+    "modes": [
+      "AM",
+      "USB"
+    ],
+    "bw_hz": null,
+    "category": null,
+    "kind": "band",
+    "note": "Citizens Band"
+  },
+  {
+    "name": "120 m SW broadcast",
+    "lo_hz": 2300000,
+    "hi_hz": 2495000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "90 m SW broadcast",
+    "lo_hz": 3200000,
+    "hi_hz": 3400000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "75 m SW broadcast",
+    "lo_hz": 3900000,
+    "hi_hz": 4000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "60 m SW broadcast",
+    "lo_hz": 4750000,
+    "hi_hz": 5060000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "49 m SW broadcast",
+    "lo_hz": 5900000,
+    "hi_hz": 6200000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "41 m SW broadcast",
+    "lo_hz": 7200000,
+    "hi_hz": 7450000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "31 m SW broadcast",
+    "lo_hz": 9400000,
+    "hi_hz": 9900000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "25 m SW broadcast",
+    "lo_hz": 11600000,
+    "hi_hz": 12100000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "22 m SW broadcast",
+    "lo_hz": 13570000,
+    "hi_hz": 13870000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "19 m SW broadcast",
+    "lo_hz": 15100000,
+    "hi_hz": 15800000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "16 m SW broadcast",
+    "lo_hz": 17480000,
+    "hi_hz": 17900000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "15 m SW broadcast",
+    "lo_hz": 18900000,
+    "hi_hz": 19020000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "13 m SW broadcast",
+    "lo_hz": 21450000,
+    "hi_hz": 21850000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "11 m SW broadcast",
+    "lo_hz": 25670000,
+    "hi_hz": 26100000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "bc",
+    "kind": "band",
+    "note": "shortwave broadcast"
+  },
+  {
+    "name": "Land Mobile VHF (Business/Public Safety)",
+    "lo_hz": 150800000,
+    "hi_hz": 174000000,
+    "modes": null,
+    "bw_hz": [
+      12500,
+      25000
+    ],
+    "category": null,
+    "kind": "band",
+    "note": "business/public safety (land mobile)"
+  },
+  {
+    "name": "Land Mobile UHF (Business/Public Safety)",
+    "lo_hz": 450000000,
+    "hi_hz": 470000000,
+    "modes": null,
+    "bw_hz": [
+      12500,
+      25000
+    ],
+    "category": null,
+    "kind": "band",
+    "note": "business/public safety (land mobile)"
+  },
+  {
+    "name": "Railroad (AAR channels)",
+    "lo_hz": 160215000,
+    "hi_hz": 161565000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": null,
+    "kind": "band",
+    "note": "railroad"
+  },
+  {
+    "name": "Pagers",
+    "lo_hz": 929000000,
+    "hi_hz": 932000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "digital",
+    "kind": "band",
+    "note": "paging"
+  },
+  {
+    "name": "Military aviation (UHF)",
+    "lo_hz": 225000000,
+    "hi_hz": 400000000,
+    "modes": [
+      "AM"
+    ],
+    "bw_hz": null,
+    "category": "mil",
+    "kind": "band",
+    "note": "military aviation; guard 243.000 within"
+  },
+  {
+    "name": "GMRS repeater inputs",
+    "lo_hz": 467550000,
+    "hi_hz": 467725000,
+    "modes": [
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": null,
+    "kind": "band",
+    "note": "GMRS repeater inputs (+5 MHz offset from outputs)"
+  },
+  {
+    "name": "Weather satellite band",
+    "lo_hz": 137000000,
+    "hi_hz": 138000000,
+    "modes": [
+      "WFM",
+      "NFM"
+    ],
+    "bw_hz": null,
+    "category": "sat",
+    "kind": "band",
+    "note": "weather satellite downlinks (NOAA APT / Meteor LRPT)"
+  },
+  {
+    "name": "LEO satellite downlinks (70 cm)",
+    "lo_hz": 435000000,
+    "hi_hz": 438000000,
+    "modes": null,
+    "bw_hz": null,
+    "category": "sat",
+    "kind": "band",
+    "note": "amateur LEO satellite downlinks"
+  },
+  {
+    "name": "Oceanographic radar (47 CFR 90.103)",
+    "lo_hz": 4438000,
+    "hi_hz": 4488000,
+    "modes": null,
+    "bw_hz": null,
+    "category": null,
+    "kind": "band",
+    "note": "Application rule, not an allocation: 47 CFR 90.103(b)(3) limits radiolocation land stations here to oceanographic radars (peak EIRP 25 dBW max) that neither cause interference to nor claim protection from fixed/mobile stations; see 2.106 footnotes 5.132A, 5.145A, US132A. Source: https://www.ecfr.gov/current/title-47/chapter-I/subchapter-D/part-90/subpart-B/section-90.103"
+  },
+  {
+    "name": "Oceanographic radar (47 CFR 90.103)",
+    "lo_hz": 5250000,
+    "hi_hz": 5275000,
+    "modes": null,
+    "bw_hz": null,
+    "category": null,
+    "kind": "band",
+    "note": "Application rule, not an allocation: 47 CFR 90.103(b)(3) limits radiolocation land stations here to oceanographic radars (peak EIRP 25 dBW max) that neither cause interference to nor claim protection from fixed/mobile stations; see 2.106 footnotes 5.132A, 5.145A, US132A. Source: https://www.ecfr.gov/current/title-47/chapter-I/subchapter-D/part-90/subpart-B/section-90.103"
+  }
+]

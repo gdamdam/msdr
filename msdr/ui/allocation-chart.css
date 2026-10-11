@@ -1,0 +1,391 @@
+/* <allocation-chart> (components/allocation-chart.js) -- the NTIA-wall-chart
+   style frequency allocation reference. Uses the shared tokens from
+   styles.css (--panel, --panel-well, --line, --ink, --accent, the --led-*/
+   --tag-*/--context-* categorical colours); nothing here redefines them. */
+
+.allocation-chart {
+  position: relative; /* anchors the band-detail popover and its scrim */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.allocation-header h2 {
+  margin: 0 0 4px;
+}
+
+.allocation-generated-note {
+  margin: 0;
+  color: var(--ink);
+}
+
+.allocation-official-link {
+  margin: 2px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.allocation-official-link a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.allocation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 8px;
+  background: var(--panel-well);
+  border-radius: 4px;
+}
+
+.allocation-jump-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.allocation-jump-label input {
+  min-width: 220px;
+}
+
+.allocation-jump-error {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.allocation-lane-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.allocation-lane-toggles legend {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.allocation-lane-toggles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.allocation-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.allocation-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.allocation-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+  border: 1px solid var(--line);
+}
+
+.allocation-legend-hatch {
+  background-image: repeating-linear-gradient(135deg, var(--ink) 0 3px, transparent 3px 6px);
+}
+
+.allocation-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.allocation-row {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel-well);
+}
+
+.allocation-row.active {
+  border-color: var(--accent);
+}
+
+.allocation-row-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.allocation-row-label {
+  font-weight: 600;
+}
+
+.allocation-row-window {
+  color: var(--ink);
+}
+
+.allocation-row-controls {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.allocation-row-controls button {
+  min-width: 26px;
+  padding: 1px 6px;
+}
+
+.allocation-lanes {
+  position: relative;
+  padding: 4px 0;
+  touch-action: pan-y;
+}
+
+.allocation-row.expanded .allocation-lane-track {
+  min-height: 34px;
+}
+
+.allocation-lane {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 2px 8px;
+}
+
+.allocation-lane-label {
+  width: 92px;
+  flex: none;
+  color: var(--ink);
+  font-size: 11px;
+  align-self: center;
+}
+
+.allocation-lane-track {
+  position: relative;
+  flex: 1;
+  min-height: 18px;
+}
+
+.allocation-band {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  min-width: 3px;
+  background: var(--band-fill, var(--context-receiver));
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 1px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.allocation-band:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  z-index: 1;
+}
+
+.allocation-band.unallocated {
+  background: repeating-linear-gradient(135deg, var(--panel) 0 4px, var(--panel-well) 4px 8px);
+  border-style: dashed;
+}
+
+.allocation-band.has-secondary {
+  position: absolute;
+}
+
+.allocation-band.has-secondary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0 3px, transparent 3px 6px);
+}
+
+.allocation-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--freq);
+  pointer-events: none;
+}
+
+.allocation-marker-tuned {
+  background: var(--accent);
+}
+
+.allocation-marker-inspect {
+  background: var(--led-magenta);
+}
+
+.allocation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.allocation-table caption {
+  text-align: left;
+  color: var(--ink);
+  padding-bottom: 6px;
+}
+
+.allocation-table th,
+.allocation-table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.allocation-service-chip {
+  display: inline-block;
+  margin: 0 4px 2px 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 11px;
+}
+
+.allocation-service-chip[data-priority="secondary"] {
+  color: var(--ink);
+  border-style: dashed;
+}
+
+.allocation-inspect {
+  position: relative;
+  padding: 10px 32px 10px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--panel-well);
+}
+
+.allocation-inspect-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 24px;
+  padding: 0 6px;
+}
+
+/* Band-detail popover (wide screens): a card anchored under/over the clicked
+   band, with the rest of the chart dimmed by the scrim. */
+.allocation-popover-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.allocation-popover {
+  position: absolute;
+  z-index: 6;
+  width: min(420px, 100%);
+  max-height: 70vh;
+  overflow: auto;
+  box-sizing: border-box;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* <band-popover> host: no box of its own, so the absolutely placed scrim/card
+   still resolve against .allocation-chart and the flex gap sees nothing. */
+band-popover {
+  display: contents;
+}
+
+/* No container given (e.g. the frequency pill): pin to the viewport instead. */
+.allocation-popover--fixed {
+  position: fixed;
+}
+.allocation-popover-scrim.allocation-popover--fixed {
+  z-index: 59;
+}
+.allocation-popover.allocation-popover--fixed {
+  z-index: 60;
+}
+
+/* Pointer notch; --notch-left is set inline from the band's centre. */
+.allocation-popover::before {
+  content: "";
+  position: absolute;
+  left: var(--notch-left, 50%);
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: var(--panel-well);
+  border: 1px solid var(--accent);
+  transform: rotate(45deg);
+}
+.allocation-popover[data-side="below"]::before {
+  top: -6px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.allocation-popover[data-side="above"]::before {
+  bottom: -6px;
+  border-left: 0;
+  border-top: 0;
+}
+.allocation-popover[data-side="centre"]::before {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .allocation-popover,
+  .allocation-popover-scrim {
+    animation: allocation-popover-in 120ms ease-out;
+  }
+}
+@keyframes allocation-popover-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .allocation-chart {
+    padding: 8px;
+  }
+  .allocation-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .allocation-jump-label input {
+    min-width: 0;
+    width: 100%;
+  }
+  .allocation-row-header {
+    flex-wrap: wrap;
+  }
+  .allocation-row-controls {
+    margin-left: 0;
+  }
+  .allocation-lane {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .allocation-lane-label {
+    width: auto;
+  }
+  .allocation-lane-track {
+    min-height: 22px;
+  }
+}

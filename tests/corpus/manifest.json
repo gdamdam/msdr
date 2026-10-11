@@ -1,0 +1,91 @@
+{
+  "$schema_notes": "Machine-readable validation-case corpus (plan S3 deliverable). Each case is an operator report or a repo fixture *to be checked*, not a confirmed identification -- see docs/validation/corpus.md for the human-readable companion. Validated by tests/corpus/test_manifest.py.",
+  "cases": [
+    {
+      "id": "noaa-wx-162400-425-494",
+      "class": "nfm_voice",
+      "reported_frequencies_hz": [162400000, 162425000, 162494000],
+      "label_notes": "Old catalog label '162.424' for this NOAA weather-radio group; frequency identity needs re-checking against the actual assignments.",
+      "reference_type": "operator_report",
+      "status": "pending_intake",
+      "files": [],
+      "validation_question": "Is speech present on NFM at these frequencies, and is msdr's tuning accurate against the true NOAA channel assignments?",
+      "expected_outcome": null,
+      "provenance": "Operator report, not yet checked against an off-air recording."
+    },
+    {
+      "id": "aprs-144390",
+      "class": "packet",
+      "reported_frequencies_hz": [144390000],
+      "label_notes": "North America APRS calling frequency; 1200 baud Bell 202 AFSK expected.",
+      "reference_type": "operator_report",
+      "status": "pending_intake",
+      "files": [],
+      "validation_question": "Tone/clock hypothesis (1200 Bd AFSK) vs a valid AX.25 FCS vs a fully parsed APRS payload -- which of the three does msdr actually reach on a live capture?",
+      "expected_outcome": null,
+      "provenance": "Operator report, not yet checked against an off-air recording."
+    },
+    {
+      "id": "keyed-carrier-161098",
+      "class": "unknown_keyed_carrier",
+      "reported_frequencies_hz": [161098000],
+      "label_notes": "On/off keyed carrier activity reported; not assumed to be CW or any specific mode -- do not identify every keyed carrier as CW.",
+      "reference_type": "operator_report",
+      "status": "pending_intake",
+      "files": [],
+      "validation_question": "Is on/off keyed carrier activity present at this frequency, and if so what (if anything) can be said about its modulation?",
+      "expected_outcome": null,
+      "provenance": "Operator report, not yet checked against an off-air recording."
+    },
+    {
+      "id": "repeater-147060",
+      "class": "nfm_voice",
+      "reported_frequencies_hz": [147060000],
+      "label_notes": "2 m repeater; old label '147.074' -- suspected frequency-mapping regression, needs re-verification.",
+      "reference_type": "operator_report",
+      "status": "pending_intake",
+      "files": [],
+      "validation_question": "Does msdr's frequency mapping for this repeater match 147.060 (not the old 147.074 label), and is the active/quiet voice state correct?",
+      "expected_outcome": null,
+      "provenance": "Operator report, not yet checked against an off-air recording."
+    },
+    {
+      "id": "land-mobile-bursty-160805-165278-162553",
+      "class": "nfm_bursty",
+      "reported_frequencies_hz": [160805000, 165278000, 162553000],
+      "label_notes": "Bursty land-mobile traffic; identity intentionally left open pending more dwells.",
+      "reference_type": "operator_report",
+      "status": "pending_intake",
+      "files": [],
+      "validation_question": "Does msdr's occupancy tracking accumulate evidence across dwells/gaps correctly, and does it correctly report insufficient data rather than guessing an identity?",
+      "expected_outcome": null,
+      "provenance": "Operator report, not yet checked against an off-air recording."
+    },
+    {
+      "id": "ais-161975-162025",
+      "class": "ais",
+      "reported_frequencies_hz": [161975000, 162025000],
+      "label_notes": "S4: the survey analyzer now classifies a synthetic GMSK 9600 burst as fm_fsk/9600 (family 'GMSK/FSK 9600 (AIS or packet)'), and msdr.decoder.pydecoders.ais.AisDecoder decodes a CRC-16/X.25-valid synthetic AIS frame end to end -- on synthetic fixtures only. This real 161.975/162.025 MHz capture is still not accessible, so field accuracy on it remains unproven; the allocation is a hint, never a decode.",
+      "reference_type": "operator_report",
+      "status": "synthetic_validated_field_pending",
+      "files": [],
+      "validation_question": "Never identify AIS from frequency/allocation alone -- can msdr's IQ analyzer actually validate a GMSK/9600-baud hypothesis and produce integrity-checked (valid_frames > 0) AIS output?",
+      "expected_outcome": "GMSK/9600 hypothesis confirmed and validated (integrity=passed) frames produced on synthetic bursts -- tests/decoder/test_ais.py, tests/survey/test_families.py (GMSK -> fm_fsk 9600), tests/corpus/test_scorecard.py::test_ais_burst_decodes_or_is_honestly_unavailable. Field validation on a real 161.975/162.025 MHz capture is still pending (none accessible).",
+      "provenance": "Operator report; S4 closed the analyzer/decoder gap on synthetic fixtures (2026-09-27). Field capture still not accessible."
+    },
+    {
+      "id": "fm-broadcast-96_5-104_5-operator-claims",
+      "class": "fm_broadcast",
+      "reported_frequencies_hz": [
+        96500000, 97300000, 98100000, 98900000, 100300000, 102100000, 102900000, 103700000, 104500000
+      ],
+      "label_notes": "Operator-claimed station identities (KOIT 96.5, KLLC 97.3, KCRC 98.1, KSOL 98.9, KBRG 100.3, KRBQ 102.1, KBLX 102.9, KCPD 103.7, KNBR 104.5), reported mono/pilotless -- these are claims to verify, not ground truth. The two repo RDS fixtures (98.1/98.9) overlap this list; their decoded PI/PS/PTY are the evidence, the claimed callsigns are not corroborated by decode alone (RDS carries no station-name field; PS is an operator-settable label).",
+      "reference_type": "operator_report",
+      "status": "pending_intake",
+      "files": [],
+      "validation_question": "For each claimed station, does an off-air RDS/pilot-presence check support or contradict the operator's claimed identity, distinct from the frequency/allocation hint alone?",
+      "expected_outcome": null,
+      "provenance": "Operator report of a 2026-09 FM-band listening session; 98.1/98.9 corroborated only insofar as rds-98100000-real-capture / rds-98900000-real-capture decode (see those cases)."
+    }
+  ]
+}

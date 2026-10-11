@@ -1,0 +1,10 @@
+[
+  {"label": "M2-3", "norad": 57166, "name": "Meteor-M2 3"},
+  {"label": "M2-4", "norad": 59051, "name": "Meteor-M2 4"},
+  {"label": "ISS", "norad": 25544, "name": "ISS (ZARYA)"},
+  {"label": "CSS", "norad": 48274, "name": "CSS (TIANHE)"},
+  {"label": "AO-73", "norad": 39444, "name": "FUNcube-1"},
+  {"label": "RS-44", "norad": 44909, "name": "RS-44"},
+  {"label": "SO-50", "norad": 27607, "name": "SO-50"},
+  {"label": "AO-123", "norad": 61781, "name": "AO-123"}
+]

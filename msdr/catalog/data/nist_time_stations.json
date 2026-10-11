@@ -1,0 +1,171 @@
+{
+  "snapshot_date": "2026-10-02",
+  "network": "NIST",
+  "operator": "NIST",
+  "country": "USA",
+  "licence": "NIST public information; may be copied, byline requested.",
+  "stations": [
+    {
+      "station_id": "WWV",
+      "name": "WWV",
+      "location": "Fort Collins, Colorado",
+      "source_url": "https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv",
+      "outage_url": "https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages",
+      "decoder": "wwv",
+      "components": [
+        {
+          "component": "2.5 MHz",
+          "frequency_hz": 2500000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 2.5,
+          "status": "operational",
+          "latitude": 40.682,
+          "longitude": -105.042028,
+          "notes": "NIST WWV 2.5 MHz, continuous service; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates: verified."
+        },
+        {
+          "component": "5 MHz",
+          "frequency_hz": 5000000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 10,
+          "status": "operational",
+          "latitude": 40.678361,
+          "longitude": -105.04025,
+          "notes": "NIST WWV 5 MHz, continuous service; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates: verified."
+        },
+        {
+          "component": "10 MHz",
+          "frequency_hz": 10000000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 10,
+          "status": "operational",
+          "latitude": 40.679944,
+          "longitude": -105.040306,
+          "notes": "NIST WWV 10 MHz, continuous service; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates from the NIST station page's per-frequency table, fetched complete on 2026-10-02."
+        },
+        {
+          "component": "15 MHz",
+          "frequency_hz": 15000000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 10,
+          "status": "operational",
+          "latitude": 40.679167,
+          "longitude": -105.040139,
+          "notes": "NIST WWV 15 MHz, continuous service; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates from the NIST station page's per-frequency table, fetched complete on 2026-10-02."
+        },
+        {
+          "component": "20 MHz",
+          "frequency_hz": 20000000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 2.5,
+          "status": "operational",
+          "latitude": 40.681417,
+          "longitude": -105.04125,
+          "notes": "NIST WWV 20 MHz, continuous service; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates: verified."
+        },
+        {
+          "component": "25 MHz",
+          "frequency_hz": 25000000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 2.5,
+          "status": "experimental",
+          "latitude": 40.680694,
+          "longitude": -105.040722,
+          "notes": "NIST WWV 25 MHz, broadcast on an experimental basis and may be interrupted or suspended without notice; half-wave vertical dipole; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates: verified."
+        }
+      ]
+    },
+    {
+      "station_id": "WWVH",
+      "name": "WWVH",
+      "location": "Kekaha, Kauai, Hawaii",
+      "source_url": "https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwvh",
+      "outage_url": "https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages",
+      "decoder": "wwv",
+      "components": [
+        {
+          "component": "2.5 MHz",
+          "frequency_hz": 2500000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 5,
+          "status": "operational",
+          "latitude": 21.989139,
+          "longitude": -159.764556,
+          "notes": "NIST WWVH 2.5 MHz, continuous service; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates from the NIST station page's per-frequency table, fetched complete on 2026-10-02."
+        },
+        {
+          "component": "5 MHz",
+          "frequency_hz": 5000000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 10,
+          "status": "operational",
+          "latitude": 21.986333,
+          "longitude": -159.762444,
+          "notes": "NIST WWVH 5 MHz, continuous service; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates from the NIST station page's per-frequency table, fetched complete on 2026-10-02."
+        },
+        {
+          "component": "10 MHz",
+          "frequency_hz": 10000000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 10,
+          "status": "operational",
+          "latitude": 21.988389,
+          "longitude": -159.76425,
+          "notes": "NIST WWVH 10 MHz, continuous service; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates from the NIST station page's per-frequency table, fetched complete on 2026-10-02."
+        },
+        {
+          "component": "15 MHz",
+          "frequency_hz": 15000000,
+          "mode": "AM",
+          "bandwidth_hz": 10000,
+          "power_kw": 10,
+          "status": "operational",
+          "latitude": 21.987583,
+          "longitude": -159.763889,
+          "notes": "NIST WWVH 15 MHz, continuous service; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwv/wwv-and-wwvh-broadcast-outages. Antenna coordinates from the NIST station page's per-frequency table, fetched complete on 2026-10-02."
+        }
+      ]
+    },
+    {
+      "station_id": "WWVB",
+      "name": "WWVB",
+      "location": "Fort Collins, Colorado",
+      "source_url": "https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwvb",
+      "outage_url": "https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwvb/wwvb-station-outages",
+      "decoder": null,
+      "components": [
+        {
+          "component": "60 kHz north array",
+          "frequency_hz": 60000,
+          "mode": null,
+          "bandwidth_hz": null,
+          "power_kw": 70,
+          "status": "operational",
+          "latitude": 40.680917,
+          "longitude": -105.05,
+          "notes": "NIST WWVB 60 kHz north antenna array, continuous service; pulse-width AM time code plus BPSK (since 2012), about 70 kW ERP; no msdr decoder; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwvb/wwvb-station-outages. Antenna coordinates: verified."
+        },
+        {
+          "component": "60 kHz south array",
+          "frequency_hz": 60000,
+          "mode": null,
+          "bandwidth_hz": null,
+          "power_kw": 70,
+          "status": "operational",
+          "latitude": 40.674528,
+          "longitude": -105.044306,
+          "notes": "NIST WWVB 60 kHz south antenna array, continuous service; pulse-width AM time code plus BPSK (since 2012), about 70 kW ERP; no msdr decoder; outages: https://www.nist.gov/pml/time-and-frequency-division/time-distribution/radio-station-wwvb/wwvb-station-outages. Antenna coordinates: verified."
+        }
+      ]
+    }
+  ]
+}

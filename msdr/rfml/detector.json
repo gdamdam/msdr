@@ -1,0 +1,28 @@
+{
+  "id": "torchsig-yolo11n-wideband-v1.0.0",
+  "version": "1.0.0",
+  "url": "https://github.com/TorchDSP/torchsig-models/releases/download/v1.0.0/yolo11n_wideband_v1.0.0.pt",
+  "sha256": "30d0b0d5055d806fa01bec1d5d7ca0719ad7bee3ae23662a8ec666bdf7e79194",
+  "size_bytes": 5464026,
+  "source": "https://github.com/TorchDSP/torchsig-models/releases/tag/v1.0.0",
+  "license": {
+    "source_repository": "MIT",
+    "detector_checkpoint": "Ultralytics describes YOLO models under AGPL-3.0 or Enterprise licensing. The TorchSig release does not separately clarify checkpoint-specific terms; do not infer MIT weights licensing from the repository."
+  },
+  "architecture": "Ultralytics YOLO11n object detector",
+  "task": "wideband signal detection on spectrogram images",
+  "checkpoint_sha256_is_pinned": true,
+  "preprocessing_version": "experimental-torchsig21-blackman-axis-v3",
+  "preprocessing": {
+    "input": "one-dimensional complex IQ plus sample rate and RF center frequency",
+    "spectrogram": "TorchSig v2.1.1 compute_spectrogram pattern: periodic Blackman, unnormalized FFT power, FFT shift, relative epsilon for exact zeros, 10 log10, frequency rows reversed high-to-low and time columns; default n_fft=256, hop=128, no padding for complete msdr windows",
+    "image": "TorchSig Models YOLO adapter pattern: per-image min-max scale to uint8, grayscale replicated to BGR, invert to black-hot",
+    "model_image_size": 512,
+    "coordinate_mapping": "detector x pixels map to time frames and descending y pixels map to ascending frequency bins, including frequency tiles, then to Hz/time",
+    "source_spectrogram": "https://github.com/TorchDSP/torchsig/blob/v2.1.1/torchsig/utils/dsp.py",
+    "source_image_adapter": "https://github.com/TorchDSP/torchsig-models/blob/main/torchsig_models/adapters/yolo_utils.py",
+    "status": "experimental; upstream release does not publish exact checkpoint training FFT configuration"
+  },
+  "field_validated": false,
+  "runtime": "Ultralytics package and model licensing terms apply separately; no weights are auto-downloaded"
+}

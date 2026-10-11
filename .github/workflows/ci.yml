@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      # tests/ui run the Lit components in a node vm.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -e ".[dev,ble]"
+      - run: ruff check msdr tests scripts
+      # Same command as README "Development", plus a per-test limit so a
+      # hung test fails with its name and a traceback instead of stalling
+      # the job until the 30-minute cap. Browser (e2e) tests need --e2e and
+      # a real Chromium, so they are skipped here.
+      - run: pytest -q -W error --timeout=180
