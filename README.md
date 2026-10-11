@@ -10,7 +10,7 @@
 
 ![msdr Listen workspace](docs/img/msdr-survey.png)
 
-msdr extends SDRconnect with tools for discovering signals, decoding transmissions, tracking satellites and passively listening to nearby Wi-Fi, Bluetooth and drone Remote ID broadcasts. A listening journal and saved receiver setups help you keep track of what you hear and return to it later.
+msdr extends SDRconnect with tools for discovering signals, decoding transmissions and tracking satellites. With optional dedicated hardware (not the SDR), it can also passively listen to nearby Wi-Fi, Bluetooth LE and drone Remote ID broadcasts: a supported USB Wi-Fi adapter or BLE dongle, see [Optional software](#optional-software). A listening journal and saved receiver setups help you keep track of what you hear and return to it later.
 
 It runs alongside SDRconnect, connects through its WebSocket API, and requires no build step. Tested with SDRconnect 1.0.10 and an RSPdx-R2 on macOS.
 
