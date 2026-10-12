@@ -33,7 +33,7 @@ def test_decoders_cover_the_registry_plus_rds():
     assert ids == set(DECODERS) | {"rds"}
     by_id = {d["id"]: d for d in status["decoders"]}
     ais = by_id["ais"]
-    assert ais["validation_state"] == "fixture_tested"
+    assert ais["validation_state"] == "live_output_observed"
     assert isinstance(ais["validation_stale"], bool)
     assert any("test_ais.py" in t for t in ais["tests"])
     rds = by_id["rds"]
