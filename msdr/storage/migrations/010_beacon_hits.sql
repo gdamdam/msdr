@@ -1,6 +1,5 @@
--- Beacon monitor (S10): NCDXF/IARU + NDB session hits logged here for the
--- BEACONS grid/strip/table. See
--- docs/superpowers/plans/2026-09-25-survey-s10-beacons.md.
+-- Beacon monitor: NCDXF/IARU + NDB session hits logged here for the
+-- BEACONS grid/strip/table.
 
 CREATE TABLE beacon_hits (
     id TEXT PRIMARY KEY,

@@ -217,8 +217,7 @@ def test_readiness_labels_cases():
     assert result.returncode == 0, result.stderr
 
 
-# S1 (docs/epics/listening-workbench/S1-ui-contract.md): format.js's section /
-# workspace tables must mirror msdr/settings.py exactly -- a drift would make
+# format.js's section / workspace tables must mirror msdr/settings.py exactly -- a drift would make
 # the UI render a workspace's sections differently from what the backend
 # validates and backfills.
 _WORKSPACE_SCRIPT = """
@@ -268,12 +267,11 @@ def test_workspace_tables_mirror_settings_py():
     assert js["DEFAULT_WORKSPACE_WIDE"]["listen"] == s.Layout().wide
 
 
-# S2 (docs/epics/listening-workbench/S2-observations-contract.md): evidence/
-# observation "state" replaces confidence percentages/meters everywhere --
+# evidence/observation "state" replaces confidence percentages/meters everywhere --
 # these regexes catch the two shapes a reintroduced percentage would take
 # (`Math.round(...confidence...100)` and `confidence * 100`). survey-view.js
-# already renders a unitless `score` (not confidence*100) and is out of W3's
-# scope, so it's scanned too, but a match there is reported, not silently
+# already renders a unitless `score` (not confidence*100) and is outside
+# this test's scope, so it's scanned too, but a match there is reported, not silently
 # fixed here.
 _CONFIDENCE_PERCENT_RES = [
     re.compile(r"Math\.round\([^)]*confidence[^)]*100"),
@@ -335,8 +333,7 @@ def test_evidence_state_label_cases():
     assert result.returncode == 0, result.stderr
 
 
-# S4 (docs/epics/listening-workbench/S4-decode-contract.md §5): integrityBadge
-# -- badge text is never a correctness word like "available"/"ready", and the
+# integrityBadge -- badge text is never a correctness word like "available"/"ready", and the
 # tooltip is always the raw integrity_note (never rewritten). "passed" picks
 # the check name out of the note (FCS/CRC/...) when one is named, else a
 # generic "checked".
@@ -385,7 +382,7 @@ def test_integrity_badge_cases():
     assert result.returncode == 0, result.stderr
 
 
-# S4 §5: sessionFactText -- decode-deck's per-decoder session line. Never
+# sessionFactText -- decode-deck's per-decoder session line. Never
 # "available"/"ready"; unverified_output/valid_frames carry their counts,
 # unsupported_input carries the reason.
 _SESSION_FACT_TEXT_SCRIPT = """

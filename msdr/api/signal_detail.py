@@ -1,7 +1,6 @@
 """GET /api/signal-detail (U3): one aggregate view of a frequency for the
 signal-detail panel, reached from every "select a signal" surface (survey
-label, find row, memory row, decode event, scanner hit, catalog row) -- see
-docs/superpowers/plans/2026-09-26-ui-u3.md Stream A.
+label, find row, memory row, decode event, scanner hit, catalog row).
 
 Aggregates memory (Signal), a scanner find, the nearest active survey label
 (+-1 spectrum bin, msdr.api.service.AppService._survey_label_near's own
@@ -26,7 +25,7 @@ from msdr.api.services.allocations import allocation_summary, format_services
 if TYPE_CHECKING:
     from msdr.api.service import AppService
 
-# Same tolerance _is_find_ignored uses for "near this frequency" (S11).
+# Same tolerance _is_find_ignored uses for "near this frequency".
 _DECODE_MESSAGE_TOLERANCE_HZ = 6000
 _MESSAGE_LIMIT = 20
 # Bound on how far back through decode_events (newest-first) to look for
@@ -66,7 +65,7 @@ def _last_classification(observations: list[dict], current: dict | None) -> dict
 
 def _rds_evidence(survey_label: dict | None) -> list[dict]:
     """PI (validated_decode/validated) and PS (decoder_output/estimated) are
-    two separate claims, never merged into one confidence number (S2)."""
+    two separate claims, never merged into one confidence number."""
     rds = (survey_label or {}).get("rds")
     if not rds:
         return []
@@ -110,7 +109,7 @@ def _rds_evidence(survey_label: dict | None) -> list[dict]:
 
 def _state_for_integrity(integrity: str | None, decoder_id: str | None) -> tuple[str, str]:
     """(evidence_type, state) from a specific event's own `integrity` field
-    (S4) when it has one: passed -> validated_decode/validated, anything else
+    when it has one: passed -> validated_decode/validated, anything else
     (failed/unknown/unavailable/not_applicable) -> decoder_output/estimated.
     Missing integrity is unknown, never proof that a check passed."""
     if integrity:
@@ -165,7 +164,7 @@ def _memory_evidence(memory: Any) -> dict | None:
     if memory is None:
         return None
     # A saved memory is an operator record; it only reads as "operator"
-    # certainty once the operator has actually identified it (S2) -- an
+    # certainty once the operator has actually identified it -- an
     # unidentified memory is just context, same as an allocation/schedule hit.
     identified = getattr(memory, "status", None) == "identified"
     return {
@@ -194,7 +193,7 @@ def _scheduled_and_bandplan_evidence(candidates: list[dict]) -> tuple[list[dict]
             "at": None,
         }
         for c in catalog_candidates
-        # Internal on-air filter threshold -- not shown as a score (S2).
+        # Internal on-air filter threshold -- not shown as a score.
         if (c.get("confidence") or 0) >= _ON_AIR_CONFIDENCE
     ][:3]
     # Every band-plan candidate (docs/allocations.md: these are channel /
@@ -237,10 +236,10 @@ def _allocation_evidence(context: dict) -> dict:
 
 
 def _candidate_support(survey_label: dict) -> list[str]:
-    """The candidate evidence item's `support` (S4): raw/snapped symbol rate,
+    """The candidate evidence item's `support`: raw/snapped symbol rate,
     tolerance and modulation kind, from the analyzer's own fields -- never a
     percentage, and never invented when the analyzer hasn't set a field yet
-    (pre-S4 label: every one of these is simply absent)."""
+    (earlier label: every one of these is simply absent)."""
     out: list[str] = []
     raw = survey_label.get("symbol_rate_raw_hz")
     snapped = survey_label.get("symbol_rate_snapped_hz")
@@ -348,7 +347,7 @@ def build_signal_detail(
         or int(service.confirmed.props.get("filter_bandwidth") or _DEFAULT_BANDWIDTH_HZ)
     )
     # Same call _classify_find makes -- never raises, [] when ident/catalog
-    # are both off (S11 contract), regardless of whether a survey is active.
+    # are both off, regardless of whether a survey is active.
     candidates = service._identify_for_survey(frequency_hz, identify_bw_hz)
 
     evidence: list[dict] = []

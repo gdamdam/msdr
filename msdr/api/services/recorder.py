@@ -140,7 +140,7 @@ class RecorderServiceMixin:
         self._sync_recording_observation(status)
         await self.broadcaster.publish({"type": "recorder", **status})
 
-    # -- recording -> observation (S5) -----------------------------------
+    # -- recording -> observation -----------------------------------
 
     def _recorder_attr(self, name: str):
         # msdr.recorder.Recorder keeps the in-progress recording's directory
@@ -386,8 +386,8 @@ class RecorderServiceMixin:
                     duration_s += (size // 4) / run_rate
         created = d.stat().st_mtime
         # `capture_start` is the real reception time or None -- never the
-        # directory mtime (S1 contract, Review shell: "capture time unknown"
-        # must stay honest; plan §6). `created` keeps its old fallback for
+        # directory mtime (Review shell: "capture time unknown"
+        # must stay honest). `created` keeps its old fallback for
         # sorting/display of the list.
         capture_start = None
         with contextlib.suppress(OSError, ValueError):

@@ -1,4 +1,4 @@
-"""Shared contracts for the listening workbench (epic S0).
+"""Shared contracts for the listening workbench.
 
 Three small, dependency-free vocabularies that every later stage builds on:
 

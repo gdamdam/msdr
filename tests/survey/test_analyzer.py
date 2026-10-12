@@ -175,7 +175,7 @@ def _bursty_fsk_frames(
     cycle -- unlike `_tone_frames`'s always-on bare carrier, this gives the
     analyzer's activity gate (see analyzer.py's _gate_active_blocks) real
     contrast to find a per-target noise floor from (the way an actual
-    bursty/intermittent S2 target does), while still classifying as
+    bursty/intermittent target does), while still classifying as
     "fm_fsk" -- needed for want_voice's fm_fsk/unknown gate. Defaults are
     multiples of the gate's own 20 ms block size (on=2 blocks, off=1 block)
     so no block straddles an on/off transition -- a straddling block reads
@@ -435,7 +435,7 @@ def test_graceful_dwell_can_finish_after_all_candidates_disappear():
     )
     target = 12_500
     analyzer.set_targets([target])
-    analyzer.set_targets([])  # S2 track briefly vanished mid-dwell
+    analyzer.set_targets([])  # track briefly vanished mid-dwell
     assert analyzer._current_freq == target
     analyzer._advance_target()
     assert analyzer.status()["analyzing"] is None
@@ -457,7 +457,7 @@ def test_target_active_seconds_use_narrow_channel_sample_rate():
 async def test_activity_gate_silence_only_waits_for_signal():
     # Homogeneous noise: no block ever clears the persisted floor by
     # _ACTIVITY_MARGIN_DB, so the target never accumulates active audio --
-    # this is the exact field bug (every S2 target on real VHF land-mobile
+    # this is the exact field bug (every target on real VHF land-mobile
     # traffic came back "unknown"/16666.67 Hz on a dwell that was mostly
     # silence between bursts).
     target = 12500
@@ -602,7 +602,7 @@ def _rds_frames(seconds: float) -> list[bytes]:
 async def test_analyzer_rds_dwell_decodes_station_name():
     frames = _rds_frames(2.6)
     analyzer, results = _rds_analyzer(frames)
-    # Label centroid a few kHz off the carrier, as S2's 512-bin spectrum gives it.
+    # Label centroid a few kHz off the carrier, as the survey's 512-bin spectrum gives it.
     label_hz = _RDS_STATION_HZ + 6_000
     analyzer.set_rds_targets([label_hz])
 
@@ -856,7 +856,7 @@ async def test_retune_is_serialised_with_block_processing():
         await analyzer._pump_task
 
 
-# -- S4: raw/snapped rates, GMSK 9600 family, voice wording ------------------
+# -- raw/snapped rates, GMSK 9600 family, voice wording ------------------
 
 _NARROW_RATE = 50_000.0  # the analyzer's per-target channel rate
 

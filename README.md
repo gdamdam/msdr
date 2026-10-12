@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/gdamdam/msdr/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/gdamdam/msdr/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="version" src="https://img.shields.io/badge/version-1.0.0--rc.5-blue">
+  <img alt="version" src="https://img.shields.io/badge/version-1.0.0--rc.6-blue">
   <a href="LICENSE"><img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-green"></a>
 </p>
 
@@ -127,6 +127,7 @@ Frequency input accepts `137.9`, `137900k`, or `14.230 MHz`.
 - [Catalog sources](docs/catalogs.md) · [Reference catalogs](docs/reference-catalogs.md) · [Frequency allocations](docs/allocations.md)
 - [Passive Wi-Fi](docs/wifi.md) · [Passive BLE](docs/ble.md) · [Device history and timeline](docs/history.md) · [Remote ID](docs/remote-id.md)
 - [Integrations: JS8Call, Winlink, FreeDATA](docs/integrations.md) · [Receiver DSP](docs/receiver-dsp.md) · [Discover map](docs/discover-map.md)
+- [Architecture](docs/architecture.md): how the code is organised
 
 ## Development
 
@@ -138,7 +139,7 @@ python3 -m venv .venv
 .venv/bin/pytest -q -W error && .venv/bin/ruff check msdr tests scripts
 ```
 
-One Python process: a `RadioAdapter` boundary to the receiver, SQLite storage with numbered migrations, a FastAPI backend and a no-build Lit UI. Design notes live in `docs/`.
+One Python process: a `RadioAdapter` boundary to the receiver, SQLite storage with numbered migrations, a FastAPI backend and a no-build Lit UI. See [Architecture](docs/architecture.md).
 
 ## How it's built
 

@@ -1,4 +1,4 @@
-"""Watch rules (docs/rules.md, TODO "Phase 6 -- Watch rules"): beacon
+"""Watch rules (docs/rules.md): beacon
 presence/absence, BLE sensor thresholds and Remote ID drone geofences,
 evaluated on a tick by `msdr.api.services.rules.RulesServiceMixin` and fed by
 the same live tables, labels and tracker the rest of msdr already exposes.

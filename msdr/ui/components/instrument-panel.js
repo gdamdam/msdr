@@ -581,7 +581,7 @@ export class InstrumentPanel extends LitElement {
 
   /** LIVE · SDRconnect, or REPLAY · <name> while state.survey.replay is set --
    * clicking the latter dispatches open-review {name, path} (app.js switches
-   * to Review, see S1-ui-contract.md's Receiver strip section). */
+   * to Review). */
   /** DECODE chip (same lamp-cluster look as the Wi-Fi/BLE chips): the one
    * summary of a running decoder here; click jumps to the decode deck. */
   _decodeChip() {

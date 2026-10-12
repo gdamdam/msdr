@@ -392,7 +392,7 @@ export class ScannerDeck extends LitElement {
     // again only takes effect once the scan goes idle.
     const expanded = this._expanded || isActive;
     const channel = scan.channel;
-    // S5 lifecycle case: a pass that tuned nothing because every channel is
+    // lifecycle case: a pass that tuned nothing because every channel is
     // ignored must say so, not look like a scan that finds nothing.
     const channelLabel = channel
       ? channel.label || `${(channel.frequency_hz / 1e6).toFixed(3)} MHz`

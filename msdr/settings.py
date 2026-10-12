@@ -35,7 +35,7 @@ SECTION_IDS = (
     "catalog",
     "beacons",
     "finds",
-    # S1 (0.26.0, docs/epics/listening-workbench/S1-ui-contract.md): the
+    # 0.26.0: the
     # scanner/decode decks moved out of the instrument panel into sections of
     # their own, plus the REVIEW shell and LIBRARY-as-a-section. Appended (not
     # interleaved) so the backfill order of every existing id is unchanged.
@@ -98,35 +98,34 @@ class Features(BaseModel):
     # Signal decoders (msdr.decoder): memory-driven multimon-ng/minimodem
     # decoding of SDRconnect's demodulated audio (P1).
     decoder: bool = True
-    # Wide-view survey (msdr.survey, S1): span picker, live spectrum +
+    # Wide-view survey (msdr.survey): span picker, live spectrum +
     # waterfall, occupancy over the SpectrumFrame stream.
     survey: bool = True
-    # Beacon monitor (msdr.survey.beacons, S10): cycles the receiver over
+    # Beacon monitor (msdr.survey.beacons): cycles the receiver over
     # NCDXF/IARU or NDB beacon frequencies logging SNR/CW-decoded hits.
     beacons: bool = True
-    # Scanner finds log (S11): every hit recorded as a find when the scan's
+    # Scanner finds log: every hit recorded as a find when the scan's
     # log_finds option is on -- see msdr.api.service's on_find wiring.
     finds: bool = True
 
 
 class DecoderSettings(BaseModel):
-    """Signal decoder configuration (msdr.decoder, P1) -- see
-    docs/superpowers/specs/2026-09-25-decoders-design.md."""
+    """Signal decoder configuration (msdr.decoder)."""
 
     bin_dirs: list[str] = ["~/.local/bin", "/opt/homebrew/bin", "/usr/local/bin"]
     audio_sample_rate: int = 48000
     audio_channels: int = 2
     history_limit: int = 5000
-    # BAND DECODE (P2) defaults -- see docs/superpowers/plans/2026-09-25-decoders-p2-band.md.
+    # BAND DECODE (P2) defaults.
     band_max_channels: int = 8
     band_threshold_db: float = 10.0
     band_idle_s: int = 60
     band_spacing_hz: int = 12500
-    # Per-call WAV storage for call-kind decoders (dsd-fme DMR/P25/NXDN, S6).
+    # Per-call WAV storage for call-kind decoders (dsd-fme DMR/P25/NXDN).
     # None resolves to <db_path's dir>/decoder/calls (see AppService._build_decoder).
     calls_dir: str | None = None
     calls_keep: int = 500
-    # Progressive PNG storage for image-kind decoders (wefax, S7-S10 round 1).
+    # Progressive PNG storage for image-kind decoders (wefax).
     # None resolves to <db_path's dir>/decoder/fax (see AppService._build_decoder).
     fax_dir: str | None = None
     fax_keep: int = 200
@@ -201,7 +200,7 @@ class IntegrationsSettings(BaseModel):
 
 
 class SpanPreset(BaseModel):
-    """A one-tap span for msdr.survey's span picker (S1)."""
+    """A one-tap span for msdr.survey's span picker."""
 
     name: str
     sample_rate_hz: int
@@ -249,8 +248,7 @@ class LnaAutoSettings(BaseModel):
 
 
 class SurveySettings(BaseModel):
-    """Wide-view survey configuration (msdr.survey, S1) -- see
-    docs/superpowers/specs/2026-09-25-wide-view-identification-design.md."""
+    """Wide-view survey configuration (msdr.survey)."""
 
     threshold_db: float = 8.0
     occupancy_windows_s: tuple[int, int] = (60, 600)
@@ -267,7 +265,7 @@ class SurveySettings(BaseModel):
     dimensions: list[str] = Field(
         default_factory=lambda: ["activity", "bandwidth", "bandplan", "catalog"]
     )
-    # IQ analyzer (S3/S4) -- see msdr.survey.analyzer.Analyzer.
+    # IQ analyzer -- see msdr.survey.analyzer.Analyzer.
     max_analyzed: int = 6
     analyze_dwell_s: float = 2.0
     analyze_min_snr_db: float = 8.0
@@ -307,8 +305,7 @@ class SurveySettings(BaseModel):
 
 
 class BeaconSettings(BaseModel):
-    """Beacon monitor configuration (msdr.survey.beacons, S10) -- see
-    docs/superpowers/plans/2026-09-25-survey-s10-beacons.md."""
+    """Beacon monitor configuration (msdr.survey.beacons)."""
 
     snr_threshold_db: float = 6.0
     ndb_frequencies_hz: list[int] = []
@@ -335,7 +332,7 @@ class Layout(BaseModel):
     clients that don't know about `wide` just render the grid as before;
     the UI is the one that skips `wide` ids in the grid)."""
 
-    # S1: this is the LISTEN workspace's default (the legacy `layout` field
+    # this is the LISTEN workspace's default (the legacy `layout` field
     # mirrors the active workspace, "listen" by default). It no longer names
     # every id -- the validator backfills the rest into the last column, the
     # same rule that migrates an old saved layout.
@@ -387,8 +384,7 @@ class Layout(BaseModel):
         return self
 
 
-# U2 workspaces (docs/superpowers/specs/2026-09-26-ui-rework-design.md, "Additions from the
-# second review note"): named, remembered arrangements the UI switches between with a top-level
+# Workspaces: named, remembered arrangements the UI switches between with a top-level
 # tab strip. Each is a full `Layout` -- like the single legacy `layout` field, an id not placed in
 # any of a workspace's columns is backfilled into its last column by Layout's own validator above,
 # so a workspace's *raw* stored Layout ends up covering all of SECTION_IDS. WORKSPACE_SECTIONS
@@ -397,7 +393,7 @@ class Layout(BaseModel):
 # workspaces so nothing is ever unreachable. "listen" holds whatever the
 # other destinations don't claim
 # (see the assertion below).
-# Tuple order is the tab order (S1 contract). "survey" is claimed by discover here only to keep the
+# Tuple order is the tab order. "survey" is claimed by discover here only to keep the
 # partition exact -- the UI renders it once in a fixed primary slot for both listen and discover.
 WorkspaceId = Literal[
     "listen", "discover", "map", "band_scans", "review", "library", "satellites", "catalog",
@@ -676,7 +672,7 @@ class Settings(BaseModel):
     recorder_min_free_gb: float = Field(default=20, ge=1)
     recorder_max_recording_minutes: float = Field(default=60, ge=1, le=600)
     recorder_armed: bool = False
-    # Review clips (S5): extracted sample ranges of a recording, one SigMF
+    # Review clips: extracted sample ranges of a recording, one SigMF
     # directory each. None means `<recorder_root>/clips`.
     clips_dir: str | None = None
     decoder: DecoderSettings = Field(default_factory=DecoderSettings)
@@ -710,7 +706,7 @@ class Settings(BaseModel):
         # A partial `workspaces` (e.g. just-migrated "listen" above, or a
         # hand-edited settings.json) is filled in with the usual defaults for
         # whichever of the five ids are still missing (e.g. "review" in a
-        # settings.json saved before S1).
+        # settings.json saved before workspaces).
         defaults = None
         for ws in WORKSPACE_IDS:
             if ws not in self.workspaces:

@@ -89,13 +89,13 @@ class FakeSDRconnect:
         self.delay_s = 0.0
         self._server = None
         self._clients: set = set()
-        # Per-connection: the stream ends when the socket closes (spec Sec7).
+        # Per-connection: the stream ends when the socket closes.
         self._spectrum_tasks: dict[object, asyncio.Task] = {}
         # Per-property queues of values seen in set_property/apply_device_profile,
         # consumed by wait_for_set. A queue (not a single future) means a set that
         # arrives before wait_for_set is called is still observed, not lost to a race.
         self._sets: dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
-        # S3 replay contract: total set_property/apply_device_profile *messages*
+        # Replay contract: total set_property/apply_device_profile *messages*
         # dispatched (one per message, not per property inside a profile) --
         # the zero-live-writes gate for replay tuning/listening/decoding.
         self._set_count = 0
@@ -105,7 +105,7 @@ class FakeSDRconnect:
         return self._port
 
     def set_count(self) -> int:
-        """Total set_property + apply_device_profile events seen (S3 contract):
+        """Total set_property + apply_device_profile events seen:
         tests assert this stays 0 while only a replay is tuned/listened to."""
         return self._set_count
 
@@ -168,7 +168,7 @@ class FakeSDRconnect:
             self._set_count += 1
             await self._handle_apply_profile(msg.get("value"))
         elif event_type == "spectrum_enable":
-            # Not a property (spec Sec7): set_property/get_property on it are
+            # Not a property: set_property/get_property on it are
             # silently ignored on the real server, so this is its own branch.
             if msg.get("value") == "true":
                 await self._start_spectrum_stream(ws)

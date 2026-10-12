@@ -1,4 +1,4 @@
-"""Virtual receiver: demodulates a channel out of any ``IQSource`` (S3 §2).
+"""Virtual receiver: demodulates a channel out of any ``IQSource``.
 
 It never talks to the radio: tuning is bounded by the source's recorded
 span, and everything it produces is tagged with the source generation so a
@@ -202,7 +202,7 @@ class VirtualReceiver:
             if high > ch.bandwidth_hz or self._native_audio["ssb_low_hz"] + 200 > high:
                 raise ValueError("SSB passband does not fit the tuned bandwidth")
         if not ch.fits(desc, margin_hz=margin):
-            # Replay tuning is bounded by what was recorded (plan §6); the
+            # Replay tuning is bounded by what was recorded; the
             # current channel keeps playing.
             raise OutOfSpanError(_span_reason(ch, desc, margin))
         self._channel = ch
@@ -434,7 +434,7 @@ class VirtualReceiver:
         gap = idx != self._next_index
         if gap:
             # Same generation, but not contiguous with what we last saw: a
-            # frame was dropped in transport (stalled consumer, plan §6
+            # frame was dropped in transport (stalled consumer,
             # "dropped"). The chain's filter/decimator state assumes
             # unbroken samples, so it's no longer trustworthy -- flush and
             # rebuild exactly as a generation break would.
@@ -505,7 +505,7 @@ class VirtualReceiver:
             audio = chain.process(raw_iq)
             clean = self._decoder_demod.process(chain.selected)
         elif self._clean_consumers and not isinstance(demod, NfmDemod):
-            # Decoder tap (S4 §2): run the demod at unity gain, unmuted, and
+            # Decoder tap: run the demod at unity gain, unmuted, and
             # apply the listener's volume/mute here instead -- identical
             # listening output (_Listening._out is exactly x*volume, or
             # zeros when muted), plus the pre-gain signal for decoders.
@@ -572,7 +572,7 @@ class VirtualReceiver:
             self._flat_consumers -= 1
 
     async def clean_tap(self) -> AsyncIterator[tuple[bytes, int, int]]:
-        """Decoder tap for every demodulator (S4 §2): (s16 mono at 48 kHz,
+        """Decoder tap for every demodulator: (s16 mono at 48 kHz,
         generation, sample_index) of the demod output *before* the
         listening volume/mute and squelch -- AM/SSB/CW keep their AGC (part
         of the demodulator), NFM yields the flat discriminator."""

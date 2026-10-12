@@ -20,7 +20,7 @@ _INSTANCES = itertools.count()
 
 logger = logging.getLogger(__name__)
 
-# Binary frame header for payload type 2 (IQ), 2-byte LE -- see spec Sec"Measured facts".
+# Binary frame header for payload type 2 (IQ), 2-byte LE.
 _IQ_HEADER = b"\x02\x00"
 _QUEUE_SIZE = 40
 

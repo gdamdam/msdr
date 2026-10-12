@@ -1,4 +1,4 @@
-"""scripts/soak.py smoke test (S5 plan §2): a ~20 s run with a small config,
+"""scripts/soak.py smoke test: a ~20 s run with a small config,
 asserting a summary is produced with no exception. Not skipped/opt-in --
 runs by default, but kept well under the 40 s budget."""
 

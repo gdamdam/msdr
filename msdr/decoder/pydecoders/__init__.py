@@ -1,4 +1,4 @@
-"""In-process (PythonBackend) decoders: HF fax/FSK/time-code, S7-S10.
+"""In-process (PythonBackend) decoders: HF fax/FSK/time-code.
 
 Each module here defines a class matching msdr.decoder.backends.PyDecoder
 (`input_rate`, `feed(samples) -> list[DecodeEvent]`, `flush() -> list[DecodeEvent]`)

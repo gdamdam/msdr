@@ -13,10 +13,10 @@ const STATUS_FILTERS = [
   { value: "ignored", label: "IGNORED" },
 ];
 
-// Same glyph conventions as survey-view.js's badge lane/labels table (S2-S4)
+// Same glyph conventions as survey-view.js's badge lane/labels table
 // -- a find's `classification` is the same shape a survey label carries
 // (activity/bw_class/modulation/family/voice/confirmed/bandplan), see the
-// plan's Contracts section.
+// classification contract.
 const ACTIVITY_GLYPHS = { steady: "●", bursty: "▮▮", periodic: "↻", intermittent: "◌", new: "✦" };
 const VOICE_GLYPHS = { voice: "🗣", data: "⋯" };
 
@@ -47,7 +47,7 @@ const STATUS_COLOR = {
 const POLL_MS = 15_000;
 
 /** FINDS section: the scanner's finds log (every logged hit, grouped by
- * frequency across runs -- see docs/superpowers/plans/2026-09-25-scanner-finds.md).
+ * frequency across runs).
  * Self-fetches its list/counts (GET /api/finds), same pattern as
  * beacons-view's hits table -- `lastFind` is app.js's forwarded "find" ws
  * push (`{find, created}`, wrapped fresh on every message so a repeat find

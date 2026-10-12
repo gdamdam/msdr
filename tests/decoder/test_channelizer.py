@@ -105,7 +105,7 @@ def test_nfm_channel_recovers_known_deviation():
 
 
 def test_nfm_channel_at_48khz_preserves_deviation_tone():
-    # dsd-fme decoders (S6) need NFMChannel resampled to 48,000 Hz rather
+    # dsd-fme decoders need NFMChannel resampled to 48,000 Hz rather
     # than the P1 default of 22,050 Hz -- target_rate is per-spec now.
     out_rate = 96000.0
     dev_hz = 3000.0

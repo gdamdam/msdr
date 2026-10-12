@@ -1,6 +1,6 @@
 # msdr user guide
 
-Task-oriented guide to using msdr, for anyone running it with an SDR. The [README](../README.md) covers installation. Most screens also have a **? Help** button.
+How to use msdr day to day, for anyone running it with an SDR. The [README](../README.md) covers installation. Most screens also have a **? Help** button.
 
 ## Listening
 
@@ -14,13 +14,23 @@ Task-oriented guide to using msdr, for anyone running it with an SDR. The [READM
 
 ### Instrument panel
 
-The panel at the top has three rows:
+The panel at the top has three rows.
 
-| Row | Contains |
-|---|---|
-| Status | Lamps (LINK, ALERT, owner, REC when armed or recording), source, Wi-Fi/BLE chips, **STOP**, icon actions (☆ favourite, ＋ save to library, ←, →, ⌕, **◐** theme, **⚙** setup) and the **⋯** tools menu (New profile, Diagnostics, Layout, Recordings). A `DECODE · <mode>` chip appears here while a decoder runs. |
-| Readout | Frequency with fine-tune ±, step control, S-meter with SNR/PWR, band plan, allocation pill, **Details** / **Open chart** / ⓘ. |
-| Settings | **RECEIVER**: Ant + lock, LNA (shows the state index 0–59, not dB), Profile, Mode, Bandwidth + lock, AGC/NR/SQL (click a chip for its on/off switch and level). **OPERATIONS**: recorder, **▶ Band scan · range** and **Channel scan**, which open their controls below the strip. |
+**Status row**
+- Lamps: LINK, ALERT, owner, and REC when armed or recording.
+- Source, Wi-Fi and BLE chips, and **STOP**.
+- Icon actions: ☆ favourite, ＋ save to library, ←, →, ⌕, **◐** theme, **⚙** setup.
+- The **⋯** tools menu: New profile, Diagnostics, Layout, Recordings.
+- A `DECODE · <mode>` chip while a decoder runs.
+
+**Readout row**
+- Frequency with fine-tune ±, and the step control.
+- S-meter with SNR/PWR.
+- Band plan, allocation pill, and **Details** / **Open chart** / ⓘ.
+
+**Settings row**
+- **RECEIVER:** Ant + lock, LNA (shows the state index 0–59, not dB), Profile, Mode, Bandwidth + lock, and AGC/NR/SQL (click a chip for its on/off switch and level).
+- **OPERATIONS:** the recorder, **▶ Band scan · range** and **Channel scan**. The scan controls open below the strip.
 
 Click the allocation pill to open the band's details in a popover; the ✎ button edits the frequency instead.
 
@@ -37,10 +47,10 @@ The survey lists signals found in the current span. New signals are added as the
 Sweep a frequency range span by span and keep everything found.
 
 1. Press **▶ Band scan · range** in the instrument panel. It opens the Band scan form in **Discover → Live survey**, where you choose the range, span, dwell time, overlap and peak sensitivity, then start. You can pause, resume or stop; a running scan is stopped from the owner lamp's **STOP**.
-2. Open **BAND SCANS**: the **Scans** list sits at the top, and picking a scan opens its report below. A report shows what was found, the stitched spectrum, and which parts of the range were actually covered.
+2. Open **BAND SCANS**: the **Scans** list sits at the top, and picking a scan opens its report below. A report shows what was found, the stitched spectrum, and which parts of the range were covered.
 3. To compare, open a completed session and pick an earlier one for the same range. The comparison lists **new**, **disappeared** and **changed** signals.
 
-A frequency that wasn't covered stays unknown, and a missed transmission doesn't mean the station went off air. [More](epics/listening-workbench/survey-band-scanning.md)
+A frequency that wasn't covered stays unknown, and a missed transmission doesn't mean the station went off air.
 
 ### Channel watch
 
@@ -91,8 +101,6 @@ Open the **Scope** row under the survey (live) or in Review (recording). Press *
 - **Views:** audio waveform, IQ envelope, I/Q trace or audio spectrum. Set a window and trigger, freeze the trace and measure with two cursors.
 - **Carrier drift:** select an unmodulated carrier and press **Measure carrier offset**. You can optionally correct the offset in msdr's software channel. Weak or modulated signals give unreliable estimates.
 
-[More](epics/signal-workbench.md)
-
 ## Decoders
 
 Open **Decode setup (⚙)** to choose decoders; **Search decoders** filters the list. Decoder output has one place, the decode deck.
@@ -100,11 +108,13 @@ Open **Decode setup (⚙)** to choose decoders; **Search decoders** filters the 
 - **DECODE chip:** while a decoder runs, a `DECODE · <mode>` chip in the instrument panel's status row shows it. Hover for the last decoded line; click to jump to the deck.
 - **Messages** shows decoded history. While you're scrolled down or looking at a message, new ones wait behind an "N new messages" button.
 
+Decoder types:
+
 - **Raw-IQ decoders** (ADS-B / Mode S, RS41, FT8, DSC, End-of-Train, VOR, ILS, LoRa) work on the live receiver and on recordings in Review. They analyse one channel at a time. Recordings need enough sample rate, and FT8 also needs the capture time.
 - **Audio decoders** include pagers, APRS, CW, RTTY, NAVTEX, WEFAX, SSTV and digital voice (DMR, P25, NXDN via `dsd-fme`). Digital voice calls can be played back from Messages.
 - **CW** decodes into one continuous transcript you can select and copy.
 
-A decoder shows *Ready* when its code or tool is installed. That doesn't mean it has been tested on real signals. [Decoder scope](decoder-expansion.md)
+A decoder shows *Ready* when its code or tool is installed. That doesn't mean it has been tested on real signals; see [Decoder scope](decoder-expansion.md).
 
 ### LoRa, MeshCore and Meshtastic
 

@@ -1,5 +1,5 @@
 """Radiofax (WEFAX) FM-subcarrier decoder -- audio path, fixed 120 LPM / IOC
-576 (S7-S10 round 1).
+576.
 
 Signal model: a single audio tone whose instantaneous frequency carries the
 information -- 300 Hz start tone (>=3s) -> FM video (1500 Hz black .. 2300 Hz

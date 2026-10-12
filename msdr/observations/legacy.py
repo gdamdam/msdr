@@ -1,4 +1,4 @@
-"""One-time import of pre-S2 history (finds, decode_events) as legacy
+"""One-time import of earlier history (finds, decode_events) as legacy
 Observations.
 
 The old tables are aggregates: a find is one row per frequency merged over

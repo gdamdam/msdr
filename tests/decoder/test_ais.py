@@ -61,7 +61,7 @@ def test_type1_payload_fields_decode_exactly():
     assert f["cog_deg"] == 271.0
     assert f["heading_deg"] == 270
     assert "366123456" in ev.text
-    # Present once W2's DecodeEvent integrity fields land; absent before.
+    # Present once DecodeEvent's integrity fields land; absent before.
     assert getattr(ev, "integrity", "passed") == "passed"
     assert getattr(ev, "integrity_note", "CRC-16/X.25 verified") == "CRC-16/X.25 verified"
     assert dec.stats()["frames_ok"] == 1

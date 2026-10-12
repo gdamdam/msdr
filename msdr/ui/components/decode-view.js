@@ -139,7 +139,7 @@ export class DecodeView extends LitElement {
       // tree; leaving it behind in the live survey is extremely expensive.
       this.querySelector("[aria-label='close messages']")?.focus();
       this._load();
-      // S5: a confirmed survey label's ✓ chip opens this modal preset to its
+      // a confirmed survey label's ✓ chip opens this modal preset to its
       // frequency (app.js's _doOpenSurveyMessages) -- applied whenever the
       // modal opens with one already set.
       if (this.presetFrequencyHz != null) this._freq = String(this.presetFrequencyHz);

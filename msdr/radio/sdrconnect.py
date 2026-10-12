@@ -189,7 +189,7 @@ class SDRconnectAdapter:
         await self._send({"event_type": "apply_device_profile", "property": "", "value": name})
 
     async def set_spectrum_stream(self, on: bool) -> None:
-        # A dedicated command, not a property (spec Sec7) -- "true"/"false" as
+        # A dedicated command, not a property -- "true"/"false" as
         # strings, matching how the real GUI sends it.
         if on == self._spectrum_on:
             return

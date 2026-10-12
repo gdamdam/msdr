@@ -1,5 +1,5 @@
 """Readiness contract: installed, validated and this-session are separate
-facts; a backend version change makes validation stale (plan §4)."""
+facts; a backend version change makes validation stale."""
 
 from datetime import date
 

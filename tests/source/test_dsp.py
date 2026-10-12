@@ -1,4 +1,4 @@
-"""Streaming demodulators on synthetic IQ (S3 §2): pitch, SNR, squelch, RDS."""
+"""Streaming demodulators on synthetic IQ: pitch, SNR, squelch, RDS."""
 
 from fractions import Fraction
 

@@ -1,4 +1,4 @@
-"""Fixtures for the browser tests in tests/e2e (see docs/superpowers/specs/
+"""Fixtures for the browser tests in tests/e2e
 2026-09-23-sp1-trust-feedback-design.md, section C).
 
 These drive a real Chromium against a real msdr app (FastAPI + uvicorn) wired

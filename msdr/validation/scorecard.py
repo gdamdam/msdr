@@ -1,4 +1,4 @@
-"""S4 corpus scorecard (plan §4): runs the real analyzer/decoder code paths
+"""corpus scorecard: runs the real analyzer/decoder code paths
 against a *synthetic* corpus (msdr.validation.fixtures -- everything is
 generated in code, nothing here reads a captured IQ file) and records, per
 case, what actually happened: correct / incorrect / abstained / unavailable
@@ -80,7 +80,7 @@ class ScorecardReport:
 
 def _iq_features(iq: np.ndarray, rate: int) -> dict:
     """Same feature set the production analyzer feeds classify_modulation
-    (survey/analyzer.py) -- including the S4 2-level FSK evidence
+    (survey/analyzer.py) -- including the 2-level FSK evidence
     (ifreq_bimodality / crossing grid) and the clock-line symbol rate, so
     the scorecard exercises the inference path that actually ships rather
     than a reduced one."""

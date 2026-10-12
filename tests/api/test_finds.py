@@ -1,8 +1,7 @@
-"""Scanner finds log API (S11, msdr/api/**, Stream B): GET /api/finds,
+"""Scanner finds log API (msdr/api/**): GET /api/finds,
 PATCH/DELETE /api/finds/{id}, POST .../promote, POST .../tune, the on_find ->
 FindRepo.add_or_merge + ws push wiring, the classify() callback (survey label
-snapshot vs identify()-only fallback) and the is_ignored cache -- see
-docs/superpowers/plans/2026-09-25-scanner-finds.md."""
+snapshot vs identify()-only fallback) and the is_ignored cache."""
 
 import contextlib
 

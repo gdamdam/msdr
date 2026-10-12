@@ -1,4 +1,4 @@
-"""S1 (docs/epics/listening-workbench/S1-ui-contract.md): a settings.json saved
+"""a settings.json saved
 by v0.25 -- four workspaces, no "review", columns without the scan/decode/
 review/library ids, inbox arranged in listen -- must load unchanged in intent:
 no validation error, a default "review" workspace filled in, and every
@@ -49,7 +49,7 @@ def test_v025_settings_json_loads_and_backfills_every_workspace(tmp_path):
     loaded = Settings.load(path)
 
     assert set(loaded.workspaces) == set(WORKSPACE_IDS)
-    # The missing workspace gets its own S1 default, not listen's.
+    # The missing workspace gets its own default, not listen's.
     assert loaded.workspaces["review"].columns[0] == ["review"]
     assert loaded.workspaces["review"].wide == ["review"]
     for ws in WORKSPACE_IDS:

@@ -1,4 +1,4 @@
-"""Corpus scorecard (S4 plan §4): runs a fixed *synthetic* signal corpus
+"""Corpus scorecard: runs a fixed *synthetic* signal corpus
 through the real analyzer/decoder code paths and records, per case, what each
 detector/decoder actually did -- correct, incorrect, abstained, or
 unavailable. Nothing here is a field-accuracy claim (see

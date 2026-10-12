@@ -1,56 +1,63 @@
-# Discover Map and Table (0.33.0)
+# Discover map and table
 
-For operators investigating where decoded signals were reported. It is a reception investigation view, not an aircraft navigation system or a geolocation estimate for unidentified RF signals.
+The **Map** and **Table** views show where decoded signals were reported. They are for investigating reception. They are not an aircraft navigation system, and they do not estimate the location of unidentified signals.
 
-- Map is a top-level workspace between Discover and Review. Discover keeps Spectrum / survey and Table.
-- Map and Table retain selected evidence as you switch.
+## Using the map
+
+- **Map** is a top-level workspace between Discover and Review. Discover keeps Spectrum / survey and Table.
+- Map and Table keep the selected item as you switch between them.
 - Select a marker or table entry to read the original decoded event.
-- Saved station and catalog locations offer Tune when live receiver control is available; replay does not retune hardware.
+- Saved station and catalog locations offer **Tune** when live receiver control is available. Replay does not retune hardware.
+- **Clear map** hides the current points locally. New reports can still appear.
+- **Refresh map** reloads decoded events, saved stations and catalog locations.
 
 The view uses the latest 500 decoder events already loaded by msdr, saved stations with coordinates, and up to 500 located catalog entries below 30 MHz.
 
-## Positions and evidence
+When your receiver location is set, Table and the selected-item details also show distance and true bearing from it.
+
+## What gets a marker
 
 | Layer | What gets a marker |
 |---|---|
-| Aircraft | ADS-B/Mode S reports are expanded into individual entries. Only usable reported positions get markers; non-position messages remain in Table. ACARS events with structured positions use the same layer. |
-| Radiosondes | RS41 ECEF positions are converted to WGS84 coordinates and ellipsoidal altitude. Failed-integrity payloads never get markers. |
-| Amateur | APRS uncompressed `!`, `=`, `/` and `@` position reports, shown with packet evidence. Compressed, Mic-E, object/item and ambiguous positions remain unpositioned unless the decoder supplies explicit numeric coordinates. |
-| Maritime | AIS positions and DSC events carrying structured coordinates share the maritime layer. The standalone DSC implementation currently emits symbol data without semantic position reports; those remain unpositioned in Table. Adding the map does not claim to complete DSC decoding or add an ACARS decoder. |
-| Stations / HF | Explicitly supplied memory/repeater and catalog coordinates are reference locations, not proof that a station was received. No location is inferred from a frequency, country, station name or ambiguous place code. |
+| Aircraft | ADS-B/Mode S reports are expanded into individual entries. Only usable reported positions get markers; non-position messages stay in Table. ACARS events with structured positions use the same layer. |
+| Radiosondes | RS41 ECEF positions, converted to WGS84 coordinates and ellipsoidal altitude. Payloads that fail the integrity check never get markers. |
+| Amateur | APRS uncompressed `!`, `=`, `/` and `@` position reports, shown with packet evidence. Compressed, Mic-E, object/item and ambiguous positions stay unpositioned unless the decoder supplies explicit numeric coordinates. |
+| Maritime | AIS positions, and DSC events that carry structured coordinates. DSC events without decoded coordinates stay unpositioned in Table. |
+| Stations / HF | Memory/repeater and catalog coordinates that were explicitly supplied. These are reference locations, not proof that a station was received. No location is inferred from a frequency, country, station name or ambiguous place code. |
+
+Missing coordinates and failed checks never become positions. The original decoder fields, timestamp, frequency and integrity result stay available in the selection detail.
 
 ### Age, tracks and glow
 
-- Markers fade after 15 minutes or when position age is unknown.
-- The ADS-B BaseStation output does not expose per-position timestamps: report age is shown separately from unknown position age, and tracks reflect snapshots of reported positions.
-- Tracks connect received fixes only for a known entity/source, and split at long gaps and at the date line.
-- Missing coordinates and failed checks do not become positions.
-- Original decoder fields, timestamp, frequency and integrity remain available in the selection detail.
+- Markers fade after 15 minutes, or when the position age is unknown.
 - Fresh decoded positions glow for two minutes, fading as the fix ages. Saved station and catalog points do not glow.
-- Aircraft and vessel emoji rotate when decoded track/course (or heading) is present; unknown direction stays unrotated.
+- The ADS-B BaseStation output has no per-position timestamps. Report age is shown separately from unknown position age, and tracks reflect snapshots of reported positions.
+- Tracks connect received fixes only for a known entity and source. They split at long gaps and at the date line.
+- Aircraft and vessel emoji rotate when a decoded track, course or heading is present. Unknown direction stays unrotated.
 
-### Buttons
+## Adding station locations
 
-- **Clear map** hides current points locally while new reports can appear.
-- **Refresh map** reloads decoded events, saved stations and catalog locations.
+1. In Library, edit a saved signal.
+2. Enter both latitude and longitude in decimal degrees. Clear both to remove its map location.
 
-## Station setup
+Other ways to supply coordinates:
 
-Distance and true bearing from the configured receiver location appear in Table and selected details when that location is available.
+- HF catalog entries need explicit coordinates. Schedule and site-name data alone cannot place a marker.
+- User catalogs accept `latitude`/`longitude` in SDR++ JSON bookmarks, or two appended GQRX CSV columns: `frequency;mode;bandwidth;name;tags;latitude;longitude`.
+- Saving a catalog entry as a memory lets you enter its location in the regular signal editor.
 
-- Edit a saved signal in Library and supply both latitude and longitude in decimal degrees. Clear both to remove its map location.
-- Existing memories and databases migrate with no coordinates.
-- HF catalog entries need explicit coordinates; normal schedule/site-name data alone cannot place a marker.
-- User catalogs accept `latitude`/`longitude` in SDR++ JSON bookmarks, or appended GQRX CSV columns `frequency;mode;bandwidth;name;tags;latitude;longitude`.
-- Saving a catalog entry as a memory allows its location to be entered in the regular signal editor.
+Existing memories and databases migrate with no coordinates.
 
-## Basemap and satellites
+## Basemap
 
 - Leaflet 1.9.4 is bundled locally.
-- The optional online basemap requests visible OpenStreetMap tiles directly from the browser with attribution and normal browser caching. There is no tile prefetch/download.
-- Turn off Online basemap to stop tile requests; markers, tracks, map controls and Table still work without tiles.
-- See the [Leaflet guide](https://leafletjs.com/examples/quick-start/) and [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/).
+- The optional online basemap requests visible OpenStreetMap tiles directly from the browser, with attribution and normal browser caching. msdr does not prefetch or download tiles.
+- Turn off **Online basemap** to stop tile requests. Markers, tracks, map controls and Table still work without tiles.
 
-Existing Satellites already provides pass predictions, azimuth/elevation sky tracks and receiver tracking controls. These remain in their dedicated workspace; this release does not duplicate them or import nextpass code. Geographic satellite ground tracks can be a separate reuse investigation against `~/dev/radio/nextpass`.
+See the [Leaflet guide](https://leafletjs.com/examples/quick-start/) and the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/).
+
+## Satellites
+
+Pass predictions, azimuth/elevation sky tracks and receiver tracking stay in the **Satellites** workspace, not on this map. Geographic satellite ground tracks are not shown.
 
 See also: [Remote ID](remote-id.md), [Watch rules](rules.md), [BLE](ble.md).

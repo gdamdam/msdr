@@ -39,7 +39,7 @@ _DECODER_PRESETS: list[tuple[str, int, str, int, list[str]]] = [
     ("NOAA WX 162.550", 162_550_000, "NFM", 12_500, ["eas"]),
     ("RTTY 14.085", 14_085_000, "USB", 2_800, ["rtty"]),
     ("CW 14.050", 14_050_000, "CW", 500, ["cw"]),
-    # S7-S10 round 1: HF radiofax/NAVTEX + time signals. Frequencies are
+    # HF radiofax/NAVTEX + time signals. Frequencies are
     # examples (the user edits them); WEFAX tunes 1.9 kHz below the listed
     # fax carrier, DCF77/MSF need HDR mode below 2 MHz.
     ("WEFAX Boston 12750", 12_748_100, "USB", 3_000, ["wefax"]),
@@ -91,7 +91,7 @@ class DecoderServiceMixin:
         )
 
     def _resolve_calls_dir(self, settings: Settings) -> Path:
-        """Where dsd-fme's per-call WAVs live (S6): an explicit
+        """Where dsd-fme's per-call WAVs live: an explicit
         `decoder.calls_dir` override, or `<db_path's dir>/decoder/calls` by
         default -- mirrors _build_recorder's use of settings.recorder_root."""
         if settings.decoder.calls_dir:
@@ -99,7 +99,7 @@ class DecoderServiceMixin:
         return Path(settings.db_path).parent / "decoder" / "calls"
 
     def _resolve_fax_dir(self, settings: Settings) -> Path:
-        """Where wefax's progressive PNGs live (S7-S10 round 1): an explicit
+        """Where wefax's progressive PNGs live: an explicit
         `decoder.fax_dir` override, or `<db_path's dir>/decoder/fax` by
         default -- mirrors _resolve_calls_dir above."""
         if settings.decoder.fax_dir:
@@ -159,7 +159,7 @@ class DecoderServiceMixin:
             "sync",
         }:
             return
-        # S5 fan-in: every decoder_event also reaches Survey so it can
+        # fan-in: every decoder_event also reaches Survey so it can
         # confirm a matching label (note_decode_event's own contract says it
         # never raises, but this runs from DecoderManager's synchronous
         # publish callback -- guard anyway so a bug here can never take the
@@ -169,7 +169,7 @@ class DecoderServiceMixin:
                 self.survey.note_decode_event(msg["event"])
             except Exception:
                 logger.exception("survey: note_decode_event failed")
-        # S10 fan-in: every decoder_event also reaches the beacon monitor, same
+        # fan-in: every decoder_event also reaches the beacon monitor, same
         # shape/guard as the Survey fan-in above.
         event = msg.get("event") or {}
         is_replay = bool(event.get("analysis_run_id")) or str(
@@ -180,7 +180,7 @@ class DecoderServiceMixin:
                 self.beacons.note_decode_event(msg["event"])
             except Exception:
                 logger.exception("beacons: note_decode_event failed")
-        # S2 fan-in: every stored decode event also reaches the observations
+        # fan-in: every stored decode event also reaches the observations
         # recorder, same shape/guard as the Survey/beacons fan-ins above.
         if msg.get("type") == "decoder_event":
             try:
@@ -195,7 +195,7 @@ class DecoderServiceMixin:
                 self._trim_fax_retention()
 
     def _trim_calls_retention(self) -> None:
-        """Delete the oldest per-call WAVs beyond decoder.calls_keep (S6) --
+        """Delete the oldest per-call WAVs beyond decoder.calls_keep --
         mirrors DecodeEventRepo.trim's "oldest beyond limit" semantics, but
         for files on disk: a call event's DB row is kept regardless, only the
         WAV bytes are reclaimed once there are more than calls_keep of them."""
@@ -252,7 +252,7 @@ class DecoderServiceMixin:
         return resolved
 
     def decoder_call_wav_path(self, event_id: str) -> Path:
-        """GET /api/decoder/calls/{event_id}.wav (S6): resolves and validates
+        """GET /api/decoder/calls/{event_id}.wav: resolves and validates
         the stored call event's WAV path. A missing event, an event with no
         fields.wav, a resolved path outside the calls dir (a traversal
         attempt learns nothing more than "not found"), or a file that isn't
@@ -349,8 +349,8 @@ class DecoderServiceMixin:
 
     def list_decoders(self) -> list[dict]:
         # Session facts come from the live manager status so "installed",
-        # "validated" and "what it's doing now" stay three separate answers
-        # (plan §4). describe() may probe binary versions (bounded, cached
+        # "validated" and "what it's doing now" stay three separate answers.
+        # describe() may probe binary versions (bounded, cached
         # subprocess calls), so app.py runs this off the event loop.
         return describe_decoders(self.settings.decoder.bin_dirs, session=self.decoder_status())
 
@@ -558,7 +558,7 @@ class DecoderServiceMixin:
     def _save_identified_channel(
         self, frequency_hz: int, *, name: str | None, decoders: list[str], notes: str = ""
     ) -> dict:
-        """Shared by decoder_band_save (P2) and survey_save (S5): an
+        """Shared by decoder_band_save (P2) and survey_save: an
         NFM/12.5 kHz memory, idempotent within +-6 kHz of an existing memory
         (a re-save of the same channel returns the existing one unchanged
         rather than creating a near-duplicate)."""

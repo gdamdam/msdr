@@ -1,4 +1,4 @@
-"""Survey S5 decode handoff (msdr/api/**, Stream B): POST /api/survey/decode|
+"""Survey decode handoff (msdr/api/**, Stream B): POST /api/survey/decode|
 undecode|save, the decoder_event -> Survey.note_decode_event fan-in, and the
 AppService._survey_decode_start/_stop hooks Survey's own decode_start/
 decode_stop kwargs will call (Stream A). Uses FakeSurvey (tests/api/test_app.py)

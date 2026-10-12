@@ -94,7 +94,7 @@ class DecodeEvent:
     # it was given at start, so the manager keeps that mapping (see
     # DecoderManager._drain_events).
     update_of_path: str | None = None
-    # S4 §1 integrity/provenance. `integrity` is set from the decoder's
+    # integrity/provenance. `integrity` is set from the decoder's
     # capability-matrix policy plus the backend's own check result (see
     # policy_integrity) -- never guessed; "unknown" is the honest default.
     integrity: Integrity = "unknown"
@@ -700,7 +700,7 @@ class LineCoalescer:
         )
 
 
-# -- dsd-fme (DMR/P25/NXDN digital voice, S6) --------------------------------
+# -- dsd-fme (DMR/P25/NXDN digital voice) --------------------------------
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 # dsd-fme's startup banner uses box-drawing / block characters for its ASCII
@@ -815,7 +815,7 @@ class DsdState:
     # call starting, or "No Sync" ending both slots), but the parser returns
     # at most one per line -- the rest drain on the following lines.
     pending: collections.deque = field(default_factory=collections.deque)
-    # S4: True after a "Sync:" line, False after "No Sync", None until
+    # True after a "Sync:" line, False after "No Sync", None until
     # dsd-fme has said either -- the only backend that reports sync at all.
     synchronized: bool | None = None
     # Optional D-STAR/YSF/dPMR/M17 identifiers reported in human-readable

@@ -40,7 +40,7 @@ export class IdentPanel extends LitElement {
 
   // Ident candidates are the analyzer's best guess against the band plan --
   // never a confirmed identity -- so the state word is always "estimated"
-  // (S2: no bars, no % anywhere, see format.js's evidenceStateLabel).
+  // (no bars, no % anywhere, see format.js's evidenceStateLabel).
   _row(c) {
     const tag = tagFor(c.category, this.tags);
     const color = tag ? tagColorVar(tag.color) : null;

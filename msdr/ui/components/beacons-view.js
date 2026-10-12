@@ -82,7 +82,7 @@ const AGE_STYLE = {
   none: "color:var(--ink);opacity:0.25",
 };
 
-/** BEACONS section (S10): NCDXF/NDB beacon monitor -- start/stop controls, a
+/** BEACONS section: NCDXF/NDB beacon monitor -- start/stop controls, a
  * beacon x band grid coloured by last-heard age, a 24h hit-tick strip per
  * band, and a hits table with CLEAR. `status` mirrors BeaconMonitor.status()
  * (msdr/survey/beacons.py), pushed on change (<=1/s) via the "beacons" ws

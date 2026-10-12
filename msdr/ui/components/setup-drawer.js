@@ -243,7 +243,7 @@ export class SetupDrawer extends LitElement {
     // (msdr.layoutEdit) and the drag-grip/WIDE-toggle gating -- this is just
     // the current value, echoed back via the layout-edit event on toggle.
     layoutEdit: { type: Boolean },
-    // S5: GET /api/validation, fetched by app.js when SETUP opens -- see the
+    // GET /api/validation, fetched by app.js when SETUP opens -- see the
     // VALIDATION group below. null while unfetched/loading.
     validation: { type: Object },
     _draft: { state: true },
@@ -1437,7 +1437,7 @@ export class SetupDrawer extends LitElement {
     return html`<div>${this.decoders.map((dec) => this._dependencyRow(dec))}</div>`;
   }
 
-  /** VALIDATION group (S5 contract, §3): GET /api/validation (msdr/validation/
+  /** VALIDATION group: GET /api/validation (msdr/validation/
    * status.py), fetched by app.js each time SETUP opens. Deliberately never
    * renders a green "all validated" summary -- the header names the gap
    * (field gates) up front, and OUTSTANDING GATES always lists HF field

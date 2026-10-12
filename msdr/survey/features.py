@@ -1,4 +1,4 @@
-"""IQ feature extraction + classification (S3-S4): pure numpy over one
+"""IQ feature extraction + classification: pure numpy over one
 channel's complex64 samples (25 kHz nominal, the channelizer's `out_rate`).
 No IQ I/O, no asyncio -- this module is the part of the analyzer that runs
 inside `asyncio.to_thread`, mirroring how `channelizer.py` keeps the numpy
@@ -294,7 +294,7 @@ def fsk_clock_line(x: np.ndarray, rate: float) -> tuple[float | None, float]:
     return (best_rate if best_db >= 18.0 else None), best_db
 
 
-# 2-level FSK/GMSK evidence (S4). Sarle's bimodality coefficient of the
+# 2-level FSK/GMSK evidence. Sarle's bimodality coefficient of the
 # 3-tap-smoothed instantaneous frequency: 1/3 for a Gaussian, 5/9 for a
 # uniform, -> 1 for two point masses. Measured on synthetic 25 kHz channels
 # (6 seeds each): GMSK 9600 >= 0.50 down to 7 dB SNR, BPSK/QPSK 4800 <= 0.26,
@@ -384,7 +384,7 @@ def crossing_rate_hz(x: np.ndarray, rate: float) -> tuple[float | None, float]:
 
 
 def keying_timing(on_runs_s: list[float]) -> dict:
-    """Do on-durations of a keyed carrier look like Morse (S4)? Dots are one
+    """Do on-durations of a keyed carrier look like Morse? Dots are one
     unit, dashes three: split the sorted runs at their largest ratio gap and
     require two clusters each holding >= 20% of the runs, a gap ratio >= 1.8,
     long/short median ratio 2-4.5, each cluster tight (CV < 0.35), and at
@@ -423,7 +423,7 @@ def classify_modulation(f: dict) -> dict:
     function directly on synthetic features -- else the line's peak-to-median
     ratio (>= _LINE_STRENGTH_GATE, i.e. >= 3.0), so the 0.15 threshold below
     just distinguishes "no confirmed line" from "confirmed". Optional
-    `ifreq_bimodality` / `crossing_fit` (S4, ifreq_bimodality() and
+    `ifreq_bimodality` / `crossing_fit` (ifreq_bimodality() and
     crossing_rate_hz()) default to 0.0, i.e. no 2-level FSK evidence."""
     env_cv = float(f["env_cv"])
     ifreq_std = float(f["ifreq_std_hz"])
@@ -448,7 +448,7 @@ def classify_modulation(f: dict) -> dict:
     if 0.3 <= env_cv <= 0.8 and ifreq_std < 200.0:
         return {"kind": "am", "confidence": 0.75}
     # Two frequency levels switching on a symbol grid is 2-FSK/GMSK however
-    # noisy the envelope reads (AIS/GMSK 9600 was reported psk_like, S0
+    # noisy the envelope reads (AIS/GMSK 9600 was reported psk_like, in the synthetic corpus
     # corpus): both the bimodality and the crossing-grid fit must agree --
     # never a frequency/allocation rule.
     if (
@@ -507,7 +507,7 @@ def bell202_score(audio: np.ndarray, rate: float) -> float:
 
 
 def voice_score(audio: np.ndarray, rate: float = 22050) -> dict:
-    """S4: voice vs. data vs. silence on NFM-discriminator audio.
+    """Voice vs. data vs. silence on NFM-discriminator audio.
 
     Three ratios feed the score: syllabic envelope modulation (3-8 Hz, the
     rate speech amplitude naturally varies at), formant-band energy

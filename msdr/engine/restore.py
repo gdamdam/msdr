@@ -1,4 +1,4 @@
-"""Reconciling restore: diff a desired state against confirmed (spec §7) into
+"""Reconciling restore: diff a desired state against confirmed into
 an ordered set of steps, then drive an adapter through them, confirming each
 step against a ConfirmedState so a restore recovers from timeouts, dropped
 echoes and outside interference (someone touching SDRconnect's own GUI).

@@ -848,7 +848,7 @@ instrument-panel > #instrument-panel:has(#scanner-setup-modal, .scanner-deck-hit
    collapse/star/refresh buttons catalog-view, passes-view, journal-view and
    scans-view render in their own title row) for the grip (and, next to it,
    the WIDE/CARD toggle) to sit in without editing those 9 components'
-   headings. S1: only while EDIT LAYOUT is on (.editing, see app.js's
+   headings. Only while EDIT LAYOUT is on (.editing, see app.js's
    _sectionShell) -- with the grip hidden the gutter would just be waste. */
 .section-shell.editing .panel {
   padding-right: 68px;
@@ -1143,7 +1143,7 @@ button.link-problem {
   padding: 2px 8px;
 }
 
-/* S1 shell (app.js render()): .app-body holds the workspace content
+/* shell (app.js render()): .app-body holds the workspace content
    (.app-main) and, at >=1100px, the docked signal inspector beside it. Below
    that width it's plain block flow and <signal-panel> stays an overlay sheet
    (position: fixed via .overlay-backdrop), so its DOM position is moot. */
@@ -1885,9 +1885,9 @@ button.run-rec:hover:not(:disabled) {
 .decoder-option-category {
   font-size: 0.72em;
 }
-/* S1 receiver strip (instrument-panel.js, recorder-control.js, s-meter.js,
-   segment-readout.js) -- see docs/epics/listening-workbench/S1-ui-contract.md
-   §"Receiver strip". New file (W2), merged into styles.css by the
+/* receiver strip (instrument-panel.js, recorder-control.js, s-meter.js,
+   segment-readout.js)
+   New file, merged into styles.css by the
    coordinator. Extends the base .panel/.lamp-cluster/.freq-meter-row/
    .readout/.control-row rules in styles.css rather than replacing them, so
    ordering after styles.css in the merge is required for the compact
@@ -2008,7 +2008,7 @@ button.chip:hover:not(:disabled) {
 .smeter.compact .smeter-scale {
   display: none;
 }
-/* S1: styles for review-view.js and setup-drawer.js's new
+/* styles for review-view.js and setup-drawer.js's new
    groups (recordings-view.js/survey-view.js reuse existing global classes
    from styles.css -- .lib-table, .ev-*, .control-row, .run-start/-stop,
    .row, .readout, .empty, .dim, button:disabled -- with no changes needed
@@ -2095,7 +2095,7 @@ button.chip:hover:not(:disabled) {
   margin: 6px 0 0;
 }
 
-/* S1 chrome-compaction pass (docs/epics/listening-workbench/S1-ui-contract.md):
+/* chrome-compaction pass:
    pins the survey table's row height at a compact ~28px (padding 5px top/
    bottom + this line-height + 1px border) rather than the browser's default
    line-height for 0.9em text, so four rows reliably fit in ~120px under the
@@ -2104,7 +2104,7 @@ button.chip:hover:not(:disabled) {
   line-height: 18px;
 }
 
-/* S1: the collapsed OPTIONS summary is one line -- the text yields (ellipsis,
+/* the collapsed OPTIONS summary is one line -- the text yields (ellipsis,
    full text in its title) so the toggle and START ANALYZER never wrap into a
    second/third line and eat the 1280x800 row budget. */
 .survey-options-line {
@@ -2574,7 +2574,7 @@ catalog-view .catalog-source-tooltip strong {
   }
 }
 
-/* S3 review-view.js: the replay TIMELINE bar (runs + gaps) and its position
+/* review-view.js: the replay TIMELINE bar (runs + gaps) and its position
    marker -- see review-view.js's _renderTimeline. Each .timeline-seg's width
    is set inline (flex-grow, proportional to duration); this file only
    supplies the per-kind fills and the hatch pattern for an unknown gap. */
@@ -2627,10 +2627,9 @@ catalog-view .catalog-source-tooltip strong {
   pointer-events: none;
 }
 
-/* S4 decode integrity badge (.chip's recessed-well styling, sized down for a
+/* decode integrity badge (.chip's recessed-well styling, sized down for a
    message row) -- text only, never a percentage; color only for the two
-   verdicts that are actually correctness claims (passed/failed). See
-   docs/epics/listening-workbench/S4-decode-contract.md §5 and format.js's
+   verdicts that are actually correctness claims (passed/failed). See format.js's
    integrityBadge(). */
 .integrity-badge {
   font-size: 0.75em;

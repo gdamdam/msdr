@@ -1,6 +1,5 @@
-"""GET/PATCH /api/observations, POST .../claims (S2, msdr/api/**) -- see
-docs/epics/listening-workbench/S2-observations-contract.md "Service / API
-(W2)". Routes are thin wrappers over msdr.observations (owned by W1); these
+"""GET/PATCH /api/observations, POST .../claims (msdr/api/**).
+Routes are thin wrappers over msdr.observations; these
 tests exercise the wiring: 404s, the PATCH link/unlink note, an operator
 claim's state, restart persistence, and the legacy-import-once guard.
 """

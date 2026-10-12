@@ -97,14 +97,14 @@ async def test_recordings_list_reads_synthetic_recording(tmp_path):
         assert row["size_bytes"] == 40
         assert row["gaps"] == 1
         assert row["created"] == 1_700_000_000.0
-        # S1 Review shell: reception time only when recording.json says so.
+        # Review shell: reception time only when recording.json says so.
         assert row["capture_start"] == 1_700_000_000.0
         assert row["runs"] == 1
         assert row["path"].endswith(row["name"])
 
 
 async def test_recordings_without_index_have_unknown_capture_start(tmp_path):
-    # A directory mtime is never presented as the capture time (plan §6):
+    # A directory mtime is never presented as the capture time:
     # without recording.json `capture_start` is null while `created` keeps
     # the mtime fallback for list ordering.
     _write_synthetic_recording(tmp_path)
@@ -307,7 +307,7 @@ async def test_recordings_analyze_delegates_to_iqscan_runner(tmp_path):
 
 async def test_recordings_unreadable_root_is_503_not_empty(tmp_path):
     # An external volume this process may not read must surface as
-    # "unavailable", never as a quietly empty list (plan §9 lifecycle cases).
+    # "unavailable", never as a quietly empty list.
     root = tmp_path / "recordings"
     root.mkdir()
     root.chmod(0o000)

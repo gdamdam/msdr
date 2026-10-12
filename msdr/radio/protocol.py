@@ -24,7 +24,7 @@ class SpectrumFrame:
     """One spectrum-stream frame: 512 uint8 bins (payload type 3), most recent
     last. Bin i <-> center - sample_rate/2 + i * sample_rate/512 (FFT order: bin
     256 is the centre; measured against an FFT of the IQ stream 2026-09-26) --
-    see docs/research/2026-09-22-sdrconnect-websocket-api.md Sec7."""
+    see docs/research/2026-09-22-sdrconnect-websocket-api.md Sec12."""
 
     bins: bytes
     at: float

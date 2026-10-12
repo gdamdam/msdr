@@ -1,8 +1,7 @@
--- Observations and honest evidence (S2, 0.27.0). Additive only: nothing is
+-- Observations and honest evidence (0.27.0). Additive only: nothing is
 -- renamed or dropped. A Session is one live run or one replay; an
 -- Observation is one reception inside it; Claims are append-only,
 -- inspectable assertions about an Observation (msdr.contracts.evidence).
--- See docs/epics/listening-workbench/S2-observations-contract.md.
 -- NB: db._split_statements splits on semicolons, so none may appear in
 -- comments below.
 

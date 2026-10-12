@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate docs/validation/scorecard-synthetic.md from the S4 corpus
+"""Regenerate docs/validation/scorecard-synthetic.md from the validation corpus
 scorecard (msdr.validation.scorecard) -- a fixed *synthetic* corpus, nothing
 committed as IQ. Run from the repo root:
 

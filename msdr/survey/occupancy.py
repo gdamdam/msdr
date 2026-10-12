@@ -9,7 +9,7 @@ import numpy as np
 
 _BINS = 512
 # 60s / 600s at the measured ~23 frames/s (docs/research/2026-09-22-sdrconnect-
-# websocket-api.md Sec7).
+# websocket-api.md Sec12).
 _WINDOWS_FRAMES = (1_380, 13_800)
 # threshold_db=8.0 (settings default) at ~0.49 dB/uint8 unit -- see survey.py's
 # own conversion for the general case; this default matches settings' default.

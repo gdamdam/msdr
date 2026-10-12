@@ -1,4 +1,4 @@
-"""Beacon monitor API (S10, msdr/api/**, Stream B): GET /api/beacons, POST
+"""Beacon monitor API (msdr/api/**): GET /api/beacons, POST
 /api/beacons/start|stop, GET/DELETE /api/beacons/hits, BeaconError -> 409, the
 refusal rule (survey analyzer / band decode / recorder recording), the
 decoder_event -> BeaconMonitor.note_decode_event fan-in, and

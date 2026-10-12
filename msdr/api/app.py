@@ -1093,7 +1093,7 @@ def create_app(
     async def get_validation(service: AppService = Depends(get_service)):
         # Pure read of committed manifest/matrix/scorecard files: never runs a
         # decoder or touches the radio. Always lists the outstanding gates so
-        # a green-looking UI can't hide HF field validation (plan S5).
+        # a green-looking UI can't hide HF field validation.
         from msdr.validation.status import validation_status
 
         return await asyncio.to_thread(validation_status, service.settings)
@@ -1179,7 +1179,7 @@ def create_app(
     async def decoder_band_save(body: BandSaveIn, service: AppService = Depends(get_service)):
         return service.decoder_band_save(body.frequency_hz, body.name)
 
-    # --- wide-view survey (S1) ------------------------------------------------
+    # --- wide-view survey ------------------------------------------------
 
     @app.get("/api/survey")
     async def get_survey(service: AppService = Depends(get_service)):
@@ -1411,7 +1411,7 @@ def create_app(
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    # --- review: source-independent playback + audio (S3) --------------------
+    # --- review: source-independent playback + audio --------------------
     # Every route below acts on the replay's VirtualReceiver only -- never
     # self.adapter/the live radio (see AppService's review_* methods).
 
@@ -1488,7 +1488,7 @@ def create_app(
     async def review_decode_stop(service: AppService = Depends(get_service)):
         return await service.review_decode_stop()
 
-    # --- beacon monitor (S10) ------------------------------------------------
+    # --- beacon monitor ------------------------------------------------
 
     @app.get("/api/beacons")
     async def get_beacons(service: AppService = Depends(get_service)):
@@ -1515,7 +1515,7 @@ def create_app(
     async def delete_beacon_hits(service: AppService = Depends(get_service)):
         return {"cleared": service.beacon_hits_clear()}
 
-    # --- scanner finds log (S11) ---------------------------------------------
+    # --- scanner finds log ---------------------------------------------
 
     @app.get("/api/finds")
     async def get_finds(
@@ -1559,7 +1559,7 @@ def create_app(
             frequency_hz=frequency_hz, signal_id=signal_id, find_id=find_id
         )
 
-    # --- observations and honest evidence (S2) ------------------------------
+    # --- observations and honest evidence ------------------------------
 
     @app.get("/api/observations")
     async def get_observations(
@@ -2095,7 +2095,7 @@ def create_app(
         finally:
             service.broadcaster.unsubscribe(q)
 
-    # --- review audio transport (S3) -----------------------------------------
+    # --- review audio transport -----------------------------------------
 
     @app.websocket("/ws/audio")
     @app.websocket("/ws/live-audio")

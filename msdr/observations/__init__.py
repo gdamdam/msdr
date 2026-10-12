@@ -1,4 +1,4 @@
-"""Observations and honest evidence (S2): sessions, observations,
+"""Observations and honest evidence: sessions, observations,
 append-only claims and recording references over the msdr database."""
 
 from msdr.observations.models import Claim, Observation, RecordingReference, Session

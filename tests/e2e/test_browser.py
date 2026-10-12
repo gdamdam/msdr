@@ -1,4 +1,4 @@
-"""Browser tests over a real msdr app + FakeSDRconnect (see docs/superpowers/
+"""Browser tests over a real msdr app + FakeSDRconnect
 specs/2026-09-23-sp1-trust-feedback-design.md, section C). Skipped unless
 `--e2e` is passed (see tests/e2e/conftest.py) -- Chromium can't launch inside
 this repo's sandbox, so these need to run unsandboxed or by hand:
@@ -459,7 +459,7 @@ def test_layout_change_survives_reload(live_app, page: Page):
         recent_row.get_by_title("move up").click()
 
     page.reload()
-    # S1 default LISTEN column 2 is ["nearby", "recent"] (inbox lives in
+    # default LISTEN column 2 is ["nearby", "recent"] (inbox lives in
     # LIBRARY now), so moving RECENT up puts it first.
     page.wait_for_function("() => document.querySelector('msdr-app')?.settings?.workspaces?.listen")
     columns = page.locator("msdr-app").evaluate("app => app.settings.workspaces.listen.columns")
@@ -489,7 +489,7 @@ def test_layout_preset_survives_reload(live_app, page: Page):
 
 
 def test_layout_grip_keyboard_arrow_right_moves_and_survives_reload(live_app, page: Page):
-    # S1: grips render only in EDIT LAYOUT mode (SETUP → LAYOUT), remembered
+    # grips render only in EDIT LAYOUT mode (SETUP → LAYOUT), remembered
     # in localStorage -- switch it on before the app loads. Listen's own
     # sections (nearby/recent/listen/log/decode) now render through
     # <listen-workbench> outside the draggable grid (app.js's
@@ -499,7 +499,7 @@ def test_layout_grip_keyboard_arrow_right_moves_and_survives_reload(live_app, pa
     page.goto(live_app.base_url)
     # _switchWorkspace (app.js) resolves the clicked workspace's layout from
     # whatever this.settings holds *right now*, and marks _workspaceChosen so
-    # a GET that lands later never overrides it again (S1: the operator's own
+    # a GET that lands later never overrides it again (the operator's own
     # choice wins over the server) -- so the initial GET /api/settings must
     # land before the tab click, or it would permanently stick with the
     # pre-fetch default layout instead of the one just saved below.

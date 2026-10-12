@@ -1,4 +1,4 @@
-"""validation_status(settings) -> dict (S5 plan §2): a pure, read-only
+"""validation_status(settings) -> dict: a pure, read-only
 snapshot combining four sources of truth about what msdr's decoders have
 actually been shown to do, kept deliberately separate so nothing here can
 read as a green "all validated" summary:
@@ -17,7 +17,7 @@ read as a green "all validated" summary:
    runs a decoder itself.
 4. **Outstanding gates**: a fixed list of field-validation work that no
    synthetic fixture or repo test can close, always present regardless of
-   how green everything else looks (plan §9: "HF field validation listed as
+   how green everything else looks ("HF field validation listed as
    unresolved wherever validation status is shown").
 """
 
@@ -38,7 +38,7 @@ _SCORECARD_PATH = _PACKAGE_DATA / "scorecard-synthetic.md"
 
 # Fixed regardless of what the corpus/decoder/scorecard sections say this
 # call -- these are field-validation facts, not something a synthetic test
-# run or a repo fixture could ever close (plan §9).
+# run or a repo fixture could ever close.
 OUTSTANDING_GATES: tuple[str, ...] = (
     "HF field validation: no off-air HF recording is available yet "
     "(wefax/navtex/wwv/dcf77/msf/rtty/packet300/cw are synthetic-fixture "

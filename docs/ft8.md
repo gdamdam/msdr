@@ -1,6 +1,6 @@
 # FT8 decoder
 
-FT8 decoding in msdr, built on WSJT-X's `jt9` command-line decoder.
+msdr decodes FT8 using WSJT-X's `jt9` command-line decoder. This page covers how the pipeline works, what it needs and how it was checked.
 
 ## Pipeline
 
@@ -11,24 +11,26 @@ FT8 decoding in msdr, built on WSJT-X's `jt9` command-line decoder.
 
 A successful event means WSJT-X accepted the message through its FT8 decoder checks.
 
-## Input constraints
+## Requirements
+
+### Input
 
 - The IQ rate must be an integer multiple of 12 kHz and greater than 12 kHz.
 - The complete USB passband must fit inside the captured IQ span.
-- Live input has no source timestamp, so the first boundary is estimated from the time IQ reaches msdr; subsequent windows follow the sample count. UTC accuracy is therefore limited to stream timing and startup latency.
+- Live input has no source timestamp. The first boundary is estimated from the time IQ reaches msdr, and later windows follow the sample count. UTC accuracy is therefore limited by stream timing and startup latency.
 
-## Dependency
+### `jt9`
 
-- Install WSJT-X for the host architecture and make its `jt9` executable discoverable by msdr.
+- Install WSJT-X for the host architecture and make its `jt9` executable discoverable by msdr. msdr checks explicit binary directories first, then PATH, then `~/Applications/wsjtx.app`.
 - On macOS the executable lives at `wsjtx.app/Contents/MacOS/jt9`.
-- `jt9` depends on libraries and helper files shipped in the WSJT-X application bundle; keep it in that bundle rather than copying `jt9` alone.
-- Check availability in the decoder readiness view before starting an FT8 session.
+- `jt9` depends on libraries and helper files shipped in the WSJT-X application bundle. Keep it in that bundle rather than copying `jt9` alone.
+- Check the decoder readiness view before starting an FT8 session.
 
 ## Validation
 
 ### Adapter tests
 
-They exercise jt9 row parsing, rate guards, 12 kHz/15-second WAV construction, and the async subprocess-to-event path using a small fake executable. This verifies the application boundary, not RF performance.
+These exercise `jt9` row parsing, rate guards, 12 kHz / 15-second WAV construction and the async subprocess-to-event path, using a small fake executable. They verify the application boundary, not RF performance.
 
 ### WSJT-X smoke check
 
@@ -39,16 +41,16 @@ WSJT-X 3.0.2's `ft8sim` generated a 12 kHz FT8 WAV for `K1ABC W9XYZ EN37` at 150
 ```
 
 - The same `jt9` decoded 13 messages from the SDRangel sample `sdrbench/samples/ft8/230105_091630.wav`.
-- Both WAVs were also passed through msdr's actual async `jt9` subprocess path: the generated capture returned a structured `K1ABC W9XYZ EN37` event and the recording returned 13 structured messages.
+- Both WAVs were also passed through msdr's own async `jt9` subprocess path. The generated capture returned a structured `K1ABC W9XYZ EN37` event, and the recording returned 13 structured messages.
 
 ### Channelizer smoke check
 
-The generated waveform was resampled to 48 kHz, supplied as I with Q=0, passed through msdr's USB filter and 4:1 decimator, and decoded by the same backend as `K1ABC W9XYZ EN37` at -13 dB. This synthetic path check does not replace validation against captured IQ or verify live clock alignment from the receiver.
+The generated waveform was resampled to 48 kHz and supplied as I with Q=0. It then went through msdr's USB filter and 4:1 decimator, and the same backend decoded `K1ABC W9XYZ EN37` at -13 dB. This synthetic path check does not replace validation against captured IQ, and it does not verify live clock alignment from the receiver.
 
 ### Fixture and install notes
 
 - The recorded fixture's SHA-256 is `cf8da30e44b5632515b407cf7171f55ccfc5116a83d8f69244fa4482a4472a24`.
-- Native WSJT-X 3.0.2 is installed locally at `~/Applications/wsjtx.app`; msdr now discovers `jt9` there automatically, after explicit binary directories and PATH.
-- The official arm64 package SHA-256 was verified before extracting the bundle. No system installer scripts or shared-memory system changes were used.
+- Native WSJT-X 3.0.2 was installed locally at `~/Applications/wsjtx.app`, which msdr discovers automatically.
+- The official arm64 package SHA-256 was verified before the bundle was extracted. No system installer scripts or shared-memory system changes were used.
 
 See also: [decoder-expansion.md](decoder-expansion.md), [validation/](validation/).

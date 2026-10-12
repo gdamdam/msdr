@@ -1,4 +1,4 @@
-"""Inspectable claims instead of a confidence number (plan §3).
+"""Inspectable claims instead of a confidence number.
 
 Evidence types are *independent sources*. They are never summed into one
 ladder and no heuristic output is ever presented as a probability. What each
@@ -55,7 +55,7 @@ IntegrityStatus = Literal[
     "failed",
 ]
 
-# Capture quality is displayed separately from claims (plan §3): quiet is
+# Capture quality is displayed separately from claims: quiet is
 # not data and not-voice is not a protocol identification.
 CaptureQuality = Literal[
     "sufficient",
@@ -89,7 +89,7 @@ class Measurement(BaseModel):
 
     dBFS, dBm and dB (SNR) are different quantities and stay different units;
     an unknown calibration is not converted. A percentage must say what it
-    divides by and over which window (plan §3).
+    divides by and over which window.
     """
 
     name: str
@@ -117,7 +117,7 @@ class Claim(BaseModel):
     evidence_type: EvidenceType
     observation_id: str | None = None
     source_id: str | None = None
-    # Set when this claim comes from a review/replay decode session (S4),
+    # Set when this claim comes from a review/replay decode session,
     # never a live one -- so a UI or a later query can tell "this decode
     # happened during analysis of a recording" from "this happened live",
     # and live encounter counts are never inflated by re-analysis.
@@ -141,7 +141,7 @@ class Claim(BaseModel):
     next_action: str = ""
     created_at: datetime | None = None
     # A newer analysis or an operator correction points here instead of
-    # overwriting (append-only, plan §7). Historical claims stay inspectable.
+    # overwriting (append-only). Historical claims stay inspectable.
     superseded_by: str | None = None
 
     @model_validator(mode="after")
@@ -207,8 +207,8 @@ def evidence_state(claims: list[Claim], *, include_historical: bool = False) -> 
 def identity_established(claims: list[Claim]) -> bool:
     """True only when a station/protocol claim is validated or operator-supplied.
 
-    Frequency allocation and schedule are context, never identity (plan §3,
-    §5 AIS case). An IQ estimate names candidates, not an emitter.
+    Frequency allocation and schedule are context, never identity (e.g. the AIS
+    case). An IQ estimate names candidates, not an emitter.
     """
     for c in claims:
         if c.historical or c.subject not in ("station", "protocol"):

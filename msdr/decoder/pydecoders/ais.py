@@ -7,8 +7,8 @@ receiver's own discriminator is the front end here.
 
 Receiver structure ported from the SDRangel AIS demodulator's discriminator
 path, plugins/channelrx/demodais/aisdemodsink.cpp @ 6627a5cf7058
-(GPL-3.0-or-later, (C) Jon Beniston M7RCE, Edouard Griffiths F4EXB), via the
-S0 PoC docs/decisions/poc/gmsk_ais_poc.py: Gaussian pulse filter ->
+(GPL-3.0-or-later, (C) Jon Beniston M7RCE, Edouard Griffiths F4EXB), via an
+earlier proof of concept: Gaussian pulse filter ->
 training-sequence preamble correlation for alignment -> DC (frequency-offset)
 estimate from the training sequence only -> hard slice at symbol centres,
 trying neighbouring alignments -> NRZI -> HDLC flag search / de-stuffing /
@@ -207,7 +207,7 @@ def decode_payload(data: bytes) -> dict[str, object] | None:
         fields.update(_position_fields(data, sog_at=50, lon_at=61))
     elif msg_type == 18:
         fields.update(_position_fields(data, sog_at=46, lon_at=57))
-    # Types 5/24 (static/voyage data, class B static): type + MMSI only in S4.
+    # Types 5/24 (static/voyage data, class B static): type + MMSI only so far.
     return fields
 
 
@@ -226,7 +226,7 @@ def _text(fields: dict[str, object]) -> str:
     return " ".join(parts)
 
 
-# DecodeEvent gains `integrity`/`integrity_note` in S4 (W2); set them only when
+# DecodeEvent gains `integrity`/`integrity_note` later; set them only when
 # the running dataclass has them so this module works before and after.
 _EVENT_FIELDS = {f.name for f in dataclasses.fields(DecodeEvent)}
 

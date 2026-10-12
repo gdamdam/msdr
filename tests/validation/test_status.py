@@ -1,4 +1,4 @@
-"""msdr.validation.status.validation_status (S5 plan §2): a pure snapshot,
+"""msdr.validation.status.validation_status: a pure snapshot,
 never regenerating the scorecard or running a decoder."""
 
 import os

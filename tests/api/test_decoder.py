@@ -44,7 +44,7 @@ class FakeDecoderManager:
         self.band_decoders: list[str] = []
         self.band_start_calls: list[tuple] = []
         self.band_stop_calls: list[str] = []
-        # S5 decode handoff (band_pin/band_unpin): a pin adds a fixed
+        # decode handoff (band_pin/band_unpin): a pin adds a fixed
         # channel like start_band, an unpin removes it -- called by
         # AppService._survey_decode_start/_stop, not a route directly.
         self.band_pin_calls: list[tuple[int, list[str]]] = []
@@ -161,7 +161,7 @@ async def test_decoders_registry_route_delegates_to_describe_decoders(monkeypatc
     # session=<manager status or None>) and return its result as-is -- the
     # registry contents themselves are msdr.decoder's own concern (Stream A),
     # not this route's. `session` feeds the per-decoder readiness.session
-    # fact (S0), so the service must pass it rather than leave it None.
+    # fact, so the service must pass it rather than leave it None.
     calls = []
 
     def fake_describe(bin_dirs, session=None):
@@ -465,7 +465,7 @@ def _write_wav(path, num_frames: int = 8) -> None:
         f.writeframes(b"\x00\x00" * num_frames)
 
 
-# --- S6: DecoderSettings.calls_dir/calls_keep, calls WAV route, retention --
+# --- DecoderSettings.calls_dir/calls_keep, calls WAV route, retention --
 
 
 def test_decoder_settings_calls_defaults_and_back_compat():
@@ -473,7 +473,7 @@ def test_decoder_settings_calls_defaults_and_back_compat():
     assert settings.calls_dir is None
     assert settings.calls_keep == 500
 
-    # A settings.json saved before S6 has neither key -- it must still load.
+    # A settings.json saved before has neither key -- it must still load.
     loaded = DecoderSettings.model_validate({})
     assert loaded.calls_dir is None
     assert loaded.calls_keep == 500
@@ -482,7 +482,7 @@ def test_decoder_settings_calls_defaults_and_back_compat():
 async def test_decoder_call_wav_route_streams_file(tmp_path, monkeypatch):
     # Survey (msdr.survey, a separate concurrent stream) isn't this test's
     # concern -- keep AppService._build_survey a no-op so it can't fail these
-    # calls-route/retention tests for reasons unrelated to S6 Stream B.
+    # calls-route/retention tests for reasons unrelated to Stream B.
     monkeypatch.setattr(service_module, "Survey", None)
     monkeypatch.setattr(survey_module, "Survey", None)
     _write_wav(tmp_path / "call1.wav")
@@ -564,7 +564,7 @@ async def test_decoder_call_retention_trims_oldest_wav_files(tmp_path, monkeypat
         assert remaining == {"call3.wav", "call4.wav"}
 
 
-# --- S7-S10 round 1: DecoderSettings.fax_dir/fax_keep, images route, retention --
+# --- DecoderSettings.fax_dir/fax_keep, images route, retention --
 
 
 def _write_png(path) -> None:

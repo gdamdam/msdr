@@ -6,7 +6,7 @@ consumer (listener, decoder, analyzer) wants demodulated. Both carry the
 ``source_id`` so commands and events can be routed and so a replay can never
 be mistaken for the live receiver.
 
-Clock rules (plan §6) that every source implementation must honour:
+Clock rules that every source implementation must honour:
 
 - the *sample index* is the replay clock; wall-clock is only a pacing hint;
 - ``capture_time`` is the original reception time and is ``None`` when the
@@ -42,7 +42,7 @@ class Discontinuity(BaseModel):
     at_sample: int = Field(ge=0)
     generation: int = Field(ge=0)
     # Known gap length in samples of the *previous* run's rate; None means
-    # the duration is unknown (never invented, plan §6).
+    # the duration is unknown (never invented).
     gap_samples: int | None = Field(default=None, ge=0)
     note: str = ""
 
@@ -107,7 +107,7 @@ class ChannelDescriptor(BaseModel):
     def fits(self, source: SourceDescriptor, margin_hz: int = 0) -> bool:
         """True when the whole channel (plus filter margin) lies in the span.
 
-        Virtual tuning in replay is bounded by the recorded span (plan §6);
+        Virtual tuning in replay is bounded by the recorded span;
         the live radio may instead retune, which is the caller's decision.
         """
         lo, hi = source.span_hz

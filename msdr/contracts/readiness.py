@@ -1,4 +1,4 @@
-"""Decoder readiness as three independent facts (plan §4).
+"""Decoder readiness as three independent facts.
 
 1. **Installation** -- is the backend here, and which version?
 2. **Validation** -- has *this* backend version been shown to work, on what?

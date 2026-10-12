@@ -894,7 +894,7 @@ async def test_get_settings_default_layout_matches_current_rendering_order():
     async with running_app() as (app, client, adapter):
         resp = await client.get("/api/settings")
         assert resp.status_code == 200
-        # S1: listen's default names only its own ids; every other id is
+        # listen's default names only its own ids; every other id is
         # backfilled (SECTION_IDS order) into the last column.
         assert resp.json()["layout"]["columns"] == [
             ["survey", "listen", "decode"],
@@ -990,7 +990,7 @@ async def test_patch_settings_layout_missing_id_appended_to_last_column():
         )
         assert resp.status_code == 200
         # Missing ids are backfilled in SECTION_IDS order -- "catalog",
-        # "beacons", "finds" and the S1 ids are the ones left out here --
+        # "beacons", "finds" and the ids are the ones left out here --
         # which is also how an existing user's saved layout picks up a
         # section added later.
         assert resp.json()["layout"]["columns"][-1][-8:] == [
@@ -1145,7 +1145,7 @@ def test_settings_load_old_file_seeds_listen_workspace(tmp_path):
     path.write_text(json.dumps({"layout": {"columns": old_columns, "wide": ["survey"]}}))
     loaded = Settings.load(path)
     assert loaded.workspace == "listen"
-    # Seeded as-is, plus the S1 ids backfilled into the last column.
+    # Seeded as-is, plus the ids backfilled into the last column.
     expected = [
         *old_columns[:2],
         [*old_columns[2], "scan", "decode", "review", "library", "allocations"],
@@ -1228,7 +1228,7 @@ async def test_patch_settings_legacy_layout_targets_active_workspace():
 
 
 def test_survey_settings_analyzer_defaults():
-    # S3/S4 IQ analyzer knobs (max_analyzed/analyze_dwell_s/analyze_min_snr_db)
+    # IQ analyzer knobs (max_analyzed/analyze_dwell_s/analyze_min_snr_db)
     # -- see msdr.survey.analyzer.Analyzer.
     survey = Settings().survey
     assert survey.max_analyzed == 6
@@ -1237,7 +1237,7 @@ def test_survey_settings_analyzer_defaults():
 
 
 def test_settings_load_old_file_without_analyzer_fields(tmp_path):
-    # A settings.json saved before S3/S4 has no survey.max_analyzed/
+    # A settings.json saved before has no survey.max_analyzed/
     # analyze_dwell_s/analyze_min_snr_db -- it must still load, backfilled
     # with the new fields' defaults, same as any other additive field.
     path = tmp_path / "settings.json"
@@ -1302,12 +1302,12 @@ class FakeSurvey:
         self.active = False
         self.span_calls: list[tuple[int, int, bool]] = []
         self.dimensions: list[str] = ["activity", "bandwidth", "bandplan", "catalog"]
-        # S5 decode handoff surface.
+        # decode handoff surface.
         self.decode_calls: list[tuple[int, list[str] | None]] = []
         self.undecode_calls: list[int] = []
         self.note_decode_event_calls: list[dict] = []
         self.identity_summary_result: dict | None = None
-        # S10 beacon monitor's refusal rule reads status()["analyzer"]["active"].
+        # beacon monitor's refusal rule reads status()["analyzer"]["active"].
         self.analyzer_active = False
 
     async def start(self) -> None:
@@ -1331,7 +1331,7 @@ class FakeSurvey:
             },
             "presets": [],
             "sample_rates_hz": [2_000_000, 4_000_000, 6_000_000, 8_000_000, 10_000_000],
-            # S10 beacon monitor's refusal rule reads this (AppService's
+            # beacon monitor's refusal rule reads this (AppService's
             # start_session guard) -- see tests/api/test_beacons.py.
             "analyzer": {"active": self.analyzer_active},
         }
@@ -1429,7 +1429,7 @@ async def test_survey_dimensions_route_updates_fake_survey():
 
 
 async def test_survey_dimensions_route_accepts_iq_dimensions():
-    # S3/S4: the needs_iq dimensions (modulation/symbol_rate/voice) are no
+    # the needs_iq dimensions (modulation/symbol_rate/voice) are no
     # longer refused at this layer -- the route just passes whatever
     # set_dimensions returns/raises straight through (the real Survey does
     # the accept/reject check itself, per the plan's contract).
@@ -1444,7 +1444,7 @@ async def test_survey_dimensions_route_accepts_iq_dimensions():
 
 
 async def test_build_survey_passes_iq_stream_factory(monkeypatch):
-    # AppService._build_survey wires an iq_stream_factory kwarg (S3/S4's
+    # AppService._build_survey wires an iq_stream_factory kwarg (the
     # Analyzer, over its own SDRconnect connection, same pattern as
     # _build_decoder's candidate_stream) -- captured here via a stand-in
     # Survey class since the real one may not accept the kwarg yet

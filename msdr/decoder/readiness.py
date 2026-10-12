@@ -193,7 +193,7 @@ _CHANNEL_STATE_TO_SESSION = {
 def session_from_facts(
     decoder_id: str, facts: dict, *, source_id: str | None = None, detail: str = ""
 ) -> Session:
-    """One decoder's Session from its own facts (S4 §1) -- never from a
+    """One decoder's Session from its own facts -- never from a
     manager-wide proxy. `facts` keys (all optional): state, error, events,
     valid_frames, synchronized, quiet, unsupported (reason text).
 
@@ -239,7 +239,7 @@ def decoder_facts(
     quiet: bool = False,
     unsupported: str | None = None,
 ) -> dict:
-    """The per-decoder status dict manager/band/replay status() carry (S4 §1):
+    """The per-decoder status dict manager/band/replay status() carry:
     the legacy id/state/error keys plus the session facts and their
     session_state."""
     facts = {
@@ -268,7 +268,7 @@ def merge_band_facts(decoder_id: str, band_channels: list[dict]) -> dict:
             (d for d in channel.get("decoder_status") or [] if d.get("id") == decoder_id), None
         )
         if per is None:
-            # Pre-S4 band status (no per-decoder facts): channel totals only.
+            # Earlier band status (no per-decoder facts): channel totals only.
             events += int(channel.get("events") or 0)
             if channel.get("state") == "error":
                 errors.append(channel.get("error") or "")
@@ -326,7 +326,7 @@ def session_for(decoder_id: str, manager_status: dict | None) -> Session:
         )
 
     if "events" not in channel:
-        # Pre-S4 status (no per-decoder facts): the manager-wide
+        # Earlier status (no per-decoder facts): the manager-wide
         # events_total is the only signal -- kept so older callers/tests
         # read the same as before.
         channel = {**channel, "events": manager_status.get("events_total", 0)}

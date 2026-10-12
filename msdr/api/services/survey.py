@@ -1,4 +1,4 @@
-"""Wide-view survey (S1) and band scans.
+"""Wide-view survey and band scans.
 
 AppService mixin: methods moved verbatim from msdr/api/service.py;
 all attributes they use are initialised in AppService.__init__.
@@ -36,22 +36,22 @@ class SurveyServiceMixin:
             # docs/allocations.md: label["allocation"] (every service of the
             # band, frequency-only) beside the first-candidate bandplan hint.
             allocation=self.allocation_summary_at,
-            # S3/S4 IQ analyzer's own SDRconnect stream (separate socket, same
+            # IQ analyzer's own SDRconnect stream (separate socket, same
             # pattern as _build_decoder's candidate_stream above).
             iq_stream_factory=(
                 (lambda: IQStream(settings.host, settings.port)) if IQStream is not None else None
             ),
-            # S5 decode handoff: Survey.decode/undecode drive BAND DECODE
+            # decode handoff: Survey.decode/undecode drive BAND DECODE
             # pin/unpin through these -- see _survey_decode_start/_stop.
             decode_start=self._survey_decode_start,
             decode_stop=self._survey_decode_stop,
-            # S2 observations: fired at label boundaries only (never per
+            # observations: fired at label boundaries only (never per
             # spectrum frame -- see Survey's own contract).
             on_labels_changed=self.obs_recorder.sync_labels,
         )
 
     async def _survey_decode_start(self, frequency_hz: int, decoders: list[str]) -> dict:
-        """Survey's `decode_start` hook (S5 contract): starts/adds a pinned
+        """Survey's `decode_start` hook: starts/adds a pinned
         BAND DECODE channel. A SurveyError (not DecoderError) so it maps the
         same way whether msdr.decoder isn't importable at all or the feature
         is off -- both are "decode refused" from Survey's point of view."""
@@ -88,7 +88,7 @@ class SurveyServiceMixin:
         return await self.decoder.band_unpin(frequency_hz)
 
     def _identify_for_survey(self, frequency_hz: int, width_hz: float) -> list[dict]:
-        """Enrichment callback for msdr.survey labels (S2 contract) -- reuses
+        """Enrichment callback for msdr.survey labels -- reuses
         identify()/_catalog_candidates but never raises (this runs from the
         survey's own status-build loop, not a request) and returns [] when
         the relevant feature is off."""
@@ -149,7 +149,7 @@ class SurveyServiceMixin:
             logger.exception("survey: stop failed")
         self._survey_running = False
 
-    # --- wide-view survey (S1) ------------------------------------------------
+    # --- wide-view survey ------------------------------------------------
 
     def _require_survey(self) -> None:
         # Same shape as _require_decoder: an unavailable survey package is a
@@ -161,7 +161,7 @@ class SurveyServiceMixin:
 
     def _session_receiver_snapshot(self) -> dict:
         """Antenna/gain/profile snapshot for a new observations Session's
-        `receiver` field (S2) -- every RESTORABLE property except the
+        `receiver` field -- every RESTORABLE property except the
         span/VFO ones, which the session carries separately as
         center_hz/sample_rate_hz."""
         skip = {"device_sample_rate", "device_center_frequency", "device_vfo_frequency"}
@@ -472,7 +472,7 @@ class SurveyServiceMixin:
         return await self.survey.undecode(frequency_hz)
 
     def survey_save(self, frequency_hz: int, name: str | None = None) -> dict:
-        """POST /api/survey/save (S5): reuses decoder_band_save's
+        """POST /api/survey/save: reuses decoder_band_save's
         creation/idempotency path, but sources decoders/name/notes from the
         survey's own identity_summary instead of the running band session."""
         self._require_survey()

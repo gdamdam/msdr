@@ -1,4 +1,4 @@
-"""Decoder/scanner lifecycle robustness (S5 plan §2):
+"""Decoder/scanner lifecycle robustness:
 
 (a) cancelling DecoderManager.start_decoding before its backend reports
     running leaves no leaked manager state (channel/pump/event tasks).
@@ -474,12 +474,12 @@ async def test_all_channels_ignored_status_has_no_dedicated_reason_text():
         # so would mean overloading a field whose only current meaning is
         # "why is the scan paused", which this path is not -- a genuine
         # design choice for whoever owns scanner.py, not a mechanical
-        # addition, so it's flagged in the S5 report instead of picked here.
+        # addition, so it's flagged in the report instead of picked here.
         assert status["skipped_ignored"] >= 2
         assert status["channel"] is None
         assert status["reason"] is None
         assert status["state"] == "running"
-        # S5: the visible outcome -- a whole pass tuned nothing.
+        # the visible outcome -- a whole pass tuned nothing.
         assert status["all_ignored"] is True
 
         await asyncio.wait_for(engine.stop(), 2.0)

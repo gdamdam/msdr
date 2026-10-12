@@ -304,7 +304,7 @@ async def test_recorder_tick_publishes_status_while_armed():
 async def test_seed_forwards_startup_properties_to_recorder():
     # A radio already playing at connect time used to leave the recorder
     # with started=False and no rate/centre until a *change* event arrived
-    # (S5 workflow review), so ARM was refused. The seed must reach it too.
+    # (workflow review), so ARM was refused. The seed must reach it too.
     fake = FakeRecorder()
     async with running_app(fake) as (app, client, _adapter):
         seeded = dict(fake.properties)

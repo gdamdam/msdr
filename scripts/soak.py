@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Long-running soak (S5 plan §9): drives a real AppService against an
+"""Long-running soak test: drives a real AppService against an
 in-process FakeSDRconnect for `--minutes` (default 480 = 8 hours) on one
 asyncio loop -- no uvicorn, no real network beyond the loopback websocket to
 the fake. Exercises the three things an all-day session actually does:
@@ -59,7 +59,7 @@ _SOAK_CENTER_HZ = 462_562_500
 _SOAK_RUN_SECONDS = 3.0
 _RSS_GROWTH_GATE_PCT = 30.0
 _LAG_P99_GATE_MS = 250.0
-_RSS_BASELINE_AT_S = 120.0  # "minute 2" (plan §9).
+_RSS_BASELINE_AT_S = 120.0  # RSS baseline taken at minute 2.
 
 
 def _rss_kb() -> float:
@@ -82,7 +82,7 @@ def _percentile(sorted_values: list[float], pct: float) -> float:
 
 
 async def _lag_monitor(samples_ms: list[float]) -> None:
-    """Event-loop lag (plan §2): a 100 ms timer's own drift. Runs for the
+    """Event-loop lag: a 100 ms timer's own drift. Runs for the
     whole soak; `run_soak` cancels it at shutdown."""
     try:
         while True:
@@ -95,7 +95,7 @@ async def _lag_monitor(samples_ms: list[float]) -> None:
 
 
 def _write_soak_recording(root: Path) -> Path:
-    """A synthetic 2-run recording (plan §2) for the review replay loop --
+    """A synthetic 2-run recording for the review replay loop --
     complex Gaussian noise at a realistic IQ rate (2 MS/s, same as
     tests/decoder/test_parity.py's fixtures), not a modulated signal: the
     soak cares about process/task lifecycle over hours, not decode content.

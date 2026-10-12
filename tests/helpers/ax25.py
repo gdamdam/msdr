@@ -1,11 +1,11 @@
-"""Synthetic AX.25 / AFSK-1200 (Bell 202) test signals (S4 parity fixture).
+"""Synthetic AX.25 / AFSK-1200 (Bell 202) test signals (parity fixture).
 
 Frame -> bits -> tones -> FM IQ, all deterministic:
 
 - AX.25 UI frame: 7-byte address fields (callsign shifted left one bit,
   SSID byte with the end-of-address bit on the source), control 0x03,
-  PID 0xF0, info, then the CRC-16/X.25 FCS sent low byte first (same CRC as
-  docs/decisions/poc/gmsk_ais_poc.py's ``crc16_x25``).
+  PID 0xF0, info, then the CRC-16/X.25 FCS sent low byte first (the CRC used by
+  the AIS GMSK burst generator, ``crc16_x25``).
 - HDLC: LSB-first bits, a zero stuffed after five ones, 0x7E flags around
   the (stuffed) body, never stuffed themselves.
 - NRZI: 0 = tone change, 1 = no change.

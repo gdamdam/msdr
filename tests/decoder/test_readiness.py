@@ -96,7 +96,7 @@ def test_session_for_running_with_events_is_unverified_output():
     session = session_for("pocsag", status)
     assert session.state == "unverified_output"
     assert session.events == 3
-    assert session.valid_frames == 0  # no integrity signal yet (S4)
+    assert session.valid_frames == 0  # no integrity signal yet
 
 
 def test_readiness_for_combines_all_three_facts():

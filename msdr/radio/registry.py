@@ -1,7 +1,7 @@
 """Property registry: wire names <-> ReceiverState fields, decode/encode, restore order.
 
 Single source of truth for every SDRconnect property msdr knows about. Restore
-staging follows design spec §7 (antenna before sample rate before frequencies
+staging follows the restore design (antenna before sample rate before frequencies
 before mode/bandwidth before the rest) so a profile replay never retunes into
 a filter or sample rate that can't hold it.
 """
@@ -15,7 +15,7 @@ class PropertySpec:
     field: str | None  # ReceiverState field name, None if not part of state
     kind: type  # int | float | bool | str
     read_only: bool = False
-    stage: int = 0  # restore stage 2..7 per spec §7; 0 = not restorable
+    stage: int = 0  # restore stage 2..7; 0 = not restorable
     tolerance: float = 0.0  # abs tolerance when confirming a set
     timeout_s: float = 1.5
     critical: bool = False

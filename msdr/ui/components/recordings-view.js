@@ -81,7 +81,7 @@ export class RecordingsView extends LitElement {
     this.dispatchEvent(new CustomEvent("close"));
   }
 
-  /** ▶ REVIEW (S1 contract): app.js switches to the review workspace and
+  /** ▶ REVIEW: app.js switches to the review workspace and
    * starts the replay itself through the existing _doSurveyReplay, same as
    * survey-view.js's own REPLAY picker -- this only names the file. */
   _review(r) {

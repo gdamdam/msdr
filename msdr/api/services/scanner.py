@@ -1,4 +1,4 @@
-"""Scanner (v0.12.0) and the scanner finds log (S11).
+"""Scanner (v0.12.0) and the scanner finds log.
 
 AppService mixin: methods moved verbatim from msdr/api/service.py;
 all attributes they use are initialised in AppService.__init__.
@@ -27,9 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 class ScannerServiceMixin:
-    # --- scanner finds log (S11) --------------------------------------------
-    # Engine hooks passed into ScannerEngine above -- see
-    # docs/superpowers/plans/2026-09-25-scanner-finds.md.
+    # --- scanner finds log --------------------------------------------
+    # Engine hooks passed into ScannerEngine above.
 
     _CLASSIFICATION_SURVEY_KEYS = (
         "activity",

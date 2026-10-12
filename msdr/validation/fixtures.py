@@ -1,4 +1,4 @@
-"""Synthetic fixture generators for the S4 corpus scorecard
+"""Synthetic fixture generators for the corpus scorecard
 (msdr.validation.scorecard). SYNTHETIC ONLY -- nothing here reflects a field
 capture; every array is generated in code, on demand.
 
@@ -8,10 +8,10 @@ Reuses two already-shared generators rather than re-inventing them:
   * msdr.survey.rds's own encode_rds_mpx/fm_modulate_chunks/RdsReceiver
     (production code, not a test double) for the WFM+RDS case.
 
-tests/helpers/ax25.py (the S4 plan's W2-owned shared AX.25 frame generator)
+a shared AX.25 frame generator (tests/helpers/ax25.py)
 did not exist yet when this was written, so the AFSK1200/AX.25 and Morse/CW
 generators below are minimal, self-contained implementations instead of a
-shared helper -- see the S4 report for this call-out.
+shared helper.
 """
 
 from __future__ import annotations
@@ -269,8 +269,8 @@ def keyed_carrier_iq(
     """An on/off keyed carrier with RANDOM bit lengths, not Morse's bimodal
     dot/dash statistics -- the negative control for "keyed carrier is not
     CW". `baud` is deliberately > 100 Bd (families.family_for's existing
-    "ook and rate < 100 Bd" CW gate, and the S4-planned bimodality check),
-    so this stays "keyed carrier", never "CW", whether or not the S4
+    "ook and rate < 100 Bd" CW gate, and a bimodality check),
+    so this stays "keyed carrier", never "CW", whether or not the
     bimodality check has landed yet in msdr.survey.families."""
     rng = np.random.default_rng(seed)
     n = int(duration_s * rate)

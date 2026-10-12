@@ -54,7 +54,7 @@ except ImportError:  # pragma: no cover - msdr.survey ships with this feature
         a real type to register, even when msdr.survey isn't importable."""
 
 try:
-    # A sixth package (msdr/source/, S3 Listening Workbench), built alongside
+    # A sixth package (msdr/source/, Listening Workbench), built alongside
     # this feature by a concurrent stream (msdr.source.virtual_receiver) --
     # same guard as msdr.survey/msdr.survey.beacons above. AppService only
     # ever binds a VirtualReceiver to a replay ReplaySource (self.survey._replay),
@@ -68,7 +68,7 @@ except ImportError:  # pragma: no cover - msdr.source ships with this feature
         to catch, even when msdr.source isn't importable."""
 
 try:
-    # A seventh package (msdr/decoder/replay_decode.py, S4), built alongside
+    # A seventh package (msdr/decoder/replay_decode.py), built alongside
     # this feature by a concurrent stream -- same guard as the others above.
     # Not available yet on a partial checkout: review_decode_start/stop then
     # raise SurveyError ("decode session unavailable"), same shape as every

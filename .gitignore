@@ -20,6 +20,10 @@ CLAUDE.md
 CHANGELOG.md
 FUTURE.md
 TODO.md
+docs/epics/
+docs/decisions/
+docs/validation/recording-plan.md
+scripts/probe_sdrconnect.py
 
 # Local hardware designs, not part of the public tree
 hardware/

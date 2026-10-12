@@ -17,7 +17,7 @@ const SPECTRUM_FRACTION = 0.45;
 const HEAT_STRIP_CSS_PX = 6;
 const RULER_CSS_PX = 18;
 const CANVAS_CSS_HEIGHT = 360;
-// S1 contract's default surface heights at >=1280 css px wide (spectrum
+// contract's default surface heights at >=1280 css px wide (spectrum
 // 100, waterfall 150, occupancy 24 -- the two heat strips, 12px each): a
 // component-side fallback only, used when nothing else has given the canvas
 // an explicit clientHeight (a layout drag / CSS still wins, so panes stay
@@ -39,11 +39,10 @@ const SNAP_STORAGE_KEY = "msdr.survey.snap";
 const DEFAULT_HISTORY_ROWS = 300;
 const DEFAULT_AVG_FACTOR = 0.5;
 
-// S2: badge lane (chips under the waterfall, one per tracked peak/Label) and
-// labels table -- see docs/superpowers/plans/2026-09-25-survey-s2.md Stream C.
+// badge lane (chips under the waterfall, one per tracked peak/Label) and
+// labels table.
 const ACTIVITY_GLYPHS = { steady: "●", bursty: "▮▮", periodic: "↻", intermittent: "◌", new: "✦" };
-// S3/S4: IQ analyzer fields (modulation/symbol_rate/family/voice) -- see
-// docs/superpowers/plans/2026-09-25-survey-s3-s4.md Stream C.
+// IQ analyzer fields (modulation/symbol_rate/family/voice).
 const VOICE_GLYPHS = { voice: "🗣", data: "🔢", silence: "💤" };
 const ANALYSIS_STATE_LABELS = {
   not_analyzed: "Not analyzed",
@@ -109,7 +108,7 @@ function readTableHeight() {
   }
 }
 
-// S1: TECH toggle (localStorage-backed) -- default table columns are
+// TECH toggle (localStorage-backed) -- default table columns are
 // Frequency/Candidate/Activity/Evidence/Last seen; SNR/BW/MOD/BAUD/DUTY and
 // the older FAMILY/VOICE/BAND PLAN/CATALOG detail columns only show with
 // TECH on (see _visibleColumns).
@@ -131,7 +130,7 @@ function saveTechOn(on) {
   }
 }
 
-// S1 chrome-compaction pass: IDENTIFY/STATUS/DISPLAY collapse into a single
+// chrome-compaction pass: IDENTIFY/STATUS/DISPLAY collapse into a single
 // "OPTIONS" disclosure (see _renderOptionsToggle), collapsed by default and
 // remembered per-browser -- same try/catch pattern as the other survey.*
 // localStorage flags above.
@@ -216,7 +215,7 @@ function candidateName(l) {
   return "--";
 }
 
-/** S1 contract's default ACTIVITY column: a glyph plus one of "voice"/
+/** contract's default ACTIVITY column: a glyph plus one of "voice"/
  * "data"/"quiet"/"keyed" when the analyzer has an opinion, else the
  * always-computed track activity kind (steady/bursty/periodic/...) --
  * never a duty-cycle percentage (that moved to the TECH-only DUTY column). */
@@ -250,7 +249,7 @@ function shortFamilyName(name) {
 }
 
 /** "9600 Bd candidate (raw 9612, ±3 %)" -- shown once the analyzer reports
- * both a snapped and raw symbol rate (S4 §5: analyzer.symbol_rate_snapped_hz/
+ * both a snapped and raw symbol rate (analyzer.symbol_rate_snapped_hz/
  * symbol_rate_raw_hz/symbol_rate_tolerance); null when either is missing (an
  * older row, or a signal with no measurable clock), so callers fall back to
  * the plain symbol_rate_hz text. */
@@ -274,11 +273,11 @@ function mmss(seconds) {
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** SURVEY section (S1): span picker + one canvas holding the current-frame
+/** SURVEY section: span picker + one canvas holding the current-frame
  * spectrum trace, short/long occupancy heat strips and a scrolling
  * waterfall, driven by the "spectrum" (bins, up to settings.survey.spectrum_fps/s)
  * and "survey" (Survey.status(), ≤1/s) websocket pushes -- see app.js's
- * _onWsMessage and docs/superpowers/plans/2026-09-25-survey-s1.md Stream C.
+ * _onWsMessage.
  *
  * `status` mirrors Survey.status() (msdr/survey/survey.py); `frame` is the
  * latest decoded spectrum frame {bins: Uint8Array(512), center_hz,
@@ -296,7 +295,7 @@ export class SurveyView extends LitElement {
   static properties = {
     _tableHeight: { state: true }, // px, see TABLE_HEIGHT_KEY
 
-    // S1 workspace-aware chrome: "listen" renders the compact toolbar (span,
+    // workspace-aware chrome: "listen" renders the compact toolbar (span,
     // PEAK/AVG, waterfall range, plain table); anything else (default
     // "discover") keeps the full toolbar exactly as before -- see render()/
     // _renderSource()/_visibleColumns(). The instance itself never changes
@@ -1176,7 +1175,7 @@ export class SurveyView extends LitElement {
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
     const cssWidth = canvas.clientWidth || canvas.parentElement?.clientWidth || 640;
-    // S1 contract default (>=1280 css px wide): spectrum 100 / waterfall 150
+    // contract default (>=1280 css px wide): spectrum 100 / waterfall 150
     // / occupancy 24 -- only when nothing has given the canvas an explicit
     // CSS height of its own (a layout drag or external CSS still wins). The
     // canvas has no CSS height of its own (render() leaves it unset, only
@@ -2037,7 +2036,7 @@ export class SurveyView extends LitElement {
     this._selectedLabelId = id;
   }
 
-  // --- badge lane + labels table (S2) -----------------------------------
+  // --- badge lane + labels table -----------------------------------
   // Label shape: msdr/survey/survey.py Survey.status()["labels"] (see the
   // plan's Contracts section) -- frequency_hz, width_hz, snr_db, active_now,
   // activity{kind,duty,period_s,...}, bw_class, bandplan{name,...}, catalog[],
@@ -2164,7 +2163,7 @@ export class SurveyView extends LitElement {
     this.dispatchEvent(new CustomEvent("tune-frequency", { detail: { hz } }));
   }
 
-  /** S5: ✓ chip click on a confirmed label -- opens the decoded-messages
+  /** ✓ chip click on a confirmed label -- opens the decoded-messages
    * modal (decode-view.js) preset to this frequency. Stops propagation so it
    * doesn't also fire the chip's own tune-frequency click. */
   _onConfirmedClick(hz) {
@@ -2184,7 +2183,7 @@ export class SurveyView extends LitElement {
     );
   }
 
-  /** → DECODE row action (S5): pins a band-decoder channel on this label's
+  /** → DECODE row action: pins a band-decoder channel on this label's
    * frequency (POST /api/survey/decode via app.js's _doSurveyDecode).
    * `decoders` is null to take the label's suggested decoders server side, or
    * an explicit list from the manual-pick popover (_renderDecodePopover) when
@@ -2193,12 +2192,12 @@ export class SurveyView extends LitElement {
     this.dispatchEvent(new CustomEvent("survey-decode", { detail: { frequency_hz: hz, decoders } }));
   }
 
-  /** ■ row action (S5, shown when label.decoding): unpins the channel. */
+  /** ■ row action (shown when label.decoding): unpins the channel. */
   _onUndecodeClick(hz) {
     this.dispatchEvent(new CustomEvent("survey-undecode", { detail: { frequency_hz: hz } }));
   }
 
-  /** SAVE row action (S5, always enabled): saves the label as a memory using
+  /** SAVE row action (always enabled): saves the label as a memory using
    * the server-side identity summary. */
   _onSaveClick(hz) {
     this.dispatchEvent(new CustomEvent("survey-save", { detail: { frequency_hz: hz } }));
@@ -2234,7 +2233,7 @@ export class SurveyView extends LitElement {
     this._closeDecodePopover();
   }
 
-  /** Manual decoder picker (S5): shown from the → DECODE button when a label
+  /** Manual decoder picker: shown from the → DECODE button when a label
    * has no family.suggested_decoders, so decoding still isn't blocked on the
    * family classifier having an opinion. */
   _renderDecodePopover(l) {
@@ -2455,7 +2454,7 @@ export class SurveyView extends LitElement {
     `;
   }
 
-  /** S3/S4: `ANALYZER · n queued · analyzing MHz · cpu %` line under the
+  /** `ANALYZER · n queued · analyzing MHz · cpu %` line under the
    * dimension toggles, plus a dropped-frames warning -- mirrors decode-deck's
    * band-decode status line (status.band.iq). status.analyzer is
    * msdr/survey/analyzer.py Analyzer.status(); absent entirely when the
@@ -2906,7 +2905,7 @@ export class SurveyView extends LitElement {
     const catalog = l.catalog ?? [];
     const catalogText = catalog.length ? `${catalog[0].name}${catalog.length > 1 ? ` +${catalog.length - 1}` : ""}` : "--";
     const hovered = this._hoverLabelId != null && this._hoverLabelId === l.id;
-    // S3/S4: modulation/symbol_rate/family/voice -- None (dimension off, or
+    // modulation/symbol_rate/family/voice -- None (dimension off, or
     // not yet analyzed) renders as "analyzing…" while the analyzer is
     // working this frequency, else "--".
     const wide = WIDE_BW_CLASSES.has(l.bw_class);
@@ -2926,7 +2925,7 @@ export class SurveyView extends LitElement {
       }
     } else if (mod?.kind) {
       // TECH-only cell: analyzer score is unitless ("score 0.NN"), never a
-      // percentage (S1 contract).
+      // percentage.
       modText = `${mod.kind}${mod.confidence != null ? ` · score ${mod.confidence.toFixed(2)}` : ""}`;
       modKindForTitle = mod.kind;
     } else {
@@ -2992,7 +2991,7 @@ export class SurveyView extends LitElement {
     const bandplanTitle = allocationText
       ? this._cellTitle(allocationText, explain("evidence", "allocation"))
       : l.bandplan?.name ? this._cellTitle(l.bandplan.name, explain("evidence", "bandplan")) : "";
-    // CANDIDATE column (S1 contract, always shown): best single name guess,
+    // CANDIDATE column: best single name guess,
     // strongest evidence first (RDS name > analyzer family > catalog match).
     const candidateText = candidateName(l);
     const candidateTitle = [rdsText, l.rds?.rt, l.family?.name, catalog.map((c) => c.name).join(", ")]
@@ -3233,7 +3232,7 @@ export class SurveyView extends LitElement {
     const highlightedId = this._highlightedLabelId(labels);
     const analyzerActive = !!this.status?.analyzer?.active;
     const cols = this._visibleColumns();
-    // "listen" mode drops the → DECODE column entirely (S1 contract: keeps
+    // "listen" mode drops the → DECODE column entirely (contract: keeps
     // only frequency/candidate/evidence/TUNE/SAVE plus the always-on
     // activity/last-seen columns) -- see _renderLabelRow for the matching cell.
     const showDecode = this.mode !== "listen";
@@ -3329,7 +3328,7 @@ export class SurveyView extends LitElement {
   }
 
   /** PEAK/AVG toggles plus the MIN/MAX dB contrast sliders and AUTO button
-   * (S6 restyle): min/max drive both the waterfall palette mapping and the
+   *: min/max drive both the waterfall palette mapping and the
    * spectrum pane's y-axis, and persist to localStorage across sessions. */
   _renderSpectrumControls() {
     const span = this.status?.span;

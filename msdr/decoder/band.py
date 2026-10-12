@@ -63,7 +63,7 @@ class BandChannel:
     backends: dict[str, ProcessBackend] = field(default_factory=dict, repr=False, compare=False)
     event_tasks: list[asyncio.Task] = field(default_factory=list, repr=False, compare=False)
     last_seen_at: float = field(default=0.0, repr=False, compare=False)
-    # S4 per-decoder session facts, kept across backend restarts (a seek
+    # per-decoder session facts, kept across backend restarts (a seek
     # restarts the process, it doesn't start a new session).
     events_by_decoder: dict[str, int] = field(default_factory=dict, repr=False, compare=False)
     valid_by_decoder: dict[str, int] = field(default_factory=dict, repr=False, compare=False)
@@ -128,7 +128,7 @@ class BandDecoder:
         self._on_event = on_event
         self._on_status = on_status
         self._source_tag = source_tag
-        # Replay (S4 §2): a frame from a newer source generation restarts
+        # Replay: a frame from a newer source generation restarts
         # every channel's backends before it is processed, and older frames
         # are dropped, so no stale symbols cross a seek. Live sources never
         # bump the generation, so this stays off for them.
@@ -225,7 +225,7 @@ class BandDecoder:
         """Rebuild the channelizer/detector for the new span; detected channels
         don't survive a retune (their k/residual are meaningless for a
         different centre or sample rate) but memory channels are recreated.
-        Pinned channels (S5 decode handoff) are re-added too, as long as
+        Pinned channels (decode handoff) are re-added too, as long as
         their frequency still falls inside the new span -- otherwise they're
         dropped like a detected channel would be (reported in the next
         status(), no error raised)."""
@@ -282,7 +282,7 @@ class BandDecoder:
             if abs(frequency_hz - center_hz) <= half_span_hz:
                 await self._pin_channel(frequency_hz, signal_id, decoders)
 
-    # -- generation handling (replay, S4 §2) ------------------------------------
+    # -- generation handling (replay) ------------------------------------
 
     def expect_span(self, center_hz: float, sample_rate_hz: int) -> None:
         """Called synchronously from a source "run" listener: the next
@@ -361,7 +361,7 @@ class BandDecoder:
         channel.last_input = (None, None, None)
         await self._start_channel(channel, decoder_ids)
 
-    # -- pinned channels (S5 decode handoff) ---------------------------------
+    # -- pinned channels (decode handoff) ---------------------------------
 
     async def pin(self, frequency_hz: float, signal_id: str | None, decoders: list[str]) -> None:
         """Runtime add of a memory-style channel that's never idle-retired
@@ -437,7 +437,7 @@ class BandDecoder:
                     "state": c.state,
                     "error": c.error,
                     "decoders": list(c.decoders),
-                    # S4 §1: per-decoder session facts ("decoders" stays the
+                    # per-decoder session facts ("decoders" stays the
                     # plain id list existing callers match against).
                     "decoder_status": [self._decoder_status(c, d) for d in c.decoders],
                 }

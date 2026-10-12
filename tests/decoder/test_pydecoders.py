@@ -1,4 +1,4 @@
-"""Synthesised-signal round trips for the S7-S10 in-process (PythonBackend)
+"""Synthesised-signal round trips for the in-process (PythonBackend)
 decoders: wefax (radiofax) and navtex (SITOR-B/NAVTEX FEC)."""
 
 import struct

@@ -352,7 +352,7 @@ def test_build_backend_packet300_requires_direwolf():
     ]
 
 
-# -- dsd-fme (DMR/P25/NXDN, S6) ----------------------------------------------
+# -- dsd-fme (DMR/P25/NXDN) ----------------------------------------------
 
 # Sample line from the plan's "Measured facts" (ANSI colour code trailing).
 _SYNC_LINE = "20:26:11 Sync: +DMR  [slot1]  slot2  | Color Code=02 | CSBK\x1b[33m"
@@ -777,7 +777,7 @@ def test_build_backend_dsdfme_raises_for_missing_binary():
         build_backend(spec, {"dsd-fme": None})
 
 
-# -- PythonBackend (S7-S10 in-process decoders) -----------------------------
+# -- PythonBackend (in-process decoders) -----------------------------
 
 
 class _TrivialPyDecoder:
@@ -869,7 +869,7 @@ def test_build_backend_wwv_dcf77_msf_construct_cleanly():
         assert backend.decoder_id == decoder_id
 
 
-# -- S4 §1: integrity from the capability-matrix policy -------------------------
+# -- integrity from the capability-matrix policy -------------------------
 
 
 def test_policy_integrity_maps_each_policy():

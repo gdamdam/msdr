@@ -1,7 +1,7 @@
 """Offline US (ITU Region 2) band-plan identify provider.
 
 Loads a static JSON table once via importlib.resources and scores it against
-a query per the rules agreed in .superpowers/sdd/identify/contract.md. No
+a query using the identify-provider scoring rules. No
 network/web imports -- this has to work with SDRconnect unreachable.
 """
 

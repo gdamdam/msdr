@@ -1,4 +1,4 @@
-"""Streaming numpy DSP for the virtual receiver (S3 contract §2).
+"""Streaming numpy DSP for the virtual receiver.
 
 Every class keeps its state (NCO phase, filter history, AGC level, squelch
 state) across ``process()`` calls, so a replay chopped into arbitrary IQ
@@ -26,7 +26,7 @@ MPX_RATE_HZ = MPX_TARGET_RATE_HZ  # 250 kHz, what rds.RdsDemod is tuned for
 DEMODULATORS = ("NFM", "AM", "USB", "LSB", "CW", "WFM")
 
 # NBFM peak deviation that maps to +-1.0 on the flat tap -- same scale as
-# decoder/channelizer.NFMChannel so S4 decoders see familiar levels.
+# decoder/channelizer.NFMChannel so the decoders see familiar levels.
 NFM_DEVIATION_HZ = 5_000.0
 # WFM channel filter half-width: rds.WfmChannel's 120 kHz, since MPX with
 # RDS at 57 kHz and 75 kHz deviation needs ~+-110 kHz regardless of the
@@ -692,7 +692,7 @@ class WfmDemod(_Listening):
     """Discriminator at 250 kHz (rds.WfmChannel's scaling: 1.0 == 75 kHz)
     -> ``.mpx`` for RdsDemod; mono audio: 15 kHz low-pass (also the pilot
     and RDS killer) decimating to 50 kHz -> 24/25 -> 48 kHz -> 75 us
-    de-emphasis. Stereo is out of S3; a pilotless station is just mono."""
+    de-emphasis. Stereo is not supported; a pilotless station is just mono."""
 
     def __init__(self, fs: int = MPX_RATE_HZ, out_rate: int = VOICE_RATE_HZ) -> None:
         self.fs, self.out_rate = int(fs), int(out_rate)

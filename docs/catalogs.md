@@ -1,8 +1,12 @@
 # Catalog sources
 
+The catalog holds imported station schedules and reference directories. This page lists each source and how to set it up.
+
 Open **Catalog → Sources & imports** to see each source's entry count, URL and last refresh. Some sources need a URL saved before you can refresh them. If a refresh fails, the previous data is kept.
 
 A catalog match is schedule or reference data, not proof that a signal was received. **Tune** is offered only when an entry has an exact frequency.
+
+## Sources
 
 | Source | What it is | Setup |
 |---|---|---|
@@ -19,11 +23,13 @@ A catalog match is schedule or reference data, not proof that a signal was recei
 | [IOOS HFRNet](https://hfradar.ioos.us/) | HF ocean radar sites | Built in. |
 | [SuperDARN](https://github.com/SuperDARN/hdw) | Research radar sites | Bundled; locations only, no frequencies. |
 
-Aoki and HFCC publish a new file each season (A = summer, B = winter); update the URL when the season changes. For example, the A26 files are:
+Each source is labeled **static** (bundled), **refreshable** (downloaded on refresh) or **live** (fetched live).
+
+## Updating Aoki and HFCC each season
+
+Aoki and HFCC publish a new file each season (A = summer, B = winter). Update the saved URL when the season changes. For example, the A26 files are:
 
 - Aoki: `https://www1.m2.mediacat.ne.jp/binews/ut/xt/xta26.zip`
 - HFCC: `https://new.hfcc.org/data/a26/a26allx2.zip`
-
-Each source shows as **static** (bundled), **refreshable** (downloaded on refresh) or **live** (fetched live).
 
 See also: [reference catalogs](reference-catalogs.md), [allocations](allocations.md).

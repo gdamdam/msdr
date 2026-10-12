@@ -2,7 +2,7 @@
 
 Style follows msdr.storage.repos: synchronous, parameterised SQL over the one
 `Database` connection, JSON columns for nested values, commit per write.
-The public interface is fixed by the S2 contract (the service/API codes
+The public interface is fixed (the service/API codes
 against it).
 """
 
@@ -99,8 +99,8 @@ def _claim_from_row(row) -> Claim:
         limitations=_loads(row["limitations_json"], []),
         score=row["score"],
         next_action=row["next_action"],
-        # S4: review/replay decode claims carry analysis_run_id (column added
-        # ahead of time by migration 012, wired up here in S4) -- absent on
+        # review/replay decode claims carry analysis_run_id (column added
+        # ahead of time by migration 012, wired up here with review decode) -- absent on
         # every live claim, so a missing/older column reads as None either way.
         analysis_run_id=row["analysis_run_id"] if "analysis_run_id" in row.keys() else None,
         superseded_by=row["superseded_by"],
@@ -349,7 +349,7 @@ class ObservationRepo:
 
     def supersede(self, old_claim_id: str, new: Claim) -> Claim:
         """Append `new` and point the old claim at it. The old row is kept
-        (historical claims stay inspectable, plan §7)."""
+        (historical claims stay inspectable)."""
         conn = self.db.conn
         old = conn.execute(
             "SELECT observation_id FROM claims WHERE id = ?", (old_claim_id,)

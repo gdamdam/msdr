@@ -183,7 +183,7 @@ _DISCONNECTED_HINT_S = 2.0
 _DISCONNECTED_HINT = "Enable SDRconnect ▸ Preferences ▸ WebSocket Server (port 5454)"
 
 
-# review_bookmarks_list's client-side page (S3): generous enough that a
+# review_bookmarks_list's client-side page: generous enough that a
 # recent bookmark is never missed, small enough to stay cheap without a
 # dedicated "list by recording path" repo query.
 
@@ -488,7 +488,7 @@ class AppService(
         self.decode_events = DecodeEventRepo(db)
         self.beacon_hits = BeaconHitRepo(db)
         self.finds = FindRepo(db)
-        # Observations and honest evidence (S2): sessions/observations/claims
+        # Observations and honest evidence: sessions/observations/claims
         # over decode events, scanner hits and survey labels.
         self.observations = ObservationRepo(db)
         self.obs_recorder = ObservationRecorder(self.observations)
@@ -523,7 +523,7 @@ class AppService(
         # via feed() instead of subscribing itself.
         self._executor = RestoreExecutor(adapter, self.confirmed, own_subscription=False)
         # One SpectrumHub shared by the scanner's own spectrum source and
-        # Survey (msdr.survey, S1) -- both enable/read the same SDRconnect
+        # Survey (msdr.survey) -- both enable/read the same SDRconnect
         # spectrum stream, refcounted so it's only live while one of them
         # needs it. None when msdr.survey isn't importable (see guard above).
         self.spectrum_hub = SpectrumHub(self.adapter) if SpectrumHub is not None else None
@@ -575,7 +575,7 @@ class AppService(
             publish=self._publish_survey_message,
             snapshot=self._band_scan_snapshot,
         )
-        # Review (S3): a VirtualReceiver bound to the survey's replay
+        # Review: a VirtualReceiver bound to the survey's replay
         # ReplaySource only -- never the live adapter (see
         # _attach_virtual_receiver/_detach_virtual_receiver). None while idle
         # or while surveying the live radio.
@@ -583,7 +583,7 @@ class AppService(
         from msdr.engine.workbench import SignalWorkbench
 
         self.workbench = SignalWorkbench(self)
-        # Review decode (S4): a ReplayDecodeSession bound to the same replay
+        # Review decode: a ReplayDecodeSession bound to the same replay
         # as self.virtual_rx -- never a live decode, always tagged with a
         # source_id starting "replay:" and an analysis_run_id (see
         # review_decode_start/_publish_replay_decode_message). None while no
@@ -594,11 +594,11 @@ class AppService(
         # decoder can never outlive (or publish against) a replacement source.
         self._review_lifecycle_lock = asyncio.Lock()
         self._review_decode_generation = 0
-        # S5: the Observation (provenance="recording") for the recording in
+        # The Observation (provenance="recording") for the recording in
         # progress -- opened at REC, closed once the recorder has finalized
         # (or failed). See _open_recording_observation/_sync_recording_observation.
         self._rec_obs: dict | None = None
-        # One /ws/audio consumer at a time (S3 contract: "one consumer per
+        # One /ws/audio consumer at a time ("one consumer per
         # socket") -- a second concurrent connection is told to go away
         # rather than racing the first for the receiver's single audio queue.
         self._audio_ws_active = False
@@ -668,7 +668,7 @@ class AppService(
     async def start(self) -> None:
         self.db.connect()
         self.band_scan.recover()
-        # Observations legacy import (S2): a one-time backfill from finds/
+        # Observations legacy import: a one-time backfill from finds/
         # decode_events, idempotent via the `observations.legacy_import_done`
         # settings key -- backup only ahead of the run that will actually
         # import something, not on every later startup.
@@ -825,7 +825,7 @@ class AppService(
         # The recorder only ever saw *changes* (see _consume_events), so a
         # radio that was already playing at connect time left it believing
         # started=False/rate unknown until something changed -- ARM stayed
-        # 409 "radio not started" (S5 workflow test). Seed it like confirmed.
+        # 409 "radio not started" (workflow test). Seed it like confirmed.
         if self.recorder is not None:
             for name in _RECORDER_FORWARD_PROPS:
                 if name in props:

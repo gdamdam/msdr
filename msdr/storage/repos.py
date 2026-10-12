@@ -1080,7 +1080,7 @@ class SavedSearchRepo:
         self.db.conn.commit()
 
 
-# S4 integrity/provenance columns (013_decode_integrity.sql), same names on
+# integrity/provenance columns (013_decode_integrity.sql), same names on
 # the DecodeEvent dataclass and in the returned row dict.
 _DECODE_PROVENANCE_KEYS = (
     "integrity",
@@ -1104,7 +1104,7 @@ def _decode_event_from_row(row) -> dict:
         "text": row["text"],
         "fields": json.loads(row["fields_json"]) if row["fields_json"] else {},
         "image_path": row["image_path"],
-        # S4 (migration 013): None on rows stored before integrity existed
+        # (migration 013): None on rows stored before integrity existed
         # (or read through a pre-013 schema, e.g. a legacy-upgrade fixture).
         **{key: (row[key] if key in row.keys() else None) for key in _DECODE_PROVENANCE_KEYS},
     }
@@ -1144,7 +1144,7 @@ class DecodeEventRepo:
             "text": event.text,
             "fields": dict(getattr(event, "fields", None) or {}),
             "image_path": getattr(event, "image_path", None),
-            # A test double without the S4 attributes stores the dataclass
+            # A test double without the integrity attributes stores the dataclass
             # default ("unknown"), never an invented "passed".
             "integrity": getattr(event, "integrity", "unknown"),
             "integrity_note": getattr(event, "integrity_note", ""),
@@ -1205,7 +1205,7 @@ class DecodeEventRepo:
         self, event_id: str, *, text: str | None = None, fields: dict | None = None
     ) -> dict | None:
         """Merge `fields` into the stored fields_json (keys not mentioned are
-        kept) and optionally replace `text` -- wefax (S7-S10 round 1) uses
+        kept) and optionally replace `text` -- wefax uses
         this to update the "fax started" event in place as lines arrive and
         again when the image finishes. Returns the updated row, or None if
         `event_id` doesn't exist."""
@@ -1262,7 +1262,7 @@ def _beacon_hit_from_row(row) -> dict:
 
 
 class BeaconHitRepo:
-    """Beacon monitor session hits (S10): one row per recorded slot (SNR
+    """Beacon monitor session hits: one row per recorded slot (SNR
     threshold or CW-decoded call-sign match) -- see msdr.survey.beacons's
     BeaconMonitor, this feature's engine."""
 
@@ -1383,10 +1383,9 @@ def _find_from_row(row) -> dict:
 
 
 class FindRepo:
-    """Scanner finds log (S11): one row per (roughly) distinct frequency seen
+    """Scanner finds log: one row per (roughly) distinct frequency seen
     across scan runs with `log_finds` enabled, merged within a tolerance --
-    see msdr.engine.scanner's on_find hook and
-    docs/superpowers/plans/2026-09-25-scanner-finds.md."""
+    see msdr.engine.scanner's on_find hook."""
 
     def __init__(self, db: Database) -> None:
         self.db = db

@@ -57,7 +57,7 @@ import "./components/finds-view.js";
 import "./components/recordings-view.js";
 import "./components/signal-panel.js";
 import "./components/allocation-chart.js";
-// S1: the scanner/decode decks are grid sections now ("scan"/"decode"), no
+// the scanner/decode decks are grid sections now ("scan"/"decode"), no
 // longer children of instrument-panel, so app.js has to register them itself.
 import "./components/scanner-deck.js";
 import "./components/decode-deck.js";
@@ -107,7 +107,7 @@ function writeLocal(key, value) {
 }
 
 // Workspaces that show <survey-view> in the fixed primary slot under the tab
-// strip instead of in their grid (S1 contract, "Primary spectrum slot").
+// strip instead of in their grid.
 const PRIMARY_SPECTRUM_WORKSPACES = new Set(["listen", "discover"]);
 const LISTEN_WORKBENCH_SECTIONS = new Set(["nearby", "recent", "listen", "log", "decode"]);
 
@@ -231,7 +231,7 @@ export class MsdrApp extends LitElement {
     this.decodeEvents = [];
     this.decodeViewOpen = false;
     this.decodeViewPresetFrequencyHz = null;
-    // Survey (S1): state.survey (status) rides along in `state`/the "survey"
+    // Survey: state.survey (status) rides along in `state`/the "survey"
     // ws message, same as decoder above. The spectrum frames themselves
     // don't -- spectrumFrame is the latest decoded {bins: Uint8Array, ...}
     // and spectrumRing a newest-first array capped at 2000 for survey-view's
@@ -248,12 +248,12 @@ export class MsdrApp extends LitElement {
     this.paletteOpen = false;
     this.setupOpen = false;
     this.validation = null;
-    // S1: LIBRARY is a workspace now (was a full-view swap, `libraryOpen`).
+    // LIBRARY is a workspace now (was a full-view swap, `libraryOpen`).
     this._libraryRefreshAt = null;
     this._reviewRefreshAt = null;
     this._workspaceChosen = false;
     // Drag grips / ⇔ WIDE toggles are layout-editing chrome, hidden unless
-    // the operator turns on SETUP → LAYOUT → EDIT LAYOUT (S1); per-browser,
+    // the operator turns on SETUP → LAYOUT → EDIT LAYOUT; per-browser,
     // like the other msdr.* UI preferences.
     this._layoutEditMode = readLocalFlag("msdr.layoutEdit");
     this.diagOpen = false;
@@ -368,7 +368,7 @@ export class MsdrApp extends LitElement {
         else if (this._stepConfirmedTargetSeen) this._cancelStepTuning();
       }
     }
-    // S5: SETUP's VALIDATION group -- fetched fresh each time the drawer
+    // SETUP's VALIDATION group -- fetched fresh each time the drawer
     // opens (cheap, reads a markdown summary rather than running decoders)
     // so a scorecard/gate change elsewhere in the same session shows up.
     if (changedProps.has("setupOpen") && this.setupOpen) this._loadValidation();
@@ -496,7 +496,7 @@ export class MsdrApp extends LitElement {
     // active workspace (U2) is re-read the same way -- see _switchWorkspace,
     // which PATCHes it immediately (not debounced) so there's no analogous
     // in-flight window to guard here.
-    // S1: a workspace the operator already picked in this session (key,
+    // a workspace the operator already picked in this session (key,
     // tab, LIBRARY button) wins over what the server remembers -- the
     // initial GET can land after an immediate switch and would otherwise
     // flip the view back (seen in tests/e2e: press "l" right after load).
@@ -1457,7 +1457,7 @@ export class MsdrApp extends LitElement {
 
   /** Primary spectrum's tune-frequency while workspace is REVIEW and a
    * replay is running: tunes the *virtual* receiver (POST /api/review/tune)
-   * instead of _doTuneFrequency's POST /api/tune/frequency -- the S3
+   * instead of _doTuneFrequency's POST /api/tune/frequency -- the
    * zero-live-writes exit gate means a click on the replay's spectrum must
    * never reach the live SDRconnect adapter. Keeps the currently-tuned
    * demodulator/bandwidth (read fresh from GET /api/review -- app.js doesn't
@@ -1824,7 +1824,7 @@ export class MsdrApp extends LitElement {
     }, "decoder", "install presets");
   }
 
-  // --- survey (S1) ---------------------------------------------------------
+  // --- survey ---------------------------------------------------------
   // Span picker + spectrum/waterfall/occupancy (survey-view.js). Status
   // (Survey.status()) rides along in state.survey (see GET /api/state and the
   // "survey" ws case above); each of these REST calls also returns the fresh
@@ -1941,7 +1941,7 @@ export class MsdrApp extends LitElement {
     }, "survey", "survey");
   }
 
-  /** S2 dimension toggles (survey-view.js's checkboxes) -- POST /api/survey/dimensions.
+  /** dimension toggles (survey-view.js's checkboxes) -- POST /api/survey/dimensions.
    * Turning on an IQ-needing dimension while the analyzer isn't already
    * running starts it, so that case goes through the "analyzer" conflicts
    * check first (see confirmInterrupt). */
@@ -1959,7 +1959,7 @@ export class MsdrApp extends LitElement {
     }, "survey", "survey");
   }
 
-  /** S5 row action (survey-view.js's "→ DECODE" button): pins a band-decoder
+  /** row action (survey-view.js's "→ DECODE" button): pins a band-decoder
    * channel on this label's frequency (POST /api/survey/decode), starting a
    * band session if none is active yet. `detail.decoders` is null to take the
    * server's default (the label's family.suggested_decoders) or an explicit
@@ -1982,7 +1982,7 @@ export class MsdrApp extends LitElement {
     }, "decoder", "survey decode");
   }
 
-  /** S5 row action ("■" button, shown when label.decoding): unpins the
+  /** row action ("■" button, shown when label.decoding): unpins the
    * band-decoder channel on this frequency. */
   async _doSurveyUndecode(frequencyHz) {
     await this._run(async () => {
@@ -1993,7 +1993,7 @@ export class MsdrApp extends LitElement {
     }, "decoder", "survey decode");
   }
 
-  /** S5 row action ("SAVE" button, always enabled): saves the label as a
+  /** row action ("SAVE" button, always enabled): saves the label as a
    * memory, server side deriving name/decoders/notes from
    * Survey.identity_summary. */
   async _doSurveySave(frequencyHz) {
@@ -2008,14 +2008,14 @@ export class MsdrApp extends LitElement {
     }, "decoder", "survey save");
   }
 
-  /** S5: clicking a confirmed label's ✓ chip (survey-view.js) opens the
+  /** clicking a confirmed label's ✓ chip (survey-view.js) opens the
    * decoded-messages modal preset to that label's frequency. */
   _doOpenSurveyMessages(frequencyHz) {
     this.decodeViewPresetFrequencyHz = frequencyHz;
     this.decodeViewOpen = true;
   }
 
-  // --- beacons (S10) --------------------------------------------------------
+  // --- beacons --------------------------------------------------------
   // NCDXF/NDB beacon monitor (beacons-view.js): status (BeaconMonitor.status())
   // rides along in state.beacons (see GET /api/state and the "beacons" ws case
   // above); start/stop also return the fresh status directly, applied here
@@ -2290,7 +2290,7 @@ export class MsdrApp extends LitElement {
 
   /** True when `id` is rendered by the primary spectrum slot (see render())
    * for the active workspace, so the band/grid must skip it -- rendering it
-   * twice would create a second <survey-view> instance. S3: REVIEW also gets
+   * twice would create a second <survey-view> instance. REVIEW also gets
    * the primary slot, but only while a replay is actually running --
    * "survey" isn't a WORKSPACE_SECTIONS member of "review" at all, so this
    * never double-renders it elsewhere once a replay stops. */
@@ -2712,7 +2712,7 @@ export class MsdrApp extends LitElement {
    * grip). A grid section gets the grip plus a ⇔ WIDE toggle next to it. */
   _sectionShell(id, colIndex) {
     const isWide = colIndex === null;
-    // S1: grips and ⇔ WIDE / ⇥ CARD toggles only while EDIT LAYOUT is on
+    // grips and ⇔ WIDE / ⇥ CARD toggles only while EDIT LAYOUT is on
     // (setup-drawer's layout-edit event) -- otherwise they're clutter on
     // every card for an action taken once in a while.
     if (!this._layoutEditMode) {
@@ -3322,7 +3322,7 @@ export class MsdrApp extends LitElement {
 
       <div class="visually-hidden" aria-live="polite">${this._layoutAnnouncement}</div>
 
-      <!-- S1: .app-body is a flex row so the docked <signal-panel> (>=1100px)
+      <!-- .app-body is a flex row so the docked <signal-panel> (>=1100px)
            takes a right column and the workspace content reflows beside it. -->
       <div class="app-body ${this._signalTarget ? "inspector-open" : ""}">
       <div class="app-main">

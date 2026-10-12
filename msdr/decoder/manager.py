@@ -145,7 +145,7 @@ class DecoderManager:
         self._silent = False
         self._silence_since: float | None = None
         self._events_total = 0
-        # S4 §1 per-decoder facts for the audio path (the IQ path's live in
+        # Per-decoder facts for the audio path (the IQ path's live in
         # its BandChannel): {"events", "valid_frames", "last_event_ts"}.
         self._decoder_counts: dict[str, dict] = {}
         # decoder id -> reason, for decoders started on a demodulator not in
@@ -711,7 +711,7 @@ class DecoderManager:
         self._publish_status()
         return self.status()
 
-    # -- pinned channel (S5 decode handoff) ----------------------------------
+    # -- pinned channel (decode handoff) ----------------------------------
 
     async def band_pin(self, frequency_hz: int, decoders: list[str]) -> dict:
         """Start decoding one peak from the survey view: adds a fixed
@@ -876,7 +876,7 @@ class DecoderManager:
             async for event in channel.events():
                 event = replace(event, frequency_hz=self._frequency_hz, signal_id=self._signal_id)
 
-                # wefax (S7-S10): the finishing event carries update_of_path
+                # wefax: the finishing event carries update_of_path
                 # instead of a fresh image_path -- merge it into the event
                 # stored at start rather than adding a new row.
                 update_of_path = event.update_of_path

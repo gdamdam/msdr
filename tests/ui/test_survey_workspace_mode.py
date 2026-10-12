@@ -1,5 +1,5 @@
 # ruff: noqa: E501 -- embedded JavaScript source lines
-"""survey-view.js's `mode` prop (S1 review finding: workspace-aware survey
+"""survey-view.js's `mode` prop (workspace-aware survey
 chrome) can't be exercised through a Node runtime -- it's a LitElement
 subclass that touches `document`/`customElements` at import time, which the
 vendored lit.js bundle expects a real DOM for (see test_presets_js.py/

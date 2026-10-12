@@ -49,7 +49,7 @@ function saveBandOptions(maxChannels, thresholdDb) {
 }
 
 /** Compact decode deck, next to the scanner deck in the instrument panel's
- * frequency row (Decoders P1, see docs/superpowers/specs/2026-09-25-decoders-design.md).
+ * frequency row.
  * `status` mirrors DecoderManager.status() (msdr/decoder/manager.py), pushed
  * live as state.decoder / the "decoder" ws message; `lastEvent` is the newest
  * entry of app.js's decodeEvents (a DecodeEvent dict), or null. `decoders` is
@@ -487,7 +487,7 @@ export class DecodeDeck extends LitElement {
       ${isReplay ? html`<span class="chip tag-replay">replay</span>` : ""}`;
   }
 
-  /** Per-decoder session facts (S4, §5): one line per currently running
+  /** Per-decoder session facts: one line per currently running
    * decoder from the manager's own status.decoders (never the ⚙ modal's
    * installed/tested facts) -- "acquiring"/"N events (unverified)"/"N valid
    * frames"/"synchronized"/"quiet"/"unsupported input: <reason>"/"error",

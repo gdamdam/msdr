@@ -36,13 +36,13 @@ const ANALYSIS_STATE_LABELS = {
   historical_result: "Historical result",
 };
 
-/** S1 docked inspector: at this width and up the panel is a docked right
+/** docked inspector: at this width and up the panel is a docked right
  * column inside app.js's .app-body (no backdrop, content reflows beside it);
  * below it, the original overlay sheet. Must match the media query on
  * .signal-panel.docked's parent rules in styles.css. */
 const DOCK_QUERY = "(min-width: 1100px)";
 
-/** U3 "one signal detail panel": a docked right column at >=1100px (S1),
+/** U3 "one signal detail panel": a docked right column at >=1100px,
  * otherwise a right-side slide-over (bottom sheet under 900px, see
  * styles.css's .signal-panel) opened from every "select a signal"
  * surface across the app via app.js's openSignal()/the bubbling "signal-open"
@@ -106,7 +106,7 @@ export class SignalPanel extends LitElement {
     _docked: { state: true },
     _tab: { state: true },
     _notesOpen: { state: true },
-    // S2 observations section (docs/epics/listening-workbench/S2-observations-contract.md):
+    // observations section:
     // per-row UI kept as plain component state, not part of _detail, so
     // refetching detail (after a link/claim) doesn't collapse everything.
     _expandedObs: { state: true }, // Set<observation id>
@@ -114,7 +114,7 @@ export class SignalPanel extends LitElement {
     _identifyDraft: { state: true }, // {subject, value, rationale}
     _obsBusyId: { state: true }, // observation id currently in flight, or null
     _linkNote: { state: true }, // {obsId, text} -- API's "link suggests, does not prove identity"
-    // S5 (§3): per-observation NOTES editor draft, keyed by observation id --
+    // per-observation NOTES editor draft, keyed by observation id --
     // plain state (not part of _detail) so a refetch after SAVE doesn't wipe
     // an in-progress edit on a *different* row.
     _obsNotesDraft: { state: true },
@@ -481,7 +481,7 @@ export class SignalPanel extends LitElement {
     }
   }
 
-  // --- observations (S2) ------------------------------------------------------
+  // --- observations ------------------------------------------------------
 
   _toggleObsExpanded(id) {
     const next = new Set(this._expandedObs);
@@ -1122,7 +1122,7 @@ export class SignalPanel extends LitElement {
       `;
     }
     // Docked: a non-modal side column -- no backdrop, the rest of the app
-    // stays usable beside it (S1 contract, "Docked inspector").
+    // stays usable beside it.
     if (this._docked) {
       return html`
         <aside

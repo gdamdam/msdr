@@ -1,6 +1,6 @@
 """SpectrumHub: reference-counted owner of the spectrum stream (control
 connection, `spectrum_enable`). The stream is per-connection and stateful
-(docs/research/2026-09-22-sdrconnect-websocket-api.md Sec7), so two
+(docs/research/2026-09-22-sdrconnect-websocket-api.md Sec12), so two
 independent consumers -- the scanner's spectrum source and Survey -- can't
 each call `set_spectrum_stream` without stepping on each other; this hub
 enables it once for whoever needs it and fans every frame out to each

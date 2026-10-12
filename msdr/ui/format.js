@@ -129,8 +129,8 @@ export function decodeChipLabel(state) {
 }
 
 /** Compact one-line summary for a `kind: "call"` decode event (DMR/P25/NXDN
- * via dsd-fme, see docs/superpowers/plans/2026-09-25-survey-s6-digital-voice.md
- * Stream A's DecodeEvent.fields contract) -- shared by decode-view's message
+ * via dsd-fme;
+ * DecodeEvent.fields contract) -- shared by decode-view's message
  * rows and decode-deck's last-event line so both render calls identically.
  * `fields.color_code`/`nac`/`ran` are mutually exclusive per protocol;
  * duration_s is only present once the call has ended. */
@@ -151,8 +151,7 @@ export function callLineText(ev) {
 }
 
 /** CSS color var for a time-signal offset in seconds (decode-view's `time`
- * rows, `fields.offset_s` -- see docs/superpowers/plans/2026-09-25-survey-s7-s10-hf.md
- * Stream C): |offset| < 0.1 s green, < 1 s amber (this palette's `--accent`),
+ * rows, `fields.offset_s`): |offset| < 0.1 s green, < 1 s amber (this palette's `--accent`),
  * else red. Null when offset_s is missing/NaN, so callers fall back to the
  * default text color. */
 export function offsetColorVar(offsetS) {
@@ -358,7 +357,7 @@ export function catalogWindowLabel(entry, tz) {
 }
 
 // Scanner/tag color palettes -- must match msdr/library/models.py exactly
-// (see .superpowers/sdd/colors/contract.md). Kept here, not guessed per
+// Kept here, not guessed per
 // component, so an unknown or missing color name degrades to "unlit" everywhere.
 const SIGNAL_COLORS = new Set([
   "red",
@@ -462,13 +461,13 @@ export function catalogNoteLine(entry) {
 // compact deck in the instrument panel (see scanner-deck.js). It stays a
 // known-but-dropped id in msdr/settings.py's Layout validator so an existing
 // settings.json saved before this still loads.
-// S1 (0.26.0): "scan"/"decode" (the decks moved out of the instrument
+// "scan"/"decode" (the decks moved out of the instrument
 // panel), "review" and "library" appended -- same order as msdr/settings.py
 // so both sides backfill a missing id into the same place.
 export const SECTION_IDS = ["survey", "nearby", "inbox", "recent", "listen", "log", "passes", "sky", "scans", "catalog", "beacons", "finds", "scan", "decode", "review", "library", "allocations"];
 
 export const SECTION_LABELS = {
-  // S1: user-facing labels say what the section does; ids are unchanged.
+  // user-facing labels say what the section does; ids are unchanged.
   survey: "WATCH SPECTRUM",
   nearby: "NEARBY",
   inbox: "INBOX",
@@ -488,7 +487,7 @@ export const SECTION_LABELS = {
   allocations: "ALLOCATIONS",
 };
 
-// LISTEN's default (S1) -- not every id; resolveLayout backfills the rest
+// LISTEN's default -- not every id; resolveLayout backfills the rest
 // into the last column exactly like msdr/settings.py's Layout validator.
 export const DEFAULT_LAYOUT_COLUMNS = [
   ["survey", "listen", "decode"],
@@ -561,7 +560,7 @@ export function sectionVisible(id, features) {
       return !!features?.beacons;
     case "finds":
       return !!features?.finds;
-    // S1: the decks gate on the same flags instrument-panel used for them.
+    // the decks gate on the same flags instrument-panel used for them.
     case "scan":
       return !!features?.scanner;
     case "decode":
@@ -596,8 +595,7 @@ export function resolveLayout(layout) {
   return { columns: resolvedColumns, wide };
 }
 
-// U2 workspaces (docs/superpowers/specs/2026-09-26-ui-rework-design.md, "Additions from the
-// second review note") -- the switch under the instrument panel, mirroring
+// U2 workspaces -- the switch under the instrument panel, mirroring
 // msdr/settings.py's WorkspaceId/WORKSPACE_SECTIONS/_default_workspaces exactly.
 // Array order is the tab order and the 1-8 key order.
 export const WORKSPACE_IDS = ["listen", "discover", "map", "band_scans", "review", "library", "satellites", "catalog", "allocations"];
@@ -796,8 +794,7 @@ export function evidenceClass(kind) {
   return EVIDENCE_GLYPHS[kind] ? `ev-${kind}` : "";
 }
 
-// S2 observations/evidence "state" (msdr/observations -- see
-// docs/epics/listening-workbench/S2-observations-contract.md): replaces
+// observations/evidence "state" (msdr/observations): replaces
 // confidence percentages/meters everywhere in the UI with honest, unitless
 // words. Never renders a number -- a `score` (unitless heuristic) is shown
 // only in a tooltip, never as the label itself.
@@ -995,8 +992,7 @@ export function readinessLabels(d) {
   return { installed, tested, session };
 }
 
-// S4 decode integrity/session facts (docs/epics/listening-workbench/
-// S4-decode-contract.md §5): a decode event's `integrity` is never guessed --
+// decode integrity/session facts a decode event's `integrity` is never guessed --
 // it comes straight off the capability-matrix policy that produced the
 // event (msdr.decoder.capability_matrix.MATRIX[id].integrity_policy). The
 // badge text says exactly what was checked, never "available"/"ready".

@@ -4,7 +4,7 @@ into a `Context`, keeps one `EngineState` across ticks, and persists whatever
 `evaluate()` returns as `rule_events` rows. This separation is what lets
 `tests/rules/test_engine.py` exercise every rule kind on plain fixtures.
 
-Three rule kinds (TODO "Phase 6 -- Watch rules"):
+Three rule kinds:
 
 - `beacon_presence`: a Wi-Fi BSSID or stable BLE address (never a rotating
   `rpa`/`nrpa` -- refused at the API layer the same way

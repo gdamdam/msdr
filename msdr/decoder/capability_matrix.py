@@ -32,7 +32,7 @@ IntegrityPolicy = Literal[
 ]
 
 # All Validation records below were written against this ship date (README
-# "Shipped in 0.15.0-0.18.0 (2026-09-25)" / S7-S10 plan, same date) -- the
+# "Shipped in 0.15.0-0.18.0 (2026-09-25)") -- the
 # msdr version they're pinned to is the current one (python decoders are
 # versioned with msdr itself; see contracts/readiness.py's validation_stale).
 _SHIPPED_ON = date(2026, 9, 25)

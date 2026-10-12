@@ -55,7 +55,7 @@ _DEFAULT_HANG_S = 2.0
 # hit a DB/decoder -- bounded so a slow/hanging classifier can't stall the scan.
 _CLASSIFY_TIMEOUT_S = 2.0
 # --- spectrum source (v0.13.0) -- see docs/research/2026-09-22-sdrconnect-
-# websocket-api.md Sec7 for the measured facts these constants encode. ------
+# websocket-api.md Sec12 for the measured facts these constants encode. ------
 _SPECTRUM_BINS = 512
 _SPECTRUM_FRAME_HISTORY = 5
 _SPECTRUM_CENTER_BIN = 256  # DC/LO spike
@@ -484,7 +484,7 @@ class ScannerEngine:
                         # End of a pass. Every channel ignored means nothing was
                         # tuned or dwelt on all pass: rest before the next one
                         # instead of spinning (interruptible like any dwell).
-                        # Visible outcome (plan S5 lifecycle case): the UI
+                        # Visible outcome (lifecycle case): the UI
                         # must be able to say "every channel is ignored"
                         # rather than look like a scan that finds nothing.
                         self.all_ignored = self._skipped_this_pass >= n

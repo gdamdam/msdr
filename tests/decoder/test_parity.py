@@ -1,4 +1,4 @@
-"""Single vs band decode parity on the same replayed recording (S4 §2).
+"""Single vs band decode parity on the same replayed recording.
 
 A synthetic 2 MS/s SigMF recording carries an AX.25 AFSK-1200 burst train
 FM-modulated at +100 kHz from the centre (tests/helpers/ax25.py). One

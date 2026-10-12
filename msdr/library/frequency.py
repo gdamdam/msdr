@@ -1,4 +1,4 @@
-"""Frequency text parsing and display, per design spec §8."""
+"""Frequency text parsing and display,."""
 
 import re
 

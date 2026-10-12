@@ -599,7 +599,7 @@ async def test_identify_cache_hit_within_ttl(adapter, confirmed, settings, publi
 async def test_analyzer_targets_orders_steady_duty_before_bursty(
     adapter, confirmed, settings, published
 ):
-    # S3/S4 fix: a fixed dwell reliably captures real signal on a
+    # fix: a fixed dwell reliably captures real signal on a
     # steady/high-duty target (e.g. a repeater carrier), but a bursty one
     # (duty 0.0-0.3, the field's DMR/POCSAG traffic) needs several revisits
     # before the analyzer's activity gate has enough active audio -- analyse
@@ -1066,7 +1066,7 @@ async def test_restart_forgets_confirmed_labels(adapter, confirmed, settings, pu
 async def test_on_labels_changed_fires_on_appear_and_retire_not_per_frame(
     adapter, confirmed, settings, published
 ):
-    """S2 observations hook: fired at track-appear/retire boundaries, never
+    """observations hook: fired at track-appear/retire boundaries, never
     from the per-frame pump loop (a steady, unchanged peak reprocessed frame
     after frame must not add extra calls)."""
     settings.label_ttl_s = 1.0
@@ -1100,7 +1100,7 @@ async def test_on_labels_changed_fires_on_appear_and_retire_not_per_frame(
 
 
 async def test_replay_span_follows_a_run_change(adapter, confirmed, settings, published, tmp_path):
-    # S3: a multi-run recording retunes mid-replay; the survey's span must
+    # a multi-run recording retunes mid-replay; the survey's span must
     # follow the run (occupancy/tracker/identify reset), otherwise labels of
     # the old span would be read against the new frequencies.
     from tests.source.test_timeline import write_three_runs

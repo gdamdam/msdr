@@ -1,8 +1,8 @@
-"""Symbol rate + modulation -> protocol family hints (S3). Table straight
+"""Symbol rate + modulation -> protocol family hints. Table straight
 from the design doc/plan: known baud rates map to the protocols that use
 them (never the frequency/allocation); `suggested_decoders` are the
-decoder ids S5's "-> DECODE" handoff will start. 4800 baud 4-level FSK is
-DMR/P25/NXDN voice (S6's dsd-fme decoders).
+decoder ids the "-> DECODE" handoff will start. 4800 baud 4-level FSK is
+DMR/P25/NXDN voice (the dsd-fme decoders).
 
 `family_for` itself carries no confidence: the plan puts that on the caller
 ("confidence from line strength x modulation confidence"), since neither
@@ -12,7 +12,7 @@ occ_bw_hz) alone -- the analyzer multiplies them in once it has both.
 
 import math
 
-# Wide signals are never analysed for modulation/symbol rate at all (S2 label
+# Wide signals are never analysed for modulation/symbol rate at all (spectrum label
 # only, see Analyzer) -- this only documents that a family lookup for one is
 # always a no-op, matching family_for's bw_class parameter.
 _WIDE_BW_CLASSES = ("wfm", "wide_digital")

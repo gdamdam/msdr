@@ -1,4 +1,4 @@
-"""SpectrumPeakTracker (S2): tracks peaks across 512-bin spectrum frames.
+"""SpectrumPeakTracker: tracks peaks across 512-bin spectrum frames.
 
 Finds contiguous runs of bins above the per-frame floor, merges runs
 separated by a gap that scales with run width (so a wide, modulated signal's

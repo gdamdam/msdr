@@ -1,4 +1,4 @@
-"""S4 corpus scorecard (plan §4): deterministic expectations only -- the
+"""Corpus scorecard: deterministic expectations only -- the
 scorecard itself runs a much bigger synthetic corpus (see
 docs/validation/scorecard-synthetic.md), but this test asserts exactly what
 the plan calls out as non-negotiable: negatives produce no decoder output

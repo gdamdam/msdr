@@ -25,7 +25,7 @@ _REQUIRED_CASE_KEYS = {
 }
 _REQUIRED_FILE_KEYS = {"path", "sha256", "format", "rate", "center"}
 _VALID_REFERENCE_TYPES = {"operator_report", "repo_fixture", "private_capture"}
-# synthetic_validated_field_pending (S4): the decode/classification is
+# synthetic_validated_field_pending: the decode/classification is
 # validated on synthetic fixtures (named tests), but no real off-air capture
 # backs it yet -- distinct from "located" (a real repo fixture already
 # checked in) and "pending_intake" (nothing checked at all).
@@ -103,7 +103,7 @@ def test_no_raw_capture_over_size_limit_committed_under_tests_or_docs():
 
 def test_ais_case_never_identifies_from_frequency_alone():
     case = next(c for c in _cases() if c["id"] == "ais-161975-162025")
-    # S4: synthetic-validated (fixtures + named tests), field validation on
+    # synthetic-validated (fixtures + named tests), field validation on
     # the real 161.975/162.025 MHz capture still pending -- never "located"
     # (no repo fixture backs this) and never silently upgraded past what the
     # synthetic tests actually proved.

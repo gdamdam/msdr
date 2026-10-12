@@ -1,5 +1,5 @@
 """Evidence contract: independent evidence types, no probability, no
-"confirmed" from allocation/schedule (plan §3)."""
+"confirmed" from allocation/schedule."""
 
 import pytest
 from pydantic import ValidationError

@@ -1,4 +1,4 @@
--- Watch rules (docs/rules.md, TODO "Phase 6 -- Watch rules"): beacon
+-- Watch rules (docs/rules.md): beacon
 -- presence/absence, BLE sensor thresholds and Remote ID drone geofences.
 -- Kept in the main database, like device labels (migration 021), so backup
 -- and restore carry user-authored rules and the recent fired-event log.

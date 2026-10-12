@@ -45,7 +45,7 @@ function fileSize(bytes) {
  * instant (recording.json's start_wall, or -- when that's missing -- a
  * SigMF core:datetime; see msdr/api/service.py's _recording_row). Never
  * shows a directory mtime as if it were the capture start. Also used for
- * the transport's "original capture time of the current position" (S3),
+ * the transport's "original capture time of the current position",
  * given `capture_start + elapsed-within-run` instead of a row's own field. */
 function captureStartText(createdEpochS, tz) {
   if (createdEpochS == null) return "capture time unknown";
@@ -78,9 +78,9 @@ function captureStartText(createdEpochS, tz) {
   return `${y}-${mo}-${day} ${hh}:${mm}`;
 }
 
-// S3 virtual receiver: fixed per-mode step size for the ◂ ▸ frequency
+// virtual receiver: fixed per-mode step size for the ◂ ▸ frequency
 // buttons and the bandwidth choices offered per demodulator -- both from
-// S3-replay-contract.md §4, not from format.js's defaultStepHz/STEP_CYCLE_HZ
+// the replay contract, not from format.js's defaultStepHz/STEP_CYCLE_HZ
 // (those serve the *live* radio's instrument panel and use different values,
 // e.g. CW there steps by 1000 Hz; here CW is 100 Hz).
 const MODES = ["NFM", "AM", "USB", "LSB", "CW", "WFM"];
@@ -100,8 +100,8 @@ const BANDWIDTH_OPTIONS_BY_MODE = {
 // rather than a claim about how long the gap actually was.
 const UNKNOWN_GAP_WEIGHT_S = 2;
 
-/** REVIEW shell (S1 contract, section id "review"; virtual receiver/timeline/
- * bookmarks are S3): browses finished pre-roll recordings (GET
+/** REVIEW shell (contract, section id "review"; virtual receiver/timeline/
+ * bookmarks included): browses finished pre-roll recordings (GET
  * /api/recordings, same pattern as survey-view.js's REPLAY picker), drives
  * the existing replay transport for play/pause (survey-replay /
  * survey-replay-control{playing} / survey-replay-stop, handled by app.js's
@@ -117,7 +117,7 @@ export class ReviewView extends LitElement {
     tz: { type: Object },
     failure: { type: Object },
     refreshAt: { type: Number }, // bump to reload the recordings list
-    // S4 (§5): app.js's live-capped decodeEvents array, same shape as
+    // app.js's live-capped decodeEvents array, same shape as
     // decode-view.js's -- app.js doesn't pass this down yet, so it defaults
     // empty and MESSAGES self-fetches via GET /api/decoder/events instead
     // (see _pollReview/_decodeMessages).
@@ -132,7 +132,7 @@ export class ReviewView extends LitElement {
     _freqDraft: { state: true }, // frequency text field while being edited
     _squelchDraft: { state: true },
     _bookmarkDraft: { state: true },
-    // S4 DECODE section (review-view's own ReplayDecodeSession, distinct
+    // DECODE section (review-view's own ReplayDecodeSession, distinct
     // from decode-deck's live decoder controls).
     _decoders: { state: true }, // GET /api/decoders registry, self-fetched (see connectedCallback)
     _decodeMode: { state: true }, // "single" | "band"
@@ -140,7 +140,7 @@ export class ReviewView extends LitElement {
     _decodeMaxChannels: { state: true },
     _decodeThresholdDb: { state: true },
     _decodeEventsFallback: { state: true }, // GET /api/decoder/events, when decodeEvents prop is empty
-    // S5 (§3): NOTES -- the recording's own Observation (provenance
+    // NOTES -- the recording's own Observation (provenance
     // "recording", ref path == the running replay's path), self-fetched
     // (app.js doesn't pass observations down to this view) via listObservations.
     _recordingObs: { state: true },
@@ -149,7 +149,7 @@ export class ReviewView extends LitElement {
     _notesDraft: { state: true }, // textarea draft, or null to fall back to _recordingObs.notes
     _notesBusy: { state: true },
     _noteCreateDraft: { state: true }, // "create note" input, shown when no recording observation exists yet
-    // S5 (§3): CLIPS -- MARK IN/OUT capture the current replay position
+    // CLIPS -- MARK IN/OUT capture the current replay position
     // (file-elapsed seconds, same axis as reviewSeek) plus, when known, the
     // real capture time at that instant.
     _clipMarkIn: { state: true }, // {positionS, captureText} | null
@@ -276,7 +276,7 @@ export class ReviewView extends LitElement {
     // recordings-view's ▶ REVIEW switched here.
     if (this.replay?.path && this._selectedPath == null) this._selectedPath = this.replay.path;
     if (changed.has("replay")) this._syncPolling();
-    // S5 (§3): NOTES/CLIPS both need the actually-running replay's own path
+    // NOTES/CLIPS both need the actually-running replay's own path
     // (not just _selectedPath, which can point at a recording nothing is
     // playing) -- reload whenever that path changes, and drop stale state
     // once the replay stops or moves to a different file.
@@ -461,7 +461,7 @@ export class ReviewView extends LitElement {
     `;
   }
 
-  /** Timeline segments (runs + gaps, S3-replay-contract.md §4): each run
+  /** Timeline segments (runs + gaps): each run
    * proportional to its own duration (samples/rate); a known gap gets a thin
    * block proportional to gap_before_samples/rate (at the *following* run's
    * rate -- the gap sits on that run's clock); an unknown-length gap gets a
@@ -543,8 +543,8 @@ export class ReviewView extends LitElement {
 
   /** Transport: play/pause still goes through the existing
    * survey-replay-control event (app.js's _doSurveyReplayControl -- POST
-   * /api/survey/replay/control), unchanged from S1. Seek and loop now go
-   * through S3's own POST /api/review/seek and /api/review/loop instead --
+   * /api/survey/replay/control), unchanged. Seek and loop go
+   * through their own POST /api/review/seek and /api/review/loop instead --
    * they need the richer runs-aware position this._review carries, which
    * survey/replay/control's status never had. */
   _renderTransport(recording) {
@@ -614,7 +614,7 @@ export class ReviewView extends LitElement {
     `;
   }
 
-  // -- Virtual receiver (S3) --
+  // -- Virtual receiver --
 
   _tuneNow(hz, demodulator, bandwidthHz) {
     this._reviewAction(() => reviewTune(hz, demodulator, bandwidthHz));
@@ -753,7 +753,7 @@ export class ReviewView extends LitElement {
     `;
   }
 
-  // -- DECODE (S4, §5): review-view's own ReplayDecodeSession, bound to the
+  // -- DECODE: review-view's own ReplayDecodeSession, bound to the
   // running replay -- single-channel (decoders compatible with the virtual
   // receiver's current demodulator) or band (NFM-family, channelized across
   // the file's span), distinct from decode-deck's live-adapter controls. --
@@ -908,7 +908,7 @@ export class ReviewView extends LitElement {
     `;
   }
 
-  // -- MESSAGES (S4, §5): decode events for the running replay (decoder
+  // -- MESSAGES: decode events for the running replay (decoder
   // parsers tag them source_id "replay:<name>", regardless of whether they
   // came from this section's own DECODE or from a decode-deck session that
   // happens to still be bound to this replay). --
@@ -963,7 +963,7 @@ export class ReviewView extends LitElement {
     `;
   }
 
-  // -- NOTES (S5, §3) --
+  // -- NOTES --
 
   /** SAVE on the recording's own observation notes. Always refetches rather
    * than trusting the PATCH response's exact shape (the response also
@@ -1051,7 +1051,7 @@ export class ReviewView extends LitElement {
     `;
   }
 
-  // -- CLIPS (S5, §3) --
+  // -- CLIPS --
 
   _markIn() {
     const rr = this._review?.replay;
@@ -1149,7 +1149,7 @@ export class ReviewView extends LitElement {
     `;
   }
 
-  // -- Bookmarks (S3) --
+  // -- Bookmarks --
 
   _renderBookmarks(bookmarks, currentPath) {
     const rows = bookmarks ?? [];

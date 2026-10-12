@@ -1,4 +1,4 @@
-"""Review (S3/S4): source-independent playback, decode, audio, bookmarks, clips.
+"""Review: source-independent playback, decode, audio, bookmarks, clips.
 
 AppService mixin: methods moved verbatim from msdr/api/service.py;
 all attributes they use are initialised in AppService.__init__.
@@ -26,7 +26,7 @@ from msdr.observations.models import RecordingReference
 from msdr.radio.registry import REGISTRY
 from msdr.tasks import spawn
 
-# Longest clip POST /api/review/clips accepts (S5 contract): bounds one
+# Longest clip POST /api/review/clips accepts: bounds one
 # request's disk write and thread time.
 _CLIP_MAX_S = 600.0
 
@@ -118,13 +118,12 @@ def _write_clip_files(
 
 
 class ReviewServiceMixin:
-    # --- review: source-independent playback + audio (S3) --------------------
+    # --- review: source-independent playback + audio --------------------
     # A VirtualReceiver only ever tunes/listens to the survey's replay
     # ReplaySource (msdr.survey.replay) -- it never touches self.adapter, so
     # replay tuning/listening/decoding makes zero live-radio writes. Survey
-    # doesn't expose its ReplaySource through a public accessor (S3 contract:
-    # add one only if none exists; there isn't one), so this reaches into
-    # Survey._replay directly -- see the S3 report for this call-out.
+    # doesn't expose its ReplaySource through a public accessor, so this reaches into
+    # Survey._replay directly.
 
     def _review_replay_source(self):
         return getattr(self.survey, "_replay", None) if self.survey is not None else None
@@ -152,7 +151,7 @@ class ReviewServiceMixin:
         self.virtual_rx = rx
 
     async def _detach_virtual_receiver(self) -> None:
-        # A review decode session is bound to this receiver/replay pair (S4)
+        # A review decode session is bound to this receiver/replay pair
         # -- it never survives past its own receiver, so it's torn down first.
         try:
             await self._stop_replay_decode()
@@ -173,7 +172,7 @@ class ReviewServiceMixin:
             "decode": self._replay_decode.status() if self._replay_decode is not None else None,
         }
 
-    # --- review decode (S4): ReplayDecodeSession bound to the running
+    # --- review decode: ReplayDecodeSession bound to the running
     # replay's VirtualReceiver + ReplaySource --------------------------------
 
     def _on_replay_decode_event(self, event) -> None:
@@ -182,7 +181,7 @@ class ReviewServiceMixin:
         and publish through the exact same path live decoder_events use --
         the event itself already carries source_id="replay:<name>" and
         analysis_run_id (ReplayDecodeSession's own contract), which is what
-        makes the S2 recorder/beacons/survey fan-ins in
+        makes the recorder/beacons/survey fan-ins in
         _publish_decoder_message treat it as review analysis, not a live hit."""
         stored = self.decode_events.add(event)
         self._publish_decoder_message({"type": "decoder_event", "event": stored})
@@ -388,7 +387,7 @@ class ReviewServiceMixin:
         status = replay.status()
         run_index = getattr(replay, "run_index", 0) or 0
         sample_index = getattr(replay, "sample_index", None)
-        if sample_index is None:  # pre-S3 ReplaySource: fall back to the file clock
+        if sample_index is None:  # earlier ReplaySource: fall back to the file clock
             sample_index = int(replay.position_s * replay.sample_rate_hz)
         capture_start = status.get("capture_start")
         sample_rate_hz = replay.sample_rate_hz or 1
@@ -429,7 +428,7 @@ class ReviewServiceMixin:
         return out
 
     def review_bookmark_seek(self, bookmark_id: str) -> dict:
-        """Seek to a bookmark -- or a clip (S5: its start on the parent
+        """Seek to a bookmark -- or a clip (its start on the parent
         recording). A reference whose media is gone is a 404 with the reason,
         checked before "no replay running": the recording can't be replayed."""
         obs = self.observations.get(bookmark_id)
@@ -452,7 +451,7 @@ class ReviewServiceMixin:
         self.survey.replay_control(position_s=position_s)
         return self.review_status()
 
-    # -- clips (S5): one run's sample range copied to its own SigMF dir --------
+    # -- clips: one run's sample range copied to its own SigMF dir --------
 
     def _clips_dir(self) -> Path:
         if self.settings.clips_dir:

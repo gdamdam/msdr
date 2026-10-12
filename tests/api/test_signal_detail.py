@@ -1,6 +1,6 @@
 """GET /api/signal-detail (U3, msdr/api/**, Stream A): aggregate memory/find/
 survey-label/evidence/messages for one frequency across every "select a
-signal" surface -- see docs/superpowers/plans/2026-09-26-ui-u3.md and
+signal" surface and
 msdr/api/signal_detail.py."""
 
 import pytest
@@ -32,7 +32,7 @@ class _Event:
         self.fields = fields or {}
         self.frequency_hz = frequency_hz
         self.signal_id = None
-        # S4: DecodeEvent's integrity/integrity_note (default "unknown", same
+        # DecodeEvent's integrity/integrity_note (default "unknown", same
         # as DecodeEventRepo.add's own getattr default) -- see
         # test_decoded_state_follows_event_integrity below.
         self.integrity = integrity
@@ -222,7 +222,7 @@ async def test_rds_evidence_first_with_message_second():
         body = resp.json()
         decoded_items = [e for e in body["evidence"] if e["kind"] == "decoded"]
         # PI (validated) and PS (estimated) are split, never merged into a
-        # single confidence number (S2).
+        # single confidence number.
         assert decoded_items[0]["title"] == "PI 0x1234"
         assert decoded_items[0]["evidence_type"] == "validated_decode"
         assert decoded_items[0]["state"] == "validated"
@@ -249,7 +249,7 @@ async def test_memory_evidence_uses_name_and_notes():
         memory_ev = next(e for e in body["evidence"] if e["kind"] == "memory")
         assert memory_ev["title"] == "Weather Station"
         assert memory_ev["detail"] == "NOAA WX"
-        # Not yet identified -- context, not operator certainty (S2).
+        # Not yet identified -- context, not operator certainty.
         assert memory_ev["evidence_type"] == "operator"
         assert memory_ev["state"] == "context"
         assert "confidence" not in memory_ev
@@ -410,7 +410,7 @@ async def test_survey_label_outside_tolerance_is_null():
         assert resp.json()["survey_label"] is None
 
 
-# --- observations (S2) -------------------------------------------------------
+# --- observations -------------------------------------------------------
 
 
 def test_last_classification_recovers_superseded_voice_but_ignores_generic_and_replay():
@@ -430,7 +430,7 @@ def test_last_classification_recovers_superseded_voice_but_ignores_generic_and_r
 
 
 async def test_no_evidence_item_has_a_confidence_key(monkeypatch):
-    """S2: every evidence item lost `confidence` in favour of state/
+    """every evidence item lost `confidence` in favour of state/
     evidence_type/score."""
     async with running_app() as (app, client, _adapter):
         service = app.state.service
@@ -477,7 +477,7 @@ async def test_signal_detail_includes_nearby_observations():
         assert body["observations"][0]["reported_hz"] == 152_840_000
 
 
-# --- S4: decoded state follows the event's own integrity, candidate support -
+# --- decoded state follows the event's own integrity, candidate support -
 
 
 async def test_decoded_state_is_validated_when_event_integrity_passed():
@@ -524,7 +524,7 @@ async def test_decoded_state_is_estimated_when_event_integrity_is_not_passed():
 
 
 async def test_candidate_evidence_carries_support_alternatives_next_action(monkeypatch):
-    """S4: the candidate (analyzer family) evidence item carries `support`
+    """the candidate (analyzer family) evidence item carries `support`
     (raw/snapped rate, tolerance, modulation), `alternatives` and
     `next_action` straight from the analyzer's own fields."""
     fake = FakeSurvey()

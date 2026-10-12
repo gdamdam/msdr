@@ -1,5 +1,5 @@
 """Source/channel contract: sample-index clock, explicit discontinuities,
-generation bump, span-bounded virtual tuning (plan §6)."""
+generation bump, span-bounded virtual tuning."""
 
 from msdr.contracts.source import ChannelDescriptor, SourceDescriptor
 

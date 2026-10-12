@@ -2,8 +2,7 @@ import { LitElement, html } from "../vendor/lit.js";
 
 const REFRESH_MS = 10_000;
 
-/** Fax image viewer modal (Decoders S7, wefax `image` events -- see
- * docs/superpowers/plans/2026-09-25-survey-s7-s10-hf.md Stream C). Opened
+/** Fax image viewer modal (wefax `image` events). Opened
  * from decode-view's image rows with the DecodeEvent (`id`, `text`,
  * `fields`); the PNG at `GET /api/decoder/images/<id>.png` is written
  * progressively server-side while the fax is in progress (`text === "fax

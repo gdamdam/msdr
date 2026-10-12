@@ -1,6 +1,6 @@
 import { LitElement, html } from "../vendor/lit.js";
 
-/** Pre-roll IQ recorder (see docs/superpowers/specs/2026-09-23-preroll-recorder-design.md):
+/** Pre-roll IQ recorder.
  * ARM keeps a rolling on-disk buffer from its own SDRconnect stream; REC
  * promotes it into a recording (still carrying the pre-roll) until STOP,
  * which finalizes it into SigMF. Rendered by instrument-panel.js in the

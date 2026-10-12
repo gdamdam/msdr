@@ -1,4 +1,4 @@
-"""NCDXF/IARU beacon monitor (S10).
+"""NCDXF/IARU beacon monitor.
 
 AppService mixin: methods moved verbatim from msdr/api/service.py;
 all attributes they use are initialised in AppService.__init__.
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 try:
-    # A fifth package (msdr/survey/beacons.py, S10), built alongside this
+    # A fifth package (msdr/survey/beacons.py), built alongside this
     # feature -- same guard as msdr.survey above (see AppService._build_beacons/
     # beacons_*). Imported directly from the submodule (not msdr.survey's own
     # __init__) since that package is owned by a concurrent stream too.
@@ -88,7 +88,7 @@ class BeaconServiceMixin:
             logger.exception("beacons: stop failed")
         self._beacons_running = False
 
-    # --- beacon monitor (S10) ------------------------------------------------
+    # --- beacon monitor ------------------------------------------------
 
     def _require_beacons(self) -> None:
         # Same shape as _require_survey: an unavailable beacons package is a

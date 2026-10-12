@@ -1,5 +1,5 @@
 """Dwell observer: notices when the operator has settled on a new signal via
-SDRconnect's own GUI (spec §7) and reports it once things go quiet.
+SDRconnect's own GUI and reports it once things go quiet.
 
 Only "key" properties (frequency, mode, bandwidth, antenna) count as changing
 what the operator is listening to; gain/audio tweaks don't reset the timer.

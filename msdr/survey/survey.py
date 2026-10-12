@@ -1,4 +1,4 @@
-"""Survey: span picker + spectrum/waterfall/occupancy engine (S1). Owns a
+"""Survey: span picker + spectrum/waterfall/occupancy engine. Owns a
 SpectrumHub subscription and an OccupancyMap; publishes decimated `spectrum`
 frames and throttled `survey` status pushes, the way DecoderManager owns an
 audio stream and publishes `decoder` status -- runtime subscribe/unsubscribe
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Measured (docs/research/2026-09-22-sdrconnect-websocket-api.md Sec7): the
+# Measured (docs/research/2026-09-22-sdrconnect-websocket-api.md Sec12): the
 # spectrum stream runs ~23 frames/s regardless of settings -- this is only
 # used to turn occupancy_windows_s into ring sizes, not a knob.
 _MEASURED_FPS = 23
@@ -50,7 +50,7 @@ _DEFAULT_DIMENSIONS = ["activity", "bandwidth", "bandplan", "catalog"]
 _IDENTIFY_CACHE_TTL_S = 60.0
 _MAX_LABELS = 64
 _RETUNE_SETTLE_S = 0.25  # control/IQ streams have no hardware tune generation
-# needs_iq dimensions have no IQ pipeline yet (S3+) -- set_dimensions rejects them.
+# needs_iq dimensions have no IQ pipeline yet (IQ source) -- set_dimensions rejects them.
 AVAILABLE_DIMENSIONS = [
     {"id": "activity", "needs_iq": False},
     {"id": "bandwidth", "needs_iq": False},
@@ -63,7 +63,7 @@ AVAILABLE_DIMENSIONS = [
 ]
 _DIMENSION_NEEDS_IQ = {d["id"]: d["needs_iq"] for d in AVAILABLE_DIMENSIONS}
 # bw_class values wide enough that IQ feature extraction is skipped entirely
-# (S2 label only, modulation reported as the {"kind": "wideband"} bypass) --
+# (spectrum label, modulation reported as the {"kind": "wideband"} bypass) --
 # same table classify.bandwidth_class can return, mirrored here (and in
 # families.py) since Survey needs it for target selection, not just display.
 _WIDE_BW_CLASSES = ("wfm", "wide_digital")
@@ -136,7 +136,7 @@ def _analysis_state_for_label(
     if previous_at is not None:
         return {"state": "historical_result", "at": previous_at, "name": previous_name}
     return {"state": "not_analyzed"}
-# Keep a completed dwell across a brief S2 track dropout. The analyzer itself
+# Keep a completed dwell across a brief spectrum-tracker track dropout. The analyzer itself
 # retains the target for 30 seconds; use the same upper bound here.
 _ANALYZER_RESULT_GRACE_S = 30.0
 
@@ -148,7 +148,7 @@ def _label_id(track: TrackedPeak) -> str:
     return "p" + track.id.removeprefix("t")
 
 
-# "voice" is S4, NFM-class only (spec: digital voice/data on other classes
+# "voice" is NFM-class only (digital voice/data on other classes
 # has no discriminator structure resembling speech either way).
 # Voice results are shown for narrowband labels: "nfm", and "unresolved" --
 # at wide spans (19.5 kHz bins at 10 MS/s) no narrow signal ever resolves to
@@ -167,7 +167,7 @@ _RDS_SIDE_PEAK_HZ = 80_000
 # Profile bins this close to the strongest one locate the FM carrier (see
 # Survey._station_hz); HD Radio sidebands sit ~17 dB lower.
 _RDS_TOP_DB = 3.0
-# S5: how long a confirmed identity stays attached to its label_id (keyed on
+# how long a confirmed identity stays attached to its label_id (keyed on
 # frequency, not track id -- see note_decode_event) after the peak was last
 # actually visible in a labels pass; a track TTLs out of the tracker itself
 # well before this (label_ttl_s, default 120s), so this is what lets
@@ -221,7 +221,7 @@ class Survey:
         iq_stream_factory: Callable[[], object] | None = None,
         decode_start: Callable[[int, list[str]], Awaitable[dict]] | None = None,
         decode_stop: Callable[[int], Awaitable[dict]] | None = None,
-        # S2 observations hook: called with the current labels list at
+        # observations hook: called with the current labels list at
         # discrete boundaries only (a track appears/retires, a decode
         # confirm, an analyzer/RDS result landing, catalog/bandplan
         # resolving) -- never from the per-frame pump loop itself. The
@@ -244,12 +244,12 @@ class Survey:
         # IQ-recording replay (msdr.survey.replay): while set, the survey's
         # span, spectrum frames and analyzer IQ all come from the file.
         self._replay: ReplaySource | None = None
-        # S5 decode handoff (-> DecoderManager.band_pin/band_unpin); None
+        # decode handoff (-> DecoderManager.band_pin/band_unpin); None
         # keeps decode()/undecode() raising SurveyError, same "not wired up
         # yet" default as iq_stream_factory above.
         self._decode_start = decode_start
         self._decode_stop = decode_stop
-        # S2 observations hook (constructor kwarg or set_on_labels_changed).
+        # observations hook (constructor kwarg or set_on_labels_changed).
         self._on_labels_changed = on_labels_changed
         # label_id (= tracker track id) -> {"confirmed": {...},
         # "last_seen_mono": float}. A track outlives quiet gaps by label_ttl_s
@@ -421,7 +421,7 @@ class Survey:
         self._replay = source
         self._center_hz, self._sample_rate_hz = source.center_hz, source.sample_rate_hz
         self._vfo_hz = None
-        # S3: a multi-run recording changes centre/rate mid-replay; the span
+        # a multi-run recording changes centre/rate mid-replay; the span
         # (occupancy, tracker, identify cache, analyzer binding) must follow
         # the run, otherwise labels from the old span would be read against
         # the new frequencies.
@@ -752,7 +752,7 @@ class Survey:
         self._publish_survey(force=True)
         return self.status()
 
-    # -- decode handoff (S5) -------------------------------------------------
+    # -- decode handoff -------------------------------------------------
 
     async def decode(self, frequency_hz: int, decoders: list[str] | None) -> dict:
         """Start decoding a label's peak (-> DecoderManager.band_pin via the
@@ -793,7 +793,7 @@ class Survey:
             self._decoding.add(int(status["frequency_hz"]))
 
     def set_on_labels_changed(self, callback: Callable[[list[dict]], None] | None) -> None:
-        """Setter alternative to the constructor kwarg (S2 contract)."""
+        """Setter alternative to the constructor kwarg."""
         self._on_labels_changed = callback
 
     def _notify_labels_changed(self, labels: list[dict] | None = None) -> None:
@@ -879,7 +879,7 @@ class Survey:
         self._notify_labels_changed()
 
     def identity_summary(self, frequency_hz: int) -> dict | None:
-        """For SAVE (S5): name/decoders/notes for the label nearest
+        """For SAVE: name/decoders/notes for the label nearest
         `frequency_hz`, or None when nothing is currently tracked there."""
         label = self._label_by_frequency(int(frequency_hz))
         if label is None:
@@ -925,7 +925,7 @@ class Survey:
         modulation = label.get("modulation")
         if modulation:
             kind = modulation.get("kind")
-            # S4 wording: a keyed carrier is a presence fact, not a code.
+            # wording: a keyed carrier is a presence fact, not a code.
             lines.append(f"modulation: {'keyed carrier' if kind == 'ook' else kind}")
         raw = label.get("symbol_rate_raw_hz")
         snapped = label.get("symbol_rate_snapped_hz")
@@ -937,7 +937,7 @@ class Survey:
         voice = label.get("voice")
         if voice:
             # "speech-like audio" is the heuristic's claim; "analog NFM voice"
-            # needs modulation evidence too (plan §3) -- the family carries
+            # needs modulation evidence too -- the family carries
             # that stronger wording when both agree.
             kind = voice.get("kind")
             lines.append(f"voice: {'speech-like audio' if kind == 'voice' else kind}")
@@ -975,7 +975,7 @@ class Survey:
 
     def _sync_analyzer(self) -> None:
         """Selecting any IQ dimension starts the analyzer; de-selecting all
-        of them stops it (spec S3/S4 contract) -- set_dimensions is the only
+        of them stops it -- set_dimensions is the only
         caller, so this just reconciles "should it be running" against "is
         it"."""
         wants_iq = self._active and any(_DIMENSION_NEEDS_IQ.get(d, False) for d in self._dimensions)
@@ -1475,7 +1475,7 @@ class Survey:
             # f"p{kHz}" id followed the centroid, which jitters by bins on
             # wideband signals -- half the table's rows got new ids every few
             # seconds (live 2026-09-26: p102118 -> p102105 for one station),
-            # so rows vanished/reappeared and S5 confirms fell off.
+            # so rows vanished/reappeared and confirmed identities fell off.
             label_id = _label_id(track)
             snr_db = track.snr_units / self._units_per_db if self._units_per_db else 0.0
 
@@ -1519,7 +1519,7 @@ class Survey:
             last_classification = None
             if want_analyzer:
                 if internal_bw_class in _WIDE_BW_CLASSES:
-                    # Wide signals never reach the analyzer at all (S2 label
+                    # Wide signals never reach the analyzer at all (spectrum label
                     # only) -- this is the label's entire "modulation" story.
                     if want_modulation:
                         modulation = {"kind": "wideband", "confidence": 0.5}
@@ -1533,7 +1533,7 @@ class Survey:
                             modulation = fields["modulation"]
                             family = fields["family"]
                             if family is not None and label_id in self._confirmed_labels:
-                                # S5: a confirmed decode is ground truth --
+                                # A confirmed decode is ground truth --
                                 # show it as certain regardless of what the
                                 # analyzer's own line-strength x modulation
                                 # confidence product came out to.
@@ -1751,7 +1751,7 @@ class Survey:
                 self._latest_peaks = self._tracker.update(
                     frame.bins, frame.at, self._occupancy.floor
                 )
-                # track appears/retires boundary (S2): an id set change is
+                # track appears/retires boundary: an id set change is
                 # the tracker actually creating or dropping a track, not just
                 # this frame's re-measurement of ones already there -- most
                 # frames leave the set unchanged and notify nothing.

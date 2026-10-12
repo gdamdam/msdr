@@ -1,4 +1,4 @@
-"""WWV/WWVH, DCF77 and MSF time-code decoders -- round 2 (S7-S10).
+"""WWV/WWVH, DCF77 and MSF time-code decoders -- round 2.
 
 Shared signal model: a once-per-second pulse whose ON (WWV/WWVH) or OFF
 (DCF77/MSF) duration carries one symbol. All three decoders share the same

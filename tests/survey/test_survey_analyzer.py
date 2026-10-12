@@ -1,4 +1,4 @@
-"""Survey <-> Analyzer integration (S3/S4): set_dimensions starts/stops the
+"""Survey <-> Analyzer integration: set_dimensions starts/stops the
 analyzer only when an iq_stream_factory exists, targets/results flow, and
 results merge into/clear from labels. Uses a minimal fake IQ stream --
 Analyzer's own pump/round-robin behaviour is tests/survey/test_analyzer.py's
@@ -135,7 +135,7 @@ async def test_deselecting_iq_dimensions_stops_analyzer(adapter, confirmed, sett
 async def test_without_factory_needs_iq_dimensions_still_rejected(
     adapter, confirmed, settings, published
 ):
-    # No iq_stream_factory passed at all -- exactly the pre-S3 constructor.
+    # No iq_stream_factory passed at all -- exactly the pre-constructor.
     hub = SpectrumHub(adapter)
     survey = Survey(
         adapter=adapter,

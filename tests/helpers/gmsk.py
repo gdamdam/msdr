@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Synthetic AIS (GMSK 9600, BT 0.4, h 0.5) burst generator for tests.
 
-Copied from docs/decisions/poc/gmsk_ais_poc.py (the PoC stays standalone as
-documentation) and generalised to any output sample rate so the survey
+Adapted from an earlier standalone AIS proof-of-concept and
+generalised to any output sample rate so the survey
 analyzer tests can build 25 kHz channels from the same generator as the
 48 kHz decoder tests. SYNTHETIC ONLY: nothing here reflects a field capture.
 """

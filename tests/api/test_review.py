@@ -1,4 +1,4 @@
-"""Review (S3 replay contract): GET/POST /api/review*, bookmarks, and the
+"""Review (replay contract): GET/POST /api/review*, bookmarks, and the
 /ws/audio transport.
 
 Driven against a *real* SDRconnectAdapter talking to a FakeSDRconnect (not the
@@ -34,7 +34,7 @@ with warnings.catch_warnings():
     from starlette.testclient import TestClient  # noqa: E402
 
 # A clean decimation ratio to 48 kS/s (the default VirtualReceiver audio_rate)
-# and comfortably inside the "<=250 kS/s" ChannelExtractor bucket (S3 contract
+# and comfortably inside the "<=250 kS/s" ChannelExtractor bucket (contract
 # Sec2) -- avoids the 1:1 edge case a bare 48 kS/s recording would hit.
 _SAMPLE_RATE_HZ = 240_000
 _DURATION_S = 2.0
@@ -199,8 +199,8 @@ def test_review_flow_end_to_end(tmp_path):
 
             review = client.get("/api/review").json()
             assert review["replay"] is not None
-            # A VirtualReceiver exists as soon as the replay starts (S3
-            # contract), but sits idle until the first tune.
+            # A VirtualReceiver exists as soon as the replay starts
+            # (virtual-receiver contract), but sits idle until the first tune.
             assert review["receiver"]["state"] == "idle"
             assert review["bookmarks"] == []
 
@@ -298,9 +298,9 @@ def test_review_flow_end_to_end(tmp_path):
 
 
 def test_review_decode_start_stop_and_status(tmp_path):
-    """S4 §4: POST /api/review/decode{,/stop}, GET /api/review's `decode`
+    """POST /api/review/decode{,/stop}, GET /api/review's `decode`
     field -- 409 without a running replay, a real ReplayDecodeSession once
-    one exists, and (like the S3 flow test above) zero writes to the fake
+    one exists, and (like the flow test above) zero writes to the fake
     radio the whole way through."""
     server = _FakeServerThread()
     try:

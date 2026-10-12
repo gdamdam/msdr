@@ -1,4 +1,4 @@
-"""Synthesised one-minute-frame round trips for the S7-S10 time-code
+"""Synthesised one-minute-frame round trips for the time-code
 decoders (round 2): WWV/WWVH, DCF77, MSF.
 
 Widths below must match each decoder's own classify_*_pulse() bands in

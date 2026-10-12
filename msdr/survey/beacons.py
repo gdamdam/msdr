@@ -1,10 +1,9 @@
-"""Beacon monitor (S10): an engine, not a decoder -- cycles the receiver over
+"""Beacon monitor: an engine, not a decoder -- cycles the receiver over
 NCDXF (or NDB) beacon frequencies, logs SNR per scheduled slot, and uses the
 existing `cw` decoder to confirm call signs / idents. Pattern: msdr/survey/
 survey.py (runtime start/stop, publish callable, status dict, *Error style).
 
-Spec: epic S10, decoder spec P6, docs/superpowers/plans/2026-09-25-survey-
-s10-beacons.md (this file is Stream A: schedule math + BeaconMonitor).
+This file holds the schedule math + BeaconMonitor.
 """
 
 import asyncio

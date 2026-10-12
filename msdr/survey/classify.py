@@ -1,4 +1,4 @@
-"""Spectrum-only classifiers (S2): bandwidth class from peak width and
+"""Spectrum-only classifiers: bandwidth class from peak width and
 frame resolution, activity class from a TrackedPeak's on/off history. No IQ,
 no protocol knowledge -- just what the 512-bin frame can honestly support
 (see the design doc's "Constraints and honesty rules": unresolved beats a

@@ -354,7 +354,7 @@ class ScanStartIn(BaseModel):
     hang_s: float | None = Field(default=None, ge=0)
     stop_on_hit: bool = False
     capture_hits: bool = False
-    # Scanner finds log (S11) -- see docs/superpowers/plans/2026-09-25-scanner-finds.md.
+    # Scanner finds log.
     log_finds: bool = False
     keep_scanning: bool = False
     finds_dwell_s: float = 3.0
@@ -523,13 +523,13 @@ class SavedSearchIn(BaseModel):
     params: dict[str, object]
 
 
-# --- observations and honest evidence (S2) --------------------------------
+# --- observations and honest evidence --------------------------------
 
 
 class ObservationPatch(BaseModel):
     # Each key acts only when present (model_fields_set): `signal_id: null`
     # unlinks, a signal id links, and a body with just `notes` leaves the
-    # memory link alone. At least one key is required, as before S5 (when
+    # memory link alone. At least one key is required, as before the clips feature (when
     # signal_id itself was required).
     signal_id: str | None = None
     notes: str | None = Field(default=None, max_length=20_000)
@@ -547,7 +547,7 @@ class ObservationPromoteIn(BaseModel):
     name: str | None = None
 
 
-# --- source-independent playback / review (S3) ----------------------------
+# --- source-independent playback / review ----------------------------
 
 
 class ReviewTuneIn(BaseModel):

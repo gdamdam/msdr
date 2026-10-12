@@ -1,5 +1,5 @@
 {
-  "$schema_notes": "Machine-readable validation-case corpus (plan S3 deliverable). Each case is an operator report or a repo fixture *to be checked*, not a confirmed identification -- see docs/validation/corpus.md for the human-readable companion. Validated by tests/corpus/test_manifest.py.",
+  "$schema_notes": "Machine-readable validation-case corpus. Each case is an operator report or a repo fixture *to be checked*, not a confirmed identification -- see docs/validation/corpus.md for the human-readable companion. Validated by tests/corpus/test_manifest.py.",
   "cases": [
     {
       "id": "noaa-wx-162400-425-494",

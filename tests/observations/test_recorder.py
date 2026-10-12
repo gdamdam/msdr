@@ -381,7 +381,7 @@ def test_decode_event_on_label_obs_adds_no_claim(db, rec):
     assert rec.repo.claims(oid) == []
 
 
-# --- S4: review/replay decode events (analysis_run_id) ----------------------
+# --- review/replay decode events (analysis_run_id) ----------------------
 
 
 def _insert_decode_event(db, event_id, *, frequency_hz, decoder="aprs"):
@@ -591,7 +591,7 @@ def test_replay_decode_events_from_different_runs_get_different_observations(db,
     assert oid0 != oid1
 
 
-# --- S4: voice-wording families are a modulation claim, not protocol --------
+# --- voice-wording families are a modulation claim, not protocol --------
 
 
 @pytest.mark.parametrize(

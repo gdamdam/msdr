@@ -1,4 +1,4 @@
-"""VirtualReceiver over a test-double IQSource (S3 §2): generations, seek,
+"""VirtualReceiver over a test-double IQSource: generations, seek,
 span bounds, bounded queue, RDS, processing cost."""
 
 import asyncio

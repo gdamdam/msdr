@@ -1,5 +1,4 @@
-"""S5 investigation workflow (docs/epics/listening-workbench/S5-workflow-contract.md
-§1 lifecycle tests): a recording becomes an Observation, notes survive a
+"""investigation workflow (lifecycle tests): a recording becomes an Observation, notes survive a
 restart, deleted media is reported unavailable, clips, promote, export, and
 stopping a replay under a review decode.
 

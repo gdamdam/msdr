@@ -1,4 +1,4 @@
-"""Session / Observation / RecordingReference models (S2 contract).
+"""Session / Observation / RecordingReference models.
 
 Fields mirror the 012_observations.sql columns; `*_json` columns appear here
 as their decoded Python value (`receiver_json` -> `receiver`). Timestamps are
@@ -52,7 +52,7 @@ class Observation(BaseModel):
     legacy: bool = False
     provenance: str = ""
     closed: bool = False
-    # Operator free text (S5): the only field PATCH edits besides signal_id.
+    # Operator free text: the only field PATCH edits besides signal_id.
     notes: str = ""
     # None = let the repo stamp them on insert/update.
     created_at: float | None = None

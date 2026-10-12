@@ -1,4 +1,4 @@
-"""Replay decode paths (S4 §2): the live decoders run on a replayed recording.
+"""Replay decode paths: the live decoders run on a replayed recording.
 
 Two modes, bound to one ``IQSource`` (a ReplaySource) and the
 ``VirtualReceiver`` listening to it:

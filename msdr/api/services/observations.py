@@ -1,4 +1,4 @@
-"""Signal detail panel (U3) and observations / honest evidence (S2).
+"""Signal detail panel (U3) and observations / honest evidence.
 
 AppService mixin: methods moved verbatim from msdr/api/service.py;
 all attributes they use are initialised in AppService.__init__.
@@ -30,7 +30,7 @@ class ObservationServiceMixin:
             self, frequency_hz=frequency_hz, signal_id=signal_id, find_id=find_id
         )
 
-    # --- observations and honest evidence (S2) -------------------------------
+    # --- observations and honest evidence -------------------------------
 
     def observations_list(
         self,

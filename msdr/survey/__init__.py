@@ -1,7 +1,5 @@
-"""Survey package (S1): span picker, spectrum + waterfall, occupancy map.
-Sibling of msdr/decoder/ -- see docs/superpowers/specs/2026-09-25-wide-view-
-identification-design.md for the full architecture (this package ships only
-the S1 slice: SpectrumHub, OccupancyMap, Survey)."""
+"""Survey package: span picker, spectrum + waterfall, occupancy map.
+Sibling of msdr/decoder/ (SpectrumHub, OccupancyMap, Survey)."""
 
 from msdr.survey.classify import activity_class, bandwidth_class
 from msdr.survey.occupancy import OccupancyMap

@@ -1,12 +1,12 @@
 """ObservationRecorder: turns survey labels, decode events and scanner hits
-into Observations + append-only Claims (S2 contract).
+into Observations + append-only Claims.
 
 Pure logic over an `ObservationRepo` with an injectable clock. The survey
 calls `sync_labels` at label *boundaries* only (a label appears, a dimension
 result lands, a label retires) -- never per spectrum frame -- and the
 recorder diffs against its own cache so an unchanged label costs zero
 writes. A claim is appended when a dimension first appears or its value
-changes; the previous claim is superseded, never overwritten (plan §7).
+changes; the previous claim is superseded, never overwritten.
 
 Evidence honesty rules live in the claim mapping below: allocation and
 schedule are context, an IQ estimate names candidates, a keyed carrier is a
@@ -48,12 +48,12 @@ _KEYED_ACTIVITY = frozenset({"keyed", "ook"})
 _SPEECH_VOICE = frozenset({"speech", "voice"})  # analyzer says "voice", contract "speech"
 _QUIET_VOICE = frozenset({"quiet", "silence"})  # analyzer says "silence", contract "quiet"
 # Family names that are really a keyed-carrier guess: they become a presence
-# claim's next action, never a protocol claim (S4: msdr.survey.families'
+# claim's next action, never a protocol claim (msdr.survey.families'
 # family_for names an *unconfirmed* keyed carrier KEYED_CARRIER, "CW" only
 # once features.keying_timing's dot/dash statistics actually fit).
 _KEYED_FAMILIES = frozenset({"CW", KEYED_CARRIER})
 # Family names that are really a voice/speech read, not a protocol
-# identification -- these become a `modulation` claim (S4 wording,
+# identification -- these become a `modulation` claim (wording,
 # msdr.survey.analyzer's voice branch), same honesty rule as CW/keyed above:
 # a demodulation guess is never presented as a decoded protocol.
 _VOICE_FAMILY_MODULATION = {
@@ -172,7 +172,7 @@ class ObservationRecorder:
         # Current append-only claim per survey-less observation/decoder. A
         # later event can supersede it when a real integrity check succeeds.
         self._decode_claims: dict[tuple[str, str], Claim] = {}
-        # analysis_run_id -> its open _AnalysisPartition rows (S4 review
+        # analysis_run_id -> its open _AnalysisPartition rows (review
         # decode, fixed: a run's events link to one Observation per
         # source_id/generation/frequency, not one Observation for the whole
         # run -- a run can visit several channels and survive seeks).
@@ -425,7 +425,7 @@ class ObservationRecorder:
         voice_modulation_value = _VOICE_FAMILY_MODULATION.get(family_name or "")
         if voice_modulation_value is not None:
             # A voice/speech read is a modulation claim, never a protocol
-            # identification (S4 wording: "NFM voice (analog)" / "speech-like
+            # identification (wording: "NFM voice (analog)" / "speech-like
             # audio (demodulation untested)") -- same honesty rule as the
             # keyed-carrier presence claim above.
             specs["family"] = {
@@ -518,7 +518,7 @@ class ObservationRecorder:
         observation. Returns the observation id, or None when the event has
         no frequency to place it by.
 
-        `analysis_run_id` (S4 review decode) takes a separate path: it is
+        `analysis_run_id` (review decode) takes a separate path: it is
         never treated as live (no capture-time start/end, no bump to a live
         encounter count) -- a re-analysis of a recording is not a new live
         reception, even when a live session happens to be open at the same
@@ -719,9 +719,9 @@ class ObservationRecorder:
 
 
 def _analyzer_support(label: dict) -> list[str]:
-    """The `family`/voice claim's `support` (S4): raw/snapped symbol rate,
+    """The `family`/voice claim's `support`: raw/snapped symbol rate,
     tolerance and modulation kind straight from the analyzer's own fields --
-    never a percentage confidence. Falls back to the pre-S4 single
+    never a percentage confidence. Falls back to the earlier single
     `symbol_rate_hz` reading when the analyzer hasn't set the new fields yet
     (an older label, or a test double)."""
     out: list[str] = []
@@ -735,7 +735,7 @@ def _analyzer_support(label: dict) -> list[str]:
     if tolerance is not None:
         out.append(f"tolerance {float(tolerance) * 100:g}%")
     if not out:
-        # Pre-S4 label (or a test double): only the single symbol_rate_hz
+        # Earlier label (or a test double): only the single symbol_rate_hz
         # reading exists.
         out = _symbol_rate_support(label.get("symbol_rate_hz"))
     modulation_kind = (label.get("modulation") or {}).get("kind")

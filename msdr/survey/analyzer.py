@@ -1,11 +1,11 @@
-"""Analyzer: IQ modulation/symbol-rate/family/voice classifier (S3-S4).
+"""Analyzer: IQ modulation/symbol-rate/family/voice classifier.
 
 Same IQ pump pattern as `msdr/decoder/band.py`'s BandDecoder -- own IQStream
 connection, `PolyphaseChannelizer`, a bounded drop-oldest frame queue, numpy
 work off the event loop via `asyncio.to_thread`, an EMA'd cpu_load and a
 "connected" rule keyed on how long ago a frame last arrived -- but where
 BandDecoder keeps one NFMChannel+backend per detected channel, this instead
-round-robins one channel at a time across up to `max_analyzed` S2 targets,
+round-robins one channel at a time across up to `max_analyzed` spectrum-tracker targets,
 accumulates `dwell_s` worth of that channel's output, and turns it into
 `features.py`/`families.py` results instead of decoder events.
 """
@@ -56,7 +56,7 @@ _MAX_DEVIATION_HZ = 5000.0
 # psk_like rule (no FSK line) -- below it, it's noise-floor wobble.
 _FSK_LINE_GATE = 0.15
 
-# Activity gate (S3-S4 live-signal fix): most S2 targets are bursty/
+# Activity gate (live-signal fix): most spectrum-tracker targets are bursty/
 # intermittent (duty 0.0-0.3 in the field), so a fixed dwell mostly captures
 # silence -- feeding that straight to the feature extractors is what produced
 # the degenerate "unknown, 16666.67 Hz" noise-artifact readings. Instead each
@@ -84,7 +84,7 @@ _BAND_FLOOR_EMA_ALPHA = 0.2
 _ACCUM_MAX_S = 3.0
 _ACCUM_MAX_AGE_S = 120.0
 _DEFAULT_MIN_ACTIVE_S = 0.6
-# voice_score needs at least this much active audio to mean anything (S4).
+# voice_score needs at least this much active audio to mean anything.
 _MIN_VOICE_ACTIVE_S = 0.5
 # features.bell202_score at/above this = Bell 202 AFSK (noise/voice ~1-2).
 _BELL202_MIN_SCORE = 4.0
@@ -236,7 +236,7 @@ def _frame_to_iq(data: bytes) -> np.ndarray:
 
 def _psd_centroid_hz(x: np.ndarray, rate: float) -> float:
     """Power-weighted mean frequency: the fine correction the plan calls
-    for, on top of the channelizer's own fine-mix -- S2's target frequency
+    for, on top of the channelizer's own fine-mix -- the spectrum tracker's target frequency
     comes from a coarse 512-bin spectrum (up to 15.6 kHz/bin at 8 MS/s), so
     the emitter can sit anywhere within that bin, not exactly on it."""
     n = x.size
@@ -499,7 +499,7 @@ class Analyzer:
         """Refresh candidates without interrupting the current dwell.
 
         Only max_analyzed targets are active at once. The first is the tuned
-        VFO when supplied; the others page through eligible S2 candidates
+        VFO when supplied; the others page through eligible spectrum-tracker candidates
         after completed dwells, never on a spectrum-frame refresh.
         """
         # Survey sends each label's *current* centroid, which jitters by a
@@ -520,7 +520,7 @@ class Analyzer:
             else None
         )
         if priority is not None:
-            new_candidates.append(priority)  # Exact receiver VFO, not a jittering S2 centroid.
+            new_candidates.append(priority)  # Exact receiver VFO, not a jittering tracker centroid.
         for freq in frequencies_hz:
             if priority is not None and abs(freq - priority) <= _TARGET_MATCH_HZ:
                 continue
@@ -551,7 +551,7 @@ class Analyzer:
             self._rotation_index = 0
             self._single_slot_peer = False
         new_targets = self._active_page()
-        # A target briefly falling out of S2 or changing rank must retain its
+        # A target briefly falling out of the spectrum tracker or changing rank must retain its
         # accumulated dwell. A receiver tune is an explicit exception: start
         # analyzing the new VFO immediately.
         current = self._current_freq
@@ -1148,7 +1148,7 @@ class Analyzer:
     ) -> tuple[int, dict]:
         # Fine-mix by the channel-vs-target residual first (the same
         # correction NFMChannel applies), then refine with a measured PSD
-        # centroid on top -- S2's target frequency is only as precise as a
+        # centroid on top -- the spectrum tracker's target frequency is only as precise as a
         # 512-bin spectrum. Applied over the accumulated *active* samples
         # only (possibly stitched together across several dwell visits).
         mixed = _fine_mix(active_buf, -self._current_residual_hz, out_rate)
@@ -1164,7 +1164,7 @@ class Analyzer:
             "active_fraction": active_fraction,
             "active_s": active_s,
         }
-        # 2-level FSK evidence (S4): GMSK 9600 read psk_like before (S0 corpus).
+        # 2-level FSK evidence: GMSK 9600 read psk_like before (synthetic corpus).
         crossing_rate, crossing_fit = crossing_rate_hz(refined, out_rate)
         features["ifreq_bimodality"] = ifreq_bimodality(refined, out_rate)
         features["crossing_fit"] = crossing_fit
@@ -1202,7 +1202,7 @@ class Analyzer:
             # A 2-level FSK's frequency crossings sit on the symbol grid; the
             # clock-line search's lag resolution can't resolve 9600 Bd at a
             # few samples/symbol (no line, an off-grid one, or its 4800
-            # subharmonic on clean GMSK -- synthetic, S4). With 2-level
+            # subharmonic on clean GMSK -- synthetic). With 2-level
             # evidence the crossing grid wins.
             raw_rate, line_strength, rate_method = crossing_rate, crossing_fit, "ifreq_crossings"
         if (

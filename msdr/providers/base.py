@@ -1,5 +1,4 @@
-"""Shared types for identify providers (see contract in
-.superpowers/sdd/identify/contract.md)."""
+"""Shared types for identify providers."""
 
 from typing import Protocol
 

@@ -24,14 +24,12 @@ _DSDFME_INSTALL_HINT = (
 # (spec "Measured facts": multimon raw input is 22,050 Hz).
 _P1_INPUT_RATE = 22050
 
-# dsd-fme (S6 digital voice) wants raw 48 kHz mono s16 on stdin (spec
-# "Measured facts").
+# dsd-fme (digital voice) wants raw 48 kHz mono s16 on stdin.
 _DSDFME_INPUT_RATE = 48000
 
 # In-process (PythonBackend) decoders run on the SSB/AM audio path at the
-# same 22,050 Hz... except these five (S7-S10) settled on 11,025 Hz per the
-# plan's registry table -- half the P1 rate is plenty for a <=3 kHz fax/FSK
-# signal and keeps their per-sample numpy work cheaper.
+# same 22,050 Hz... except these five settled on 11,025 Hz -- half the P1
+# rate is plenty for a <=3 kHz fax/FSK signal and keeps their per-sample numpy work cheaper.
 _PYTHON_INPUT_RATE = 11025
 
 
@@ -337,14 +335,14 @@ DECODERS: dict[str, DecoderSpec] = {
                 + "; M17 is fixed-mode and dsd-fme cannot auto-detect its signal polarity"
             ),
         ),
-        # -- S7-S10: HF decoders, PythonBackend (in-process, no binary) ------
+        # -- HF decoders, PythonBackend (in-process, no binary) ---------
         DecoderSpec(
             id="wefax",
             label="Radiofax (WEFAX 120/576)",
             kind="image",
             demodulators=("USB",),
             # Tune 1.9 kHz below the listed fax frequency (USB dial offset);
-            # noted again in the S7-S10 preset's install_hint/description.
+            # noted again in the preset's install_hint/description.
             default_bandwidth_hz=3000,
             input_rate=_PYTHON_INPUT_RATE,
             backend="python",
@@ -376,7 +374,7 @@ DECODERS: dict[str, DecoderSpec] = {
             binaries=(),
             args=("msdr.decoder.pydecoders.navtex:NavtexDecoder",),
         ),
-        # wwv/dcf77/msf: round 2 (S7-S10 time signals), pydecoders/timecode.py.
+        # wwv/dcf77/msf: round 2 (time signals), pydecoders/timecode.py.
         DecoderSpec(
             id="wwv",
             label="WWV / WWVH time code",
@@ -415,7 +413,7 @@ DECODERS: dict[str, DecoderSpec] = {
             args=("msdr.decoder.pydecoders.timecode:MsfDecoder",),
             phase=1,
         ),
-        # S4: AIS on the flat NFM discriminator (48 kHz = 5 samples/symbol),
+        # AIS on the flat NFM discriminator (48 kHz = 5 samples/symbol),
         # in-process (pydecoders/ais.py). Synthetic-validated only; field
         # validation pending. normalize=False: the decoder is scale-free, and
         # the Normalizer's instant-attack AGC would step the gain mid-burst

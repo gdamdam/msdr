@@ -1,5 +1,5 @@
-"""features.py: classification on synthetic 25 kHz channels (spec/plan
-S3-S4 test list) -- pure tone, AM, 2-FSK at two bauds, OOK, and voice_score
+"""features.py: classification on synthetic 25 kHz channels
+-- pure tone, AM, 2-FSK at two bauds, OOK, and voice_score
 on synthesized discriminator audio."""
 
 import numpy as np
@@ -157,7 +157,7 @@ def test_snap_symbol_rate_outside_tolerance_and_none():
     assert snap_symbol_rate(0.0) is None
 
 
-# -- voice_score (S4) -----------------------------------------------------
+# -- voice_score -----------------------------------------------------
 
 _AUDIO_RATE = 22050
 _AUDIO_N = _AUDIO_RATE  # 1 s
@@ -222,7 +222,7 @@ def _fsk4(baud: float, dev_hz: float, seed: int = 6) -> np.ndarray:
 
 
 def test_dmr_4fsk_4800_baud_voice_score_is_data():
-    # Sanity check (spec S3/S4): a 4800-baud 4FSK signal is DMR/P25/NXDN
+    # Sanity check: a 4800-baud 4FSK signal is DMR/P25/NXDN
     # digital voice -- it must never be reported as "voice" without an
     # actual decode, since its discriminator audio has no speech structure.
     x = _fsk4(4800.0, 1944.0)
@@ -281,7 +281,7 @@ def test_occupied_bw_counts_thin_fm_sidebands_not_just_the_carrier():
     assert occupied_bw_hz(carrier, _RATE) < 200.0
 
 
-# -- S4: GMSK 9600 is 2-level FSK, not PSK -----------------------------------
+# -- GMSK 9600 is 2-level FSK, not PSK -----------------------------------
 
 
 def _awgn(x: np.ndarray, snr_db: float, seed: int) -> np.ndarray:
@@ -328,7 +328,7 @@ def test_noisy_gmsk_9600_is_fm_fsk_not_psk_like_with_9600_family():
     x = _gmsk9600(7.0)
     f = _s4_features(x)
     # The noise pushes the envelope into the old psk_like window, and the
-    # clock-line search finds nothing: exactly the S0 AIS failure.
+    # clock-line search finds nothing: exactly the AIS failure.
     assert 0.2 <= f["env_cv"] <= 0.5
     assert symbol_rate_hz(x, _RATE)[0] is None
     assert (

@@ -268,7 +268,7 @@ export const stopBand = () => fetchJson("/api/decoder/band/stop", { method: "POS
 export const saveBandChannel = (frequency_hz, name) =>
   fetchJson("/api/decoder/band/save", { method: "POST", body: { frequency_hz, name } });
 
-// Survey (S1): span picker + spectrum/waterfall/occupancy over the spectrum
+// Survey: span picker + spectrum/waterfall/occupancy over the spectrum
 // stream (see components/survey-view.js and the "spectrum"/"survey" ws
 // messages handled in app.js's _onWsMessage).
 export const getSurvey = () => fetchJson("/api/survey");
@@ -282,11 +282,11 @@ export const startSurvey = () => fetchJson("/api/survey/start", { method: "POST"
 export const stopSurvey = () => fetchJson("/api/survey/stop", { method: "POST" });
 export const clearSurvey = () => fetchJson("/api/survey/clear", { method: "POST" });
 export const setSurveySpan = (body) => fetchJson("/api/survey/span", { method: "POST", body });
-// S2: dimension filter (activity/bandwidth/bandplan/catalog; needs_iq ones
-// rejected by the server until S3) -- see survey-view.js's dimension toggles.
+// dimension filter (activity/bandwidth/bandplan/catalog; needs_iq ones
+// rejected by the server until the IQ analyzer exists) -- see survey-view.js's dimension toggles.
 export const setSurveyDimensions = (dimensions) =>
   fetchJson("/api/survey/dimensions", { method: "POST", body: { dimensions } });
-// S5: decode handoff (pins a band-decoder channel on a label's frequency),
+// decode handoff (pins a band-decoder channel on a label's frequency),
 // confirmed identity, and save-as-memory -- see components/survey-view.js's
 // row actions (→ DECODE / ■ / SAVE) and app.js's _doSurveyDecode/Undecode/Save.
 export const surveyDecode = (frequency_hz, decoders) =>
@@ -311,7 +311,7 @@ export const controlSurveyReplay = (body) =>
   fetchJson("/api/survey/replay/control", { method: "POST", body });
 export const stopSurveyReplay = () => fetchJson("/api/survey/replay/stop", { method: "POST" });
 
-// S10 "BEACONS": NCDXF/NDB beacon monitor -- cycles the receiver over beacon
+// "BEACONS": NCDXF/NDB beacon monitor -- cycles the receiver over beacon
 // frequencies, logging SNR per scheduled slot and confirming call signs via
 // the cw decoder (see components/beacons-view.js and the "beacons" ws
 // message handled in app.js's _onWsMessage).
@@ -354,7 +354,7 @@ export const tuneFind = (id) => fetchJson(`/api/finds/${id}/tune`, { method: "PO
 // every "select a signal" surface via app.js's openSignal()/"signal-open".
 export const getSignalDetail = (params = {}) => fetchJson(`/api/signal-detail${qs(params)}`);
 
-// S3 "Virtual receiver" (review-view.js/audio-player.js): tunes/listens to a
+// "Virtual receiver" (review-view.js/audio-player.js): tunes/listens to a
 // replay's own IQ, never the live SDRconnect adapter -- the zero-live-writes
 // exit gate. GET /api/review carries {replay, receiver, bookmarks} (all
 // null/[] when no replay is running); audio itself rides WS /ws/audio, opened
@@ -380,9 +380,8 @@ export const listReviewBookmarks = (path) => fetchJson(`/api/review/bookmarks${q
 export const reviewBookmarkSeek = (id) =>
   fetchJson(`/api/review/bookmarks/${encodeURIComponent(id)}/seek`, { method: "POST" });
 
-// S2 "Observations": honest evidence records backing signal-detail (session-
-// scoped captures with append-only Claims -- see
-// docs/epics/listening-workbench/S2-observations-contract.md). Frequency
+// "Observations": honest evidence records backing signal-detail (session-
+// scoped captures with append-only Claims ). Frequency
 // proximity to a memory only *suggests* a link -- PATCH's response carries a
 // "note" saying so, rendered by signal-panel.js after a link/unlink.
 export const listObservations = (params = {}) => fetchJson(`/api/observations${qs(params)}`);
@@ -391,7 +390,7 @@ export const patchObservation = (id, body) =>
   fetchJson(`/api/observations/${encodeURIComponent(id)}`, { method: "PATCH", body });
 export const addOperatorClaim = (id, body) =>
   fetchJson(`/api/observations/${encodeURIComponent(id)}/claims`, { method: "POST", body });
-// S5: PROMOTE TO MEMORY (creates/links a Signal from the observation -- the
+// PROMOTE TO MEMORY (creates/links a Signal from the observation -- the
 // response's `note` says "link suggests, does not prove identity", same
 // caveat as the memory-link PATCH above) and EXPORT (full JSON incl.
 // historical claims/decode events, downloaded client-side as a blob -- see
@@ -400,14 +399,14 @@ export const promoteObservation = (id, name) =>
   fetchJson(`/api/observations/${encodeURIComponent(id)}/promote`, { method: "POST", body: { name: name ?? null } });
 export const exportObservation = (id) => fetchJson(`/api/observations/${encodeURIComponent(id)}/export`);
 
-// S4 "Reliable decode": review-view's own DECODE section, a ReplayDecodeSession
+// "Reliable decode": review-view's own DECODE section, a ReplayDecodeSession
 // bound to the running replay (single-channel or band, see msdr/decoder/
 // replay_decode.py) -- distinct from the live decoder's startDecoder/startBand
 // above; status rides along in GET /api/review's `decode` field.
 export const reviewDecodeStart = (body) => fetchJson("/api/review/decode", { method: "POST", body });
 export const reviewDecodeStop = () => fetchJson("/api/review/decode/stop", { method: "POST" });
 
-// S5 "Clips": a bounded excerpt of the current replay's active run, copied to
+// "Clips": a bounded excerpt of the current replay's active run, copied to
 // its own SigMF pair under <recorder_root>/clips (msdr/api/service.py) --
 // see review-view.js's MARK IN/MARK OUT/CREATE CLIP. start_s/end_s are the
 // same file-elapsed-seconds axis reviewSeek takes (continuous across runs,
@@ -418,7 +417,7 @@ export const createReviewClip = (startS, endS, note) =>
   fetchJson("/api/review/clips", { method: "POST", body: { start_s: startS, end_s: endS, note } });
 export const listReviewClips = (path) => fetchJson(`/api/review/clips${qs({ path })}`);
 
-// S5 "Validation status": corpus/decoder validation state, the synthetic
+// "Validation status": corpus/decoder validation state, the synthetic
 // scorecard summary, and the fixed outstanding-gates list (HF field
 // validation, private VHF captures, etc.) -- see setup-drawer.js's
 // VALIDATION group. Never implies "all validated"; gates stay listed

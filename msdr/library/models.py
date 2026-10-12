@@ -27,8 +27,8 @@ TAG_COLORS = ["red", "orange", "green", "blue", "violet", "gray"]
 SignalColor = Literal["red", "orange", "yellow", "green", "blue", "magenta", "cyan", "white"]
 TagColor = Literal["red", "orange", "green", "blue", "violet", "gray"]
 
-# nextpass catalog labels a signal can be pinned to for the PASSES section
-# (see .superpowers/sdd/tools/contract.md); kept here alongside the other
+# nextpass catalog labels a signal can be pinned to for the PASSES section;
+# kept here alongside the other
 # closed vocabularies this model already owns (colors above).
 SATELLITE_LABELS = ["M2-3", "M2-4", "ISS", "CSS", "AO-73", "RS-44", "SO-50", "AO-123"]
 Satellite = Literal["M2-3", "M2-4", "ISS", "CSS", "AO-73", "RS-44", "SO-50", "AO-123"]
