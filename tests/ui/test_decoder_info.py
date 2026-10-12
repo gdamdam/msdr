@@ -47,7 +47,8 @@ def test_decoder_categories_and_help():
                 validation: {{state: 'reference_iq_tested'}}, validation_stale: true
               }}}},
             ]);
-            if (evidenceGroups.map(g => g.category).join(',') !== 'Experimental,HF weak-signal modes,Digital voice') {{
+            // live output counts as non-experimental, like reference/field evidence.
+            if (evidenceGroups.map(g => g.category).join(',') !== 'Paging,Experimental,HF weak-signal modes,Digital voice') {{
               throw Error(JSON.stringify(evidenceGroups));
             }}
             const refLabel = decoderValidation({{readiness: {{validation: {{state: 'reference_iq_tested'}}}}}});
@@ -71,5 +72,36 @@ def test_decoder_categories_and_help():
         capture_output=True,
         text=True,
         check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_decoder_status_icons_use_three_test_levels():
+    module_url = json.dumps(DECODER_INFO.as_uri())
+    script = f"""
+    import {{ decoderStatusIcons }} from {module_url};
+    const r = (validation, extra = {{}}) => ({{ readiness: {{
+      installation: {{state: 'builtin'}}, validation: {{state: validation}}, session: {{state: 'idle'}}, ...extra }} }});
+    const cases = [
+      [r('untested'), '○'],
+      [r('fixture_tested'), '◐'],
+      [r('reference_iq_tested'), '◐'],
+      [r('live_output_observed'), '●'],
+      [r('field_observed'), '●'],
+      [r('field_observed', {{validation_stale: true}}), '◐'],
+      [r('regression_detected'), '✗'],
+    ];
+    for (const [d, want] of cases) {{
+      const got = decoderStatusIcons(d).tested.sym;
+      if (got !== want) throw new Error(`${{d.readiness.validation.state}} stale=${{!!d.readiness.validation_stale}}: ${{got}} != ${{want}}`);
+    }}
+    const stale = decoderStatusIcons(r('field_observed', {{validation_stale: true}})).tested.title;
+    if (!stale.includes('older msdr version') || stale.includes('stale')) throw new Error(stale);
+    const s = decoderStatusIcons({{ readiness: {{ installation: {{state: 'missing'}}, validation: {{state: 'untested'}},
+      session: {{state: 'valid_frames', valid_frames: 3}} }} }});
+    if (s.installed.sym !== '✗' || s.session.sym !== '●' || !s.session.title.includes('3 valid frames')) throw new Error(JSON.stringify(s));
+    """
+    result = subprocess.run(
+        ["node", "--input-type=module", "-e", script], capture_output=True, text=True, timeout=30
     )
     assert result.returncode == 0, result.stderr

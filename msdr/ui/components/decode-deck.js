@@ -5,7 +5,8 @@ import "./failure-note.js";
 import "./run-indicator.js";
 import "./decoder-prepare.js";
 import "./cw-transcript.js";
-import { decoderCategory, decoderDescription, groupDecoders } from "../decoder-info.js";
+import * as api from "../api.js";
+import { DECODER_STATUS_LEGEND, decoderCategory, decoderDescription, decoderStatusIcons, groupDecoders } from "../decoder-info.js";
 
 const SELECTION_KEY = "msdr.decode.selection";
 const BAND_SELECTION_KEY = "msdr.decode.bandSelection";
@@ -67,6 +68,9 @@ export class DecodeDeck extends LitElement {
     connected: { type: Boolean },
     started: { type: Boolean },
     canControl: { type: Boolean },
+    surveyActive: { type: Boolean }, // live survey running: ⚗ test / ◎ optimize need its IQ span
+    _probeBusy: { state: true },
+    _probeResult: { state: true }, // last ⚗/◎ result, shown as one line under the strip
     failure: { type: Object },
     _setupOpen: { state: true },
     _setupTab: { state: true }, // "single" | "band" tab of the ⚙ modal
@@ -93,6 +97,9 @@ export class DecodeDeck extends LitElement {
     this.connected = false;
     this.started = true;
     this.canControl = false;
+    this.surveyActive = false;
+    this._probeBusy = false;
+    this._probeResult = null;
     this.failure = null;
     this._setupOpen = false;
     this._decoderQuery = "";
@@ -389,6 +396,72 @@ export class DecodeDeck extends LitElement {
     this.dispatchEvent(new CustomEvent("open-decode-view"));
   }
 
+  /** ⚗ / ◎ on the Decode line: the signal panel's TEST SIGNAL / OPTIMIZE
+   * DECODE, applied to the tuned frequency. They probe the survey's IQ span,
+   * so they're disabled (with the reason on hover) without a live survey. */
+  _probeButton(mode, symbol, help) {
+    const reason = !this.surveyActive ? "Start the survey first: this uses its IQ span."
+      : !this.frequencyHz ? "No tuned frequency yet." : "";
+    return html`<button class="decode-probe-button" aria-label=${help.split(":")[0]}
+      title=${reason ? `${help} — ${reason}` : help}
+      ?disabled=${!!reason || this._probeBusy} @click=${() => this._probe(mode)}>${symbol}</button>`;
+  }
+
+  async _probe(mode) {
+    const hz = this.frequencyHz;
+    if (!hz || this._probeBusy || !this.surveyActive) return;
+    // The decoders checked in Decode setup; empty lets the backend pick its
+    // band defaults (msdr/decoder/signal_test.py).
+    const choices = [...loadIds(SELECTION_KEY)].slice(0, 8);
+    this._probeBusy = true;
+    this._probeResult = { mode, busy: true };
+    try {
+      const result = mode === "optimize"
+        ? await api.surveyOptimizeDecode(hz, choices)
+        : await api.surveyTestSignal(hz, choices);
+      this._probeResult = { ...result, mode };
+      if (mode === "optimize" && result.recommended_hz && result.recommended_decoder) {
+        this.dispatchEvent(new CustomEvent("optimize-decode", {
+          detail: { frequency_hz: result.recommended_hz, decoder: result.recommended_decoder },
+        }));
+      }
+    } catch (err) {
+      this._probeResult = { mode, error: err.message };
+    } finally {
+      this._probeBusy = false;
+    }
+  }
+
+  _probeLine() {
+    const r = this._probeResult;
+    if (!r) return "";
+    const label = r.mode === "optimize" ? "Optimize" : "Test";
+    let text;
+    if (r.busy) text = r.mode === "optimize" ? "trying nearby offsets…" : "testing decoders on the IQ span…";
+    else if (r.error) text = `failed: ${r.error}`;
+    else if (r.outcome === "no_iq") text = "no IQ received";
+    else if (r.outcome === "span_changed") text = "inconclusive, receiver span changed";
+    else if (r.outcome === "unavailable") text = "no compatible decoder available";
+    else if (r.mode === "optimize") {
+      text = r.recommended_hz
+        ? `better sync at ${(r.recommended_hz / 1e6).toFixed(6)} MHz, starting ${r.recommended_decoder.toUpperCase()}`
+        : "no repeatable improvement; settings unchanged";
+    } else {
+      const hits = (r.results ?? []).filter((x) => ["validated", "synchronized", "output"].includes(x.state));
+      text = hits.length
+        ? hits.map((x) => `${x.label} ${x.state === "validated" ? `✓ ${x.valid_frames}` : x.state === "synchronized" ? "sync" : "output"}`).join(" · ")
+        : "no protocol sync during this short test";
+    }
+    // Same size as the facts line above; wraps inside the strip (the sidebar
+    // strip is narrow) instead of pushing the × out of view.
+    return html`<div class="scanner-deck-line decode-probe-line" aria-live="polite"
+      style="flex:1 1 100%;min-width:0;align-items:flex-start;gap:6px">
+      <span class="dim mono" style="font-size:0.85em;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere">${label}: ${text}</span>
+      ${r.busy ? "" : html`<button class="decode-probe-dismiss" aria-label="Dismiss result" title="Dismiss"
+        @click=${() => (this._probeResult = null)}>×</button>`}
+    </div>`;
+  }
+
   _lastEventLine() {
     const ev = this.lastEvent;
     if (!ev) {
@@ -479,6 +552,12 @@ export class DecodeDeck extends LitElement {
           <input type="search" aria-label="Search decoders" placeholder="Search decoders…"
             style="width:100%;box-sizing:border-box;margin-bottom:10px"
             .value=${this._decoderQuery} @input=${e => this._decoderQuery = e.target.value} />
+          <div class="decoder-status-header dim mono" aria-hidden="true">
+            ${[["installed", "INST"], ["tested", "TEST"], ["session", "NOW"]].map(([key, label]) => html`
+              <span class="decoder-status-col">${label}<span class="help-mark" tabindex="0" role="note"
+                aria-label=${DECODER_STATUS_LEGEND[key]} title=${DECODER_STATUS_LEGEND[key]}
+                data-help=${DECODER_STATUS_LEGEND[key]}>?</span></span>`)}
+          </div>
           <div class="list" id="decode-channel-list">
             ${groupDecoders(this.decoders).map(({ category, decoders }) => html`
               <section class="decoder-category" aria-label=${category}
@@ -489,7 +568,7 @@ export class DecodeDeck extends LitElement {
               // validation state) -- an untested decoder is still selectable,
               // only a missing/incompatible one is disabled.
               const usable = d.readiness ? !!d.readiness.usable : !!d.available;
-              const facts = readinessLabels(d);
+              const status = decoderStatusIcons(d, readinessLabels(d));
               return html`
                 <div class="decoder-choice" style=${this._matchesDecoder(d) ? "" : "display:none"}>
                 <label
@@ -504,16 +583,14 @@ export class DecodeDeck extends LitElement {
                     .checked=${this._selected.has(d.id)}
                     @change=${() => this._toggle(d.id)}
                   />
-                  <span class="label">${d.id === "lora" ? "LoRa / mesh" : d.label}</span>
-                  <span class="decoder-option-category dim">${decoderCategory(d)}</span>
-                  <span class="dim mono" style="font-size:0.8em">${(d.demodulators ?? []).join("/")}</span>
-                  <span class="spacer"></span>
-                  <span class="decoder-facts dim mono">
-                    <span title=${facts.installed.title}>${facts.installed.text}</span>
-                    <span aria-hidden="true">·</span>
-                    <span title=${facts.tested.title}>${facts.tested.text}</span>
-                    <span aria-hidden="true">·</span>
-                    <span title=${facts.session.title}>${facts.session.text}</span>
+                  <span class="decoder-name">
+                    <span class="label">${d.id === "lora" ? "LoRa / mesh" : d.label}</span>
+                    <span class="decoder-option-category dim">${decoderCategory(d)} · ${(d.demodulators ?? []).join("/")}</span>
+                  </span>
+                  <span class="decoder-status mono">
+                    ${["installed", "tested", "session"].map((key) => html`<span
+                      class="decoder-status-col ${status[key].tone}" title=${status[key].title}
+                      aria-label=${status[key].title}>${status[key].sym}</span>`)}
                   </span>
                 </label>
                 ${d.id === "lora" ? html`<details class="lora-profile-controls" style="margin:0 0 16px 28px">
@@ -737,6 +814,10 @@ export class DecodeDeck extends LitElement {
             aria-label=${preparationNeeded ? "Prepare receiver: selected decoder needs different receiver settings" : "Prepare receiver"}
             title=${preparationNeeded ? "Selected decoder needs different receiver settings. Preview changes before applying." : "Preview receiver settings for a decoder"}
             @click=${()=>this._openPrepare()}>⇄</button>
+          ${this._probeButton("test", "⚗",
+            "Test signal: briefly run compatible decoders on the tuned frequency and report which ones sync. Uses the survey's IQ span; no retuning, nothing saved.")}
+          ${this._probeButton("optimize", "◎",
+            "Optimize decode: try nearby offsets (0, ±2, ±4 kHz) with compatible decoders; retune and start the best decoder only if a sync advantage repeats.")}
           <led-dot color=${lamp.color} .lit=${lamp.lit} class=${lamp.blink ? "led-blink" : ""}></led-dot>
           <span class="mono">${lamp.label}</span>
           <span class="spacer"></span>
@@ -772,6 +853,7 @@ export class DecodeDeck extends LitElement {
                     .frequencyHz=${status.frequency_hz ?? null} .compact=${true}></cw-transcript>`
                 : html`<div class="scanner-deck-line decode-last-event-line">${this._lastEventLine()}</div>`}
               ${this._decoderFactsLines(status.decoders)}
+              ${this._probeLine()}
       </div>
       ${this._setupModal()}
     `;

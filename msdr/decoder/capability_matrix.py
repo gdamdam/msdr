@@ -372,7 +372,7 @@ MATRIX: dict[str, CapabilityEntry] = {
             state="live_output_observed",
             # dsd-fme's "-h" banner has no reliable version string (see readiness.py)
             backend_version=None,
-            validated_on=date(2026, 10, 3),
+            validated_on=date(2026, 10, 11),
             tests=[
                 "tests/decoder/test_backends.py::test_parse_dsdfme_sync_line_updates_state_and_emits_nothing",
                 "tests/decoder/test_backends.py::test_parse_dsdfme_tgt_src_line_emits_call_start",
@@ -390,7 +390,8 @@ MATRIX: dict[str, CapabilityEntry] = {
                 "the operator confirmed audible voice. Per-message integrity is not "
                 "exposed, audio completeness and content have not been independently "
                 "compared, and the backend version cannot be probed reliably. "
-                "CI coverage remains synthetic parser fixtures."
+                "CI coverage remains synthetic parser fixtures. Live output "
+                "reconfirmed by the operator 2026-10-11."
             ),
             report="docs/validation/live-vhf-uhf-2026-10-03.md",
         ),
@@ -724,9 +725,9 @@ MATRIX: dict[str, CapabilityEntry] = {
             "MMSI. CRC failures are counted in AisDecoder.stats() (crc_fail), never emitted."
         ),
         validation=Validation(
-            state="fixture_tested",
+            state="live_output_observed",
             backend_version=_MSDR_VERSION,
-            validated_on=date(2026, 9, 27),
+            validated_on=date(2026, 10, 11),
             tests=[
                 "tests/decoder/test_ais.py::test_frame_success_by_ebn0",
                 "tests/decoder/test_ais.py::test_noise_only_has_no_crc_false_passes",
@@ -736,9 +737,9 @@ MATRIX: dict[str, CapabilityEntry] = {
                 "tests/decoder/test_ais.py::test_decoder_is_input_scale_free",
             ],
             notes=(
-                "synthetic GMSK bursts only; field validation pending -- 161.975/162.025 MHz "
-                "capture not accessible (tests/corpus/manifest.json ais-161975-162025). "
-                "Frame success, 200 synthetic bursts per point (random 168-bit payloads, "
+                "Live off-air output confirmed by the operator (CRC-valid messages; "
+                "reconfirmed 2026-10-11); independent comparison pending. Synthetic "
+                "frame success, 200 synthetic bursts per point (random 168-bit payloads, "
                 "+600 Hz offset, random phase/timing, 7.5 kHz channel filter, flat "
                 "discriminator at 48 kHz), Eb/N0 10/12/14/16/20 dB: "
                 "0.075 / 0.475 / 0.915 / 0.990 / 1.000 (a separate 1000-burst run at 14 dB "
@@ -748,7 +749,8 @@ MATRIX: dict[str, CapabilityEntry] = {
             ),
         ),
         field_notes=(
-            "Not verified off-air: no AIS capture accessible yet "
+            "Live off-air AIS decoded with CRC-valid frames (operator-confirmed "
+            "2026-10-11); no reference capture in tests/corpus yet "
             "(tests/corpus/manifest.json ais-161975-162025)."
         ),
     ),
@@ -845,13 +847,16 @@ for _decoder in ("adsb", "rs41", "ft8", "dsc", "endoftrain", "vor", "ils", "lora
 MATRIX["adsb"] = replace(
     MATRIX["adsb"],
     validation=Validation(
-        state="reference_iq_tested",
+        state="live_output_observed",
         backend_version=_MSDR_VERSION,
-        validated_on=date(2026, 10, 3),
+        validated_on=date(2026, 10, 11),
         tests=["tests/decoder/test_adsb_native.py"],
         report="docs/adsb-native.md",
         notes=(
-            "4/4 published reference frames (identification, airborne position pair, "
+            "Live off-air output confirmed by the operator 2026-10-11 (aircraft "
+            "reports and map positions); independent same-IQ comparison pending. "
+            "Reference IQ (2026-10-03): 4/4 published reference frames "
+            "(identification, airborne position pair, "
             "velocity) decode bit-exactly through the full preamble+PPM demod pipeline "
             "with a valid CRC-24, including the published callsign (KLM1023), "
             "CPR-resolved position (52.25720214843750 N, 3.91937255859375 E) and "
@@ -878,9 +883,9 @@ MATRIX["adsb"] = replace(
 MATRIX["lora"] = replace(
     MATRIX["lora"],
     validation=Validation(
-        state="reference_iq_tested",
+        state="live_output_observed",
         backend_version=_MSDR_VERSION,
-        validated_on=date(2026, 10, 3),
+        validated_on=date(2026, 10, 11),
         tests=[
             "tests/decoder/test_lora_phy.py",
             "tests/decoder/test_lora_native.py",
@@ -889,14 +894,16 @@ MATRIX["lora"] = replace(
         fixtures=["tests/decoder/data/lora/vectors.npz"],
         report="docs/lora-native.md",
         notes=(
-            "20/20 real gr-lora_sdr reference_decode=true vectors decode to the exact "
+            "Live off-air MeshCore packets decoded with a valid CRC, operator-confirmed "
+            "2026-10-11; no off-air reference comparison yet. Reference IQ "
+            "(2026-10-03): 20/20 real gr-lora_sdr reference_decode=true vectors decode "
+            "to the exact "
             "payload with a valid CRC (SF7-SF12, all coding rates, 125/250/500 kHz, LDRO, "
             "implicit header, CRC off, Meshtastic LongFast). AWGN on the real vectors "
             "(SNR per sample in the channel bandwidth, measured over the packet): "
             "SF7/125 kHz 100% to -7 dB, 80% at -9 dB (20 trials); SF11/250 kHz "
             "LongFast 100% to -15 dB (10 trials). Real-time factor at 2.4 MS/s on the "
-            "authoring Mac: 0.10 at SF7 and SF12. No parity claim versus gr-lora_sdr "
-            "and no off-air validation yet."
+            "authoring Mac: 0.10 at SF7 and SF12. No parity claim versus gr-lora_sdr."
         ),
     ),
 )
@@ -969,5 +976,37 @@ RDS_ENTRY = CapabilityEntry(
         "KNBR 104.5 (mono, no 19 kHz pilot) decoded live 2026-09-26 via the free-running 57 kHz "
         "fallback path (see msdr/survey/rds.py module docstring); other FM-band station identity "
         "claims in tests/corpus/manifest.json are operator reports, not decoded/confirmed."
+    ),
+)
+
+# Off-air results (2026-10-11), see docs/validation/operator-checklist.md
+# G07/G15. Built-in, so versioned with msdr like the entries above.
+MATRIX["endoftrain"] = replace(
+    MATRIX["endoftrain"],
+    validation=Validation(
+        state="live_output_observed",
+        backend_version=_MSDR_VERSION,
+        validated_on=date(2026, 10, 11),
+        tests=["tests/decoder/test_payloads.py"],
+        notes=(
+            "Live off-air packets decoded with matching CRC-18 and plausible fields "
+            "(rear brake-pipe pressure 79 psig on a stopped train, marker light on, "
+            "valve circuit ok). Independent reference comparison pending."
+        ),
+    ),
+)
+MATRIX["vor"] = replace(
+    MATRIX["vor"],
+    validation=Validation(
+        state="field_observed",
+        backend_version=_MSDR_VERSION,
+        validated_on=date(2026, 10, 11),
+        tests=["tests/decoder/test_navigation_native.py", "tests/decoder/test_navigation_ident.py"],
+        notes=(
+            "Off-air against OAK VOR from a known location: radials 265.8-269.7 deg vs "
+            "267-271 deg computed bearing, subcarrier deviation 477-485 Hz (standard "
+            "480 Hz). This check exposed and verified the fix for a sign error "
+            "(previously 360 deg minus the radial). ILS remains fixture-tested only."
+        ),
     ),
 )

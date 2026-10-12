@@ -54,6 +54,7 @@ export class ListenWorkbench extends LitElement {
     connected: { type: Boolean },
     started: { type: Boolean },
     canControl: { type: Boolean },
+    surveyActive: { type: Boolean }, // forwarded to decode-deck's ⚗ / ◎
     decodeFailure: { type: Object },
     receiver: { type: Object },
     recorderArmed: { type: Boolean },
@@ -259,6 +260,7 @@ export class ListenWorkbench extends LitElement {
           .connected=${this.connected}
           .started=${this.started}
           .canControl=${this.canControl}
+          .surveyActive=${this.surveyActive}
           .failure=${this.decodeFailure}
           @decode-start=${(ev) => this._emit("decode-start", ev.detail)}
           @decode-stop=${() => this._emit("decode-stop")}
@@ -267,6 +269,7 @@ export class ListenWorkbench extends LitElement {
           @band-save=${(ev) => this._emit("band-save", ev.detail)}
           @install-presets=${() => this._emit("install-presets")}
           @open-decode-view=${() => this._emit("open-decode-view")}
+          @optimize-decode=${(ev) => this._emit("optimize-decode", ev.detail)}
           @dismiss-failure=${() => this._emit("dismiss-decode-failure")}
         ></decode-deck>
       </div>` : ""}

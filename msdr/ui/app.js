@@ -1966,6 +1966,13 @@ export class MsdrApp extends LitElement {
    * list from survey-view's manual-pick popover. Result is a decoder status
    * (same shape as startBand/stopBand), merged into state.decoder like the P2
    * band-decode handlers. */
+  /** OPTIMIZE DECODE (signal panel) / ◎ (decode-deck): a repeatable sync
+   * advantage was found -- retune there and start that channel decoder. */
+  async _doOptimizeDecode(detail) {
+    const tuned = await this._doTuneFrequency(detail.frequency_hz, undefined, undefined, "signal");
+    if (tuned) await this._doDecoderStart([detail.decoder], detail.frequency_hz);
+  }
+
   async _doSurveyDecode(detail) {
     await this._run(async () => {
       const status = await api.surveyDecode(detail.frequency_hz, detail.decoders ?? null);
@@ -2658,6 +2665,7 @@ export class MsdrApp extends LitElement {
       .connected=${!!state.connected}
       .started=${!(state.connected && !(state.started ?? true))}
       .canControl=${!!state.can_control && !state.survey?.replay}
+      .surveyActive=${!!state.survey?.active && !state.survey?.replay}
       .decodeFailure=${this._failureFor("decoder")}
       .receiver=${{ connected: !!state.connected, started: !!state.started, complete: !!state.complete }}
       .recorderArmed=${!!this.recorder?.armed}
@@ -2687,6 +2695,7 @@ export class MsdrApp extends LitElement {
       @install-presets=${() => this._doInstallPresets()}
       @open-decode-view=${() => (this.decodeViewOpen = true)}
       @dismiss-decode-failure=${() => this._clearFailure("decoder")}
+      @optimize-decode=${(ev) => this._doOptimizeDecode(ev.detail)}
     ></listen-workbench>`;
   }
 
@@ -3190,10 +3199,7 @@ export class MsdrApp extends LitElement {
           this._doTuneFrequency(ev.detail.hz, ev.detail.demodulator, ev.detail.filter_bandwidth_hz, "signal")}
         @replay-tune=${(ev) => this._doReviewTune(ev.detail.frequency_hz)}
         @survey-decode=${(ev) => this._doSurveyDecode(ev.detail)}
-        @optimize-decode=${async (ev) => {
-          const tuned = await this._doTuneFrequency(ev.detail.frequency_hz, undefined, undefined, "signal");
-          if (tuned) await this._doDecoderStart([ev.detail.decoder], ev.detail.frequency_hz);
-        }}
+        @optimize-decode=${(ev) => this._doOptimizeDecode(ev.detail)}
         @decode-start=${(ev) => this._doDecoderStart(ev.detail.decoders, ev.detail.frequency_hz)}
         @open-messages=${(ev) => this._doOpenSurveyMessages(ev.detail.frequency_hz)}
         @refresh=${() => {

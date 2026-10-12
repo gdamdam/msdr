@@ -56,15 +56,15 @@ def test_rds_entry_is_separate_from_matrix():
     assert not RDS_ENTRY.validation.fixtures  # synthetic MPX only; no off-air IQ in the tree
 
 
-def test_ais_entry_is_crc_iq_band_and_field_pending():
+def test_ais_entry_is_crc_iq_band_and_live_observed():
     assert set(MATRIX) == set(DECODERS)
     entry = MATRIX["ais"]
     assert entry.input_path == "iq"
     assert entry.band_path is True
     assert entry.integrity_policy == "crc"
-    assert entry.validation.state == "fixture_tested"
+    assert entry.validation.state == "live_output_observed"
     assert all(t.startswith("tests/decoder/test_ais.py::") for t in entry.validation.tests)
-    assert "field validation pending" in entry.validation.notes
+    assert "independent comparison pending" in entry.validation.notes
 
 
 def test_confirmed_live_decoders_are_not_labeled_fixture_only():

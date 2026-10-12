@@ -1843,15 +1843,28 @@ button.run-rec:hover:not(:disabled) {
 }
 
 /* decode-deck's ⚙ modal decoder rows: installed/tested/session readiness
-   facts kept as separate short words (never one "available" verdict) --
-   wraps at narrow (modal) widths rather than truncating. */
-.decoder-facts {
+   facts kept as three separate symbol columns (never one "available"
+   verdict), explained on hover and by the header's (?) legends. */
+.decoder-status-header,
+.decoder-status {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
   justify-content: flex-end;
-  font-size: 0.75em;
+  flex-shrink: 0;
 }
+.decoder-status-header { font-size: 0.68em; letter-spacing: 0.06em; margin-bottom: 2px; }
+.decoder-status-header .help-mark { width: 13px; height: 13px; font-size: 9px; margin-left: 3px; }
+.decoder-status-col {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px; /* px, not em: header and rows use different font sizes */
+  cursor: help;
+}
+.decoder-name { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 1px; }
+.decoder-status .decoder-status-col { font-size: 0.95em; color: var(--ink); }
+.decoder-status .ok { color: var(--ok); }
+.decoder-status .warn { color: var(--accent); }
+.decoder-status .bad { color: var(--danger); }
 
 .decoder-category + .decoder-category {
   margin-top: 10px;
@@ -1871,7 +1884,6 @@ button.run-rec:hover:not(:disabled) {
 
 .decoder-option-category {
   font-size: 0.72em;
-  white-space: nowrap;
 }
 /* S1 receiver strip (instrument-panel.js, recorder-control.js, s-meter.js,
    segment-readout.js) -- see docs/epics/listening-workbench/S1-ui-contract.md

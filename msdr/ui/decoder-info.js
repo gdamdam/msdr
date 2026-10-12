@@ -111,7 +111,7 @@ export function decoderValidation(decoder) {
 function decoderIsExperimental(decoder) {
   const state = decoder?.readiness?.validation?.state ?? "untested";
   return !!decoder?.readiness?.validation_stale ||
-    !["reference_iq_tested", "field_observed"].includes(state);
+    !["reference_iq_tested", "live_output_observed", "field_observed"].includes(state);
 }
 
 export function groupDecoders(decoders = []) {
@@ -122,4 +122,65 @@ export function groupDecoders(decoders = []) {
     groups.get(category).push(decoder);
   }
   return [...groups].map(([category, items]) => ({ category, decoders: items }));
+}
+
+/* Decode setup's status columns (decode-deck.js): one symbol per readiness
+ * fact, explained on hover and in each column's (?) legend. */
+const INSTALL_SYMBOLS = {
+  builtin: ["✓", "ok", "Built in: ships with msdr, nothing to install."],
+  present: ["✓", "ok", "Installed: the external program it needs was found."],
+  incompatible: ["⊘", "warn", "Installed, but this version can't be used."],
+  missing: ["✗", "bad", "Not installed: the external program it needs wasn't found."],
+};
+// Three levels on purpose: ○ untested, ◐ partly (fixtures, a reference
+// recording, or validated on an older version), ● seen working off-air.
+function testSymbol(state, stale) {
+  if (state === "regression_detected") return "✗";
+  if (state === "untested") return "○";
+  return !stale && ["live_output_observed", "field_observed"].includes(state) ? "●" : "◐";
+}
+const SESSION_SYMBOLS = {
+  idle: ["·", "", "Idle: not running."],
+  acquiring: ["◌", "warn", "Acquiring: running, looking for a signal."],
+  synchronized: ["◎", "warn", "Synchronized: locked onto the signal's timing, nothing decoded yet."],
+  valid_frames: ["●", "ok", "Decoding: frames passed their checksum."],
+  unverified_output: ["◉", "ok", "Decoding: output has no checksum to verify it."],
+  quiet: ["◇", "", "Quiet: running, nothing heard."],
+  unsupported_input: ["⊘", "warn", "Unsupported input: the receiver setup can't feed this decoder (rate, span or mode)."],
+  error: ["✗", "bad", "Error: the decoder failed."],
+};
+
+export const DECODER_STATUS_LEGEND = {
+  installed: "Installed — ✓ ready to use · ⊘ wrong version · ✗ missing",
+  tested: "Tested — ○ untested · ◐ partly (synthetic fixtures, a reference recording, or validated on an older msdr version) · ● seen working off-air · ✗ regression. Hover a symbol for the exact level.",
+  session: "Now — · idle · ◌ acquiring · ◎ synchronized · ● decoding (checksum ok) · ◉ decoding (unchecked) · ◇ quiet · ⊘ unsupported input · ✗ error",
+};
+
+/** {sym, tone, title} for each status column of decoder `d`. `extras` are
+ * readinessLabels(d) titles (install hint, validation dates, session detail). */
+export function decoderStatusIcons(d, extras = {}) {
+  const r = d?.readiness;
+  const join = (...parts) => parts.filter(Boolean).join(" ");
+  const instState = r?.installation?.state ?? (d?.available ? "present" : "missing");
+  const [iSym, iTone, iTitle] = INSTALL_SYMBOLS[instState] ?? INSTALL_SYMBOLS.missing;
+  const version = r?.installation?.version && instState === "present" ? `(v${r.installation.version})` : "";
+  const testState = r?.validation?.state ?? "untested";
+  const stale = !!r?.validation_stale;
+  const validation = decoderValidation({ ...d, readiness: { ...r, validation_stale: false } });
+  const sessState = r?.session?.state ?? "idle";
+  const [sSym, sTone, sTitle] = SESSION_SYMBOLS[sessState] ?? [sessState, "", sessState];
+  const counts = [];
+  if (r?.session?.events > 0) counts.push(`${r.session.events} events`);
+  if (r?.session?.valid_frames > 0) counts.push(`${r.session.valid_frames} valid frames`);
+  return {
+    installed: { sym: iSym, tone: iTone, title: join(iTitle, version, extras.installed?.title) },
+    tested: {
+      sym: testSymbol(testState, stale),
+      tone: testState === "regression_detected" ? "bad" : "",
+      title: join(`${validation.text[0].toUpperCase()}${validation.text.slice(1)}:`, validation.title,
+        stale ? "Validated on an older msdr version; worth re-checking on this one." : "",
+        extras.tested?.title ? `(${extras.tested.title})` : ""),
+    },
+    session: { sym: sSym, tone: sTone, title: join(sTitle, counts.length ? `${counts.join(", ")}.` : "", extras.session?.title) },
+  };
 }

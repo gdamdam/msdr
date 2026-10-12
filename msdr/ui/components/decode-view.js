@@ -366,13 +366,20 @@ export class DecodeView extends LitElement {
   render() {
     if (!this.open) return html``;
     return html`
-      <div class="overlay-backdrop" @click=${() => this._close()}>
+      <div class="overlay-backdrop"
+        @pointerdown=${(ev) => { this._downOnBackdrop = ev.target === ev.currentTarget; }}
+        @click=${(ev) => {
+          // Close only on a click that started and ended on the backdrop:
+          // dragging the panel's resize grip outside it ends over the
+          // backdrop too, and must not close the window.
+          if (this._downOnBackdrop && ev.target === ev.currentTarget) this._close();
+        }}>
         <div
           class="panel decode-evidence-panel"
           role="dialog"
           aria-modal="true"
           aria-labelledby="decode-view-title"
-          style="margin:40px auto 0;width:min(820px,94vw);max-height:85vh;overflow:auto;align-self:flex-start;display:flex;flex-direction:column;gap:10px"
+          style="margin:40px auto 0;width:min(820px,94vw);max-height:calc(100vh - 60px);overflow:auto;align-self:flex-start;display:flex;flex-direction:column;gap:10px;resize:both;min-width:min(420px,94vw);min-height:240px;max-width:98vw"
           @click=${(ev) => ev.stopPropagation()}
           @scroll=${() => this._maybeFlush()}
           @keydown=${(ev) => trapModalTab(ev, ev.currentTarget)}

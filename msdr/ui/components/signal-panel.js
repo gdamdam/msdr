@@ -56,7 +56,7 @@ const DOCK_QUERY = "(min-width: 1100px)";
  *
  * Actions are dispatched as plain events for app.js to carry out (same
  * pattern as every other panel): `tune-signal`/`tune-frequency` reuse app.js's
- * existing tuning methods, `survey-decode`/`decode-start` reuse its existing
+ * existing tuning methods, `decode-start` (DECODE) reuses its existing
  * decoder handlers verbatim (survey-view.js and instrument-panel already wire
  * those same event names). SAVE/UPDATE/IGNORE are simple enough (and vary by
  * which of memory/find/survey_label is present) that this component makes
@@ -291,19 +291,14 @@ export class SignalPanel extends LitElement {
     const d = this._detail;
     if (!d) return;
     const decoders = this._decodeDecoders();
-    if (this.surveyActive) {
-      this.dispatchEvent(
-        new CustomEvent("survey-decode", {
-          detail: { frequency_hz: d.frequency_hz, decoders: decoders.length ? decoders : null },
-        })
-      );
-    } else {
-      // The backend decodes the VFO: say which frequency this panel is about,
-      // so a memory/find selected while tuned elsewhere is tuned first.
-      this.dispatchEvent(
-        new CustomEvent("decode-start", { detail: { decoders, frequency_hz: d.frequency_hz } })
-      );
-    }
+    // Always the channel decoder, survey or not: the backend decodes the VFO,
+    // so say which frequency this panel is about and a memory/find selected
+    // while tuned elsewhere is tuned first. (With the survey running this used
+    // to pin a band-decoder channel instead; band decode stays on the survey
+    // row's → DECODE and the Decode strip's BAND ▶.)
+    this.dispatchEvent(
+      new CustomEvent("decode-start", { detail: { decoders, frequency_hz: d.frequency_hz } })
+    );
   }
 
   async _testSignal() {
