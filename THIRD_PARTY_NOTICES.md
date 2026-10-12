@@ -1,292 +1,183 @@
 # Third-party notices
 
-msdr's own original code is licensed under GPL-3.0-only (see [LICENSE](LICENSE)).
-Third-party code and reference data listed here retain their respective rights
-and terms; this project does not relicense them. Full license texts for the
-vendored libraries are shipped next to them in `msdr/ui/vendor/`.
+msdr's own code is licensed under **GPL-3.0-only** (see [LICENSE](LICENSE)).
 
-## Summary
+This file lists everything in or around msdr that comes from someone else: code shipped in the repo, code ported from other projects, bundled data, and external programs msdr can run. Each keeps its own licence; msdr does not relicense any of it.
 
-| Component | What msdr uses it for | How it is included | License |
+## At a glance
+
+| Component | Used for | How it's included | Licence |
 |---|---|---|---|
-| [Lit 3.2.1](#lit) | Web UI components | Vendored in repo | BSD-3-Clause |
-| [Leaflet 1.9.4](#leaflet) | Map display | Vendored in repo | BSD-2-Clause |
-| [HFCC tables](#hfcc-reference-data) | HF broadcast schedule reference | Bundled data | Not documented (open question) |
-| [NTIA / 47 CFR allocation data](#frequency-allocation-data) | Frequency allocation lookup | Bundled data | US government works |
-| [Band plan and satellite list](#band-plan-and-satellite-list) | Band and satellite reference | Bundled data (hand-compiled) | msdr's own (GPL-3.0-only) |
-| [Reference catalogs](#reference-catalogs) | Time stations, navaids, HF radar | Bundled data | Per source (see section) |
-| [SDRangel: RS41 and EOT parsing](#rs41-and-eot-payload-parsing) | Radiosonde and end-of-train payloads | Ported code | GPL-3.0-or-later |
-| [SDRangel / gr-lora_sdr: LoRa](#native-lora-receiver) | Native LoRa receiver | Ported code | GPL-3.0-or-later / GPL-3.0 |
-| [SDRangel: ADS-B / Mode S](#native-ads-b--mode-s-receiver) | Native ADS-B receiver | Ported code | GPL-3.0-or-later |
-| [SDRangel: RTTY](#native-rtty-decoder) | Native RTTY decoder | Ported code | GPL-3.0-or-later |
-| [SDRangel: DSC and Morse ident](#dsc-message-semantics-and-morse-ident) | DSC message fields, VOR/ILS ident | Ported code | GPL-3.0-or-later |
-| [Sniffle](#sniffle-ble-capture) | BLE capture via CC2652P dongle | Ported code | GPL-3.0 (files: GPL-3.0-or-later) |
-| [opendroneid-core-c](#remote-id-decoding) | Remote ID decoding | Ported code | Apache-2.0 |
-| [SSTV mode specification](#sstv-mode-specifications) | SSTV timings and VIS codes | Specification followed | Not applicable |
-| [Raw HCI BLE: pyusb, libusb](#raw-hci-ble-capture-pyusb-and-libusb) | USB Bluetooth dongle access | Optional dependencies, not bundled | BSD-3-Clause / LGPL-2.1-or-later |
-| [rtl8812au-macos](#wi-fi-capture-helper) | Passive Wi-Fi capture | Optional external program, not distributed | GPL-2.0-only |
-| [WSJT-X, multimon-ng, minimodem, Dire Wolf, dsd-fme, dump1090, nextpass, iqscan](#external-decoders-and-tools) | FT8 and other decoding | Optional external programs, not distributed | Each its own |
-| [Python dependencies](#python-dependencies) | Runtime libraries | Installed separately, not bundled | Each its own |
-| [Test fixtures](#test-fixtures) | Tests only | Test data in repo | CC BY 2.5 / msdr's own |
+| [Lit](#lit) | Web UI components | Shipped in repo | BSD-3-Clause |
+| [Leaflet](#leaflet) | Maps | Shipped in repo | BSD-2-Clause |
+| [Frequency allocations](#frequency-allocations) | Band allocation lookup | Bundled data | US government work |
+| [Band plan and satellites](#band-plan-and-satellites) | Band and satellite reference | Bundled data | msdr's own |
+| [Reference catalogs](#reference-catalogs) | Time stations, navaids, HF radar | Bundled data | Per source |
+| [HFCC tables](#hfcc-tables) | Broadcaster, site and language names | Downloaded by the user, not shipped | HFCC's terms |
+| [SDRangel](#sdrangel) | ADS-B, LoRa, RTTY, RS41, EOT, DSC, Morse ident | Ported code | GPL-3.0-or-later |
+| [gr-lora_sdr](#gr-lora_sdr) | LoRa bit conventions and sync | Ported code | GPL-3.0 |
+| [Sniffle](#sniffle) | BLE capture with a CC2652P dongle | Ported code | GPL-3.0 |
+| [opendroneid-core-c](#opendroneid-core-c) | Drone Remote ID | Ported code | Apache-2.0 |
+| [SSTV mode specification](#sstv-mode-specification) | SSTV timings | Specification followed | n/a |
+| [External programs](#external-programs) | Wi-Fi capture, decoders | Installed by the user, not shipped | Each its own |
+| [Test fixtures](#test-fixtures) | Tests only | In `tests/` | CC BY 2.5 |
 
-## Vendored code
+---
+
+## Shipped in the repo
 
 ### Lit
 
-- Source: https://github.com/lit/lit
-- Copyright holders: embedded in the bundle's own notices, which are retained.
-- License: BSD-3-Clause. License source: https://github.com/lit/lit/blob/main/LICENSE
-- Covers: `msdr/ui/vendor/lit.js`, the vendored Lit 3.2.1 ESM bundle.
-- Modifications: none stated.
-- Notice: the full upstream notice is included in `msdr/ui/vendor/LIT-LICENSE.txt`.
+| | |
+|---|---|
+| Version | 3.2.1 |
+| Source | https://github.com/lit/lit |
+| Copyright | The Lit Project Contributors; 2017 Google LLC |
+| Licence | BSD-3-Clause, full text in `msdr/ui/vendor/LIT-LICENSE.txt` |
+| Files | `msdr/ui/vendor/lit.js` (unmodified ESM bundle) |
 
 ### Leaflet
 
-- Source: https://leafletjs.com/
-- Copyright holders: 2010–2023 Volodymyr Agafonkin and 2010–2011 CloudMade.
-- License: BSD 2-Clause.
-- Covers: `msdr/ui/vendor/leaflet.js` and `leaflet.css` (Leaflet 1.9.4).
-- Modifications: none stated.
-- Notice: the full notice is in `msdr/ui/vendor/LEAFLET-LICENSE.txt`.
-- Basemap tiles are supplied by OpenStreetMap with visible attribution; no tiles are bundled or prefetched.
+| | |
+|---|---|
+| Version | 1.9.4 |
+| Source | https://leafletjs.com/ |
+| Copyright | 2010–2023 Volodymyr Agafonkin; 2010–2011 CloudMade |
+| Licence | BSD-2-Clause, full text in `msdr/ui/vendor/LEAFLET-LICENSE.txt` |
+| Files | `msdr/ui/vendor/leaflet.js`, `leaflet.css` (unmodified) |
+
+Map tiles come from OpenStreetMap at runtime, with visible attribution. No tiles are bundled.
+
+---
 
 ## Bundled data
 
-### HFCC reference data
+### Frequency allocations
 
-- Source: HFCC (not otherwise stated in the repo).
-- License: **not documented.**
-- Covers: `msdr/catalog/data/hfcc/admin.txt`, `broadcas.txt`, and `site.txt` (HFCC reference tables); `languages.json` (extracted from the HFCC LANGUAGE.TXT table, as documented in `msdr/catalog/parsers/hfcc.py`).
-- Modifications: `languages.json` is an extraction; the other tables are as listed.
+| | |
+|---|---|
+| Source | NTIA Manual (Redbook) Table of Frequency Allocations, 2025 edition (https://redbook.ntia.gov/); 47 CFR §2.106 footnotes from the eCFR (https://www.ecfr.gov/), with NTIA's footnote page as fallback for 16 footnotes |
+| Licence | US government works |
+| Files | `msdr/allocations/data/dataset.json`, generated by `msdr/allocations/importer.py` |
 
-The repository does not currently document a redistribution license for these
-tables. They are not covered by msdr's GPL grant. Before a public distribution,
-verify and record the applicable redistribution terms, obtain permission, or
-replace/remove the bundled data. Public availability alone is not a license.
+The ITU columns are the copy of the Radio Regulations (2016 edition) printed inside the US table; the ITU Radio Regulations themselves are not bundled. Source URLs, SHA-256 hashes and edition dates are recorded in the dataset. See [docs/allocations.md](docs/allocations.md).
 
-### Frequency allocation data
+### Band plan and satellites
 
-- Source: NTIA Manual (Redbook) Table of Frequency Allocations, 2025 edition (https://redbook.ntia.gov/); footnote texts of 47 CFR §2.106 from the eCFR (https://www.ecfr.gov/), with NTIA's footnote page as a labelled fallback for 16 footnotes.
-- License: both are works of the US government.
-- Covers: `msdr/allocations/data/dataset.json`, generated by `msdr/allocations/importer.py`.
-- Modifications: generated dataset. The ITU columns are the reproduction of the Radio Regulations (2016 edition) inside the US table; the ITU Radio Regulations themselves are not bundled.
+| | |
+|---|---|
+| Source | Compiled for this project |
+| Licence | msdr's own (GPL-3.0-only) |
+| Files | `msdr/providers/data/bandplan_us.json`, `satellites.json` |
 
-Provenance (URLs, SHA-256, edition, effective date) is recorded inside the
-dataset. See [docs/allocations.md](docs/allocations.md).
-
-### Band plan and satellite list
-
-- Source: hand-compiled reference tables for this project.
-- License: msdr's own (GPL-3.0-only).
-- Covers: `msdr/providers/data/bandplan_us.json` and `satellites.json`.
-- Notes: band entries cite NTIA and 47 CFR §90.103 where they carry regulatory context; the satellite list maps labels to NORAD catalog numbers. Orbital elements are fetched from CelesTrak at runtime and cached locally; none are bundled.
+Band entries cite NTIA and 47 CFR §90.103 where relevant. Satellites are listed by NORAD number; orbital elements are fetched from CelesTrak at runtime and not bundled.
 
 ### Reference catalogs
 
-Dated snapshots under `msdr/catalog/data/`; see
-[docs/reference-catalogs.md](docs/reference-catalogs.md).
+Dated snapshots in `msdr/catalog/data/`. See [docs/reference-catalogs.md](docs/reference-catalogs.md).
 
-- `nist_time_stations.json`: from NIST's WWV, WWVH and WWVB station pages.
-  NIST states that information on its sites is public and may be distributed
-  or copied; a byline is requested: "Source: NIST".
-- `faa_nasr_2026-10-01.json.gz`: parsed from the FAA NASR 28-day subscription
-  NAV and ILS CSV extracts (cycle 2026-10-01), a US government work. No
-  explicit statement of terms was found on the distribution page.
-- `ioos_hfradar_2026-10-02.json`: from the IOOS HFRNet station list. The
-  data may be used and redistributed for free, without warranty, as stated in
-  the IOOS ERDDAP metadata.
-- `superdarn_2026-10-01.json`: radar identifiers, locations and hardware
-  parameters from the SuperDARN `hdw` repository (no licence file) and
-  superdarn.ca radar-info ("all rights reserved"). Only factual identifiers
-  and coordinates are stored; SuperDARN radar data use is governed by the
-  SuperDARN PI agreement. Verify terms before redistributing this snapshot.
+| File | Source | Terms |
+|---|---|---|
+| `nist_time_stations.json` | NIST WWV, WWVH and WWVB station pages | Public, may be copied. Source: NIST |
+| `faa_nasr_2026-10-01.json.gz` | FAA NASR 28-day subscription, NAV and ILS CSV extracts (cycle 2026-10-01) | US government work, public domain in the US (17 U.S.C. § 105) |
+| `ioos_hfradar_2026-10-02.json` | IOOS HFRNet station list | Free to use and redistribute, without warranty (IOOS ERDDAP metadata) |
+| `superdarn_2026-10-01.json` | SuperDARN `hdw` repository (no licence file) and superdarn.ca radar-info ("all rights reserved") | Facts only, see below |
 
-## Ported and derived code
+The SuperDARN snapshot holds only radar identifiers, site coordinates and hardware parameters, which are facts and not protected by copyright. It holds no radar data or descriptive text. Use of SuperDARN radar data, which msdr does not do, is governed by the SuperDARN PI agreement.
 
-SDRangel is at https://github.com/f4exb/sdrangel. Ported files below carry the
-license of their upstream source.
+### HFCC tables
 
-### RS41 and EOT payload parsing
+msdr does not ship HFCC data. The broadcaster, site, country and language tables are read from the season ZIP that the user downloads from HFCC (https://new.hfcc.org/data/) when refreshing the catalog. They are cached locally in msdr's data folder.
 
-- Source: [SDRangel](https://github.com/f4exb/sdrangel): [RS41 parser](https://github.com/f4exb/sdrangel/blob/master/sdrbase/util/radiosonde.cpp), [EOT parser](https://github.com/f4exb/sdrangel/blob/master/plugins/channelrx/demodendoftrain/endoftrainpacket.cpp), [CRC implementation](https://github.com/f4exb/sdrangel/blob/master/sdrbase/util/crc.cpp).
-- Copyright holders: Jon Beniston, 2022 (`radiosonde.cpp` / `radiosonde.h`, RS41); Jon Beniston, 2024 and Eric Reuter, 2018 (`endoftrainpacket.cpp` / `crc.cpp`, EOT). The CRC source also credits maintech GmbH (2012), Christian Daniel, Edouard Griffiths (2015–2020), and Jon Beniston (2020).
-- License: GPL-3.0-or-later, consistent with SDRangel.
-- Covers: `msdr/decoder/payloads.py`.
-- Modifications: adapts payload parsing and checksum logic. DSC UDP output is retained as hexadecimal symbols; its message-level decoder was not ported.
+---
 
-### Native LoRa receiver
+## Ported code
 
-- Source: [SDRangel](https://github.com/f4exb/sdrangel) ChirpChat demodulator, `plugins/channelrx/demodchirpchat/` at commit `030963609f7a667c62259dbcf3cee7522880885c`; and [gr-lora_sdr](https://github.com/tapparelj/gr-lora_sdr) at commit `fbbf6ea6684d00363096929c7ef015cabcfaeb6d`.
-- Copyright holders: SDRangel ChirpChat: Copyright (C) 2019-2020 Edouard Griffiths, F4EXB (its own LoRa decoder notes "Inspired by: https://github.com/myriadrf/LoRa-SDR"). gr-lora_sdr: Joachim Tapparel et al., EPFL.
-- License: SDRangel part GPL-3.0-or-later; gr-lora_sdr GPL-3.0 per the repository LICENSE, no per-file headers.
-- Covers: `msdr/decoder/pydecoders/lora_phy.py`.
-- Modifications: ports the demodulator structure (dechirp/FFT symbol demodulation, preamble/sync-word/SFD detection and synchronisation, Gray mapping, diagonal deinterleaving, Hamming FEC, whitening, header parsing and CRC) from SDRangel. SDRangel files consulted: `chirpchatdemodsink.cpp/.h`, `chirpchatdemoddecoderlora.cpp/.h`, `chirpchatdemoddecoder.cpp`, `chirpchatdemodsettings.*`.
+These msdr files are rewritten in Python from the projects below. Each ported file keeps its upstream licence and says in its header and module docstring which upstream files it follows and what differs.
 
-SDRangel's own readme states its LoRa mode is only known to work at SF11/SF12
-with low-data-rate optimisation, tested against an RN2483, while LoRa,
-Meshtastic and MeshCore traffic mostly uses other settings. The bit
-conventions and frame synchronisation are therefore ported from gr-lora_sdr
-at the commit above, the build installed under `.venv-lora` that generated the
-test vectors: `lib/frame_sync_impl.cc`, `fft_demod_impl.cc`,
-`gray_mapping_impl.cc`, `deinterleaver_impl.cc`, `hamming_dec_impl.cc`,
-`header_decoder_impl.cc`, `dewhitening_impl.cc` with `tables.h`, and
-`crc_verif_impl.cc`. The stage each file informs is listed in `lora_phy.py`'s
-module docstring.
+### SDRangel
 
-The reference vectors in `tests/decoder/data/lora/` are synthetic output of
-gr-lora_sdr's transmitter (`scripts/make_lora_vectors.py`); no off-air data.
+Source: https://github.com/f4exb/sdrangel. Pinned commit `030963609f7a667c62259dbcf3cee7522880885c` for LoRa, ADS-B, RTTY and Morse. Licence: **GPL-3.0-or-later**.
 
-### Native ADS-B / Mode S receiver
+| msdr file | Ported from | Copyright |
+|---|---|---|
+| `msdr/decoder/payloads.py` (RS41 and EOT payloads) | `sdrbase/util/radiosonde.cpp`, `plugins/channelrx/demodendoftrain/endoftrainpacket.cpp`, `sdrbase/util/crc.cpp` | Jon Beniston 2022 (RS41); Jon Beniston 2024 and Eric Reuter 2018 (EOT); CRC also credits maintech GmbH 2012, Christian Daniel, Edouard Griffiths 2015–2020, Jon Beniston 2020 |
+| `msdr/decoder/pydecoders/lora_phy.py` | ChirpChat demodulator, `plugins/channelrx/demodchirpchat/` | (C) 2019–2020 Edouard Griffiths, F4EXB (inspired by https://github.com/myriadrf/LoRa-SDR) |
+| `msdr/decoder/pydecoders/adsb_phy.py` | `plugins/channelrx/demodadsb/adsbdemodsinkworker.cpp`, `adsb.h` | (C) 2020 Jon Beniston, M7RCE |
+| `msdr/decoder/pydecoders/rtty.py` | `plugins/channelrx/demodrtty/rttydemodsink.cpp`, `rttydemodsettings.cpp`, `sdrbase/util/baudot.cpp` | (C) 2019–2021 Edouard Griffiths F4EXB, 2020–2023 Jon Beniston M7RCE, 2020 Kacper Michajłow; (C) 2023 Jon Beniston M7RCE (`baudot.cpp`) |
+| `msdr/decoder/pydecoders/dsc_message.py` | SDRangel DSC implementation | Jon Beniston, M7RCE, 2023 |
+| `msdr/decoder/pydecoders/morse_ident.py` | `sdrbase/dsp/morsedemod.cpp`, `sdrbase/util/morse.cpp`, VOR/ILS wiring from `demodvor/vordemodsink.cpp` and `demodils/ilsdemodsink.cpp` | Jon Beniston M7RCE, Edouard Griffiths F4EXB; also maintech GmbH, Christian Daniel, Kacper Michajlow |
 
-- Source: [SDRangel](https://github.com/f4exb/sdrangel) ADS-B demodulator, [ADS-B demod worker](https://github.com/f4exb/sdrangel/blob/master/plugins/channelrx/demodadsb/adsbdemodsinkworker.cpp) and `adsb.h`, at commit `030963609f7a667c62259dbcf3cee7522880885c`.
-- Copyright holders: Copyright (C) 2020 Jon Beniston, M7RCE. The CRC-24 polynomial and field decode follow the public ICAO Annex 10 Volume IV Mode S specification as documented in "The 1090 MHz Riddle" by Junzi Sun (mode-s.org, MIT-licensed) / pyModeS.
-- License: GPL-3.0-or-later.
-- Covers: `msdr/decoder/pydecoders/adsb_phy.py`.
-- Modifications: ports the preamble chip correlation, PPM bit-slicing and CRC-24/ICAO address-recovery scheme (no single-bit error correction, matching SDRangel's own policy) from `plugins/channelrx/demodadsb/adsbdemodsinkworker.cpp` and `adsb.h`. The CRC-24 polynomial and per-message-type field decode (identification, airborne position CPR, airborne velocity) are not SDRangel-specific code. See [docs/adsb-native.md](docs/adsb-native.md) for the validation gate.
+Notes:
 
-`msdr/decoder/standalone_adsb.py` (the `dump1090-fa` adapter) is unchanged
-and remains an alternative backend.
+- **ADS-B:** the CRC-24 polynomial and message field decoding follow the public ICAO Annex 10 Vol. IV Mode S specification, as documented in "The 1090 MHz Riddle" by Junzi Sun (mode-s.org, MIT) / pyModeS. They are not SDRangel-specific. The optional `dump1090-fa` backend (`msdr/decoder/standalone_adsb.py`) is separate.
+- **RTTY:** works on audio instead of SDRangel's IQ, so the tone search, polarity detection and filtering differ. Only ITA2, LSB-first is supported.
 
-### Native RTTY decoder
+### gr-lora_sdr
 
-- Source: [SDRangel](https://github.com/f4exb/sdrangel) RTTY demodulator at commit `030963609f7a667c62259dbcf3cee7522880885c`: [RTTY demod sink](https://github.com/f4exb/sdrangel/blob/master/plugins/channelrx/demodrtty/rttydemodsink.cpp), [RTTY demod settings](https://github.com/f4exb/sdrangel/blob/master/plugins/channelrx/demodrtty/rttydemodsettings.cpp), [Baudot tables](https://github.com/f4exb/sdrangel/blob/master/sdrbase/util/baudot.cpp).
-- Copyright holders: (C) 2019-2021 Edouard Griffiths F4EXB, 2020-2023 Jon Beniston M7RCE, 2020 Kacper Michajłow (demodulator); (C) 2023 Jon Beniston, M7RCE (`sdrbase/util/baudot.cpp`).
-- License: GPL-3.0-or-later.
-- Covers: `msdr/decoder/pydecoders/rtty.py`.
-- Modifications: ports the mark/space correlator, automatic threshold correction (ATC), inter-edge-interval baud-rate histogram estimator (`estimateBaudRate()`) and FFT-based frequency-shift estimator (`estimateFrequencyShift()`) from `plugins/channelrx/demodrtty/rttydemodsink.cpp`/`.h` and `rttydemodsettings.cpp`/`.h`. The ITA2 (Baudot) character tables are from `sdrbase/util/baudot.cpp`, `m_ita2Letter`/`m_ita2Figure`.
+| | |
+|---|---|
+| Source | https://github.com/tapparelj/gr-lora_sdr, commit `fbbf6ea6684d00363096929c7ef015cabcfaeb6d` |
+| Copyright | Joachim Tapparel et al., EPFL |
+| Licence | GPL-3.0 (repository LICENSE; no per-file headers) |
+| msdr file | `msdr/decoder/pydecoders/lora_phy.py` |
 
-Because this decoder runs on real-valued SSB/mono audio rather than SDRangel's
-complex IQ baseband with a user-set channel centre, it departs from the
-original in several documented ways (two absolute-frequency oscillators
-instead of one +-shift/2 oscillator, an FFT peak search to locate the tones
-instead of a tuning knob, dual-polarity parallel decoding to detect inverted
-shift instead of a manual "Mark/Space Frequency" setting, ITA2/LSB-first only,
-and the sliding-sum correlator always followed by SDRangel's optional
-smoothing lowpass stage ("FILTERED_MAV") rather than its plain or
-raised-cosine filter options) -- see the module's own docstring for the full
-list. SDRangel's UK/European/US/Russian/Murray character sets, MSB-first bit
-order and squelch threshold are not ported.
+SDRangel's LoRa decoder is only known to work at SF11/SF12, so the bit conventions and frame sync in `lora_phy.py` follow gr-lora_sdr (`frame_sync`, `fft_demod`, `gray_mapping`, `deinterleaver`, `hamming_dec`, `header_decoder`, `dewhitening`, `crc_verif`). The LoRa test vectors in `tests/decoder/data/lora/` are synthetic output of gr-lora_sdr's transmitter, made with `scripts/make_lora_vectors.py`.
 
-### DSC message semantics and Morse ident
+### Sniffle
 
-- Source: [SDRangel](https://github.com/f4exb/sdrangel), commit `030963609f7a667c62259dbcf3cee7522880885c` (Morse files).
-- Copyright holders: DSC implementation: Jon Beniston, M7RCE, 2023. Morse: `sdrbase/dsp/morsedemod.cpp`/`.h` (Copyright Jon Beniston, M7RCE, Edouard Griffiths, F4EXB) and `sdrbase/util/morse.cpp`/`.h` (additionally maintech GmbH, Christian Daniel); VOR/ILS wiring from `plugins/channelrx/demodvor/vordemodsink.cpp` and `plugins/channelrx/demodils/ilsdemodsink.cpp` (additionally Kacper Michajlow).
-- License: GPL-3.0-or-later.
-- Covers: `msdr/decoder/pydecoders/dsc_message.py`; `msdr/decoder/pydecoders/morse_ident.py`.
-- Modifications: `dsc_message.py` adapts DSC symbol layouts and field values; supported semantic fields are gated by message ECC. `morse_ident.py` ports SDRangel's Morse ident demodulator and ASCII/Morse code table, plus the VOR/ILS ident wiring; msdr only exposes an ident after it decodes identically twice in a row.
+| | |
+|---|---|
+| Source | https://github.com/nccgroup/Sniffle, tag `v1.11.0`, commit `18252f2c5a05f9ad906865b776652e31c61471c4` |
+| Copyright | Written by Sultan Qasim Khan. Copyright (c) 2019–2024 NCC Group plc (host code); (c) 2018–2022 NCC Group plc (firmware) |
+| Licence | GPL-3.0; the ported files carry `SPDX-License-Identifier: GPL-3.0-or-later` |
+| msdr files | `msdr/ble/sniffle_proto.py`, `msdr/ble/sniffle_capture.py` |
 
-### Sniffle (BLE capture)
+Ported: the serial protocol framing and the receive-only advertising decoder, from `python_cli/sniffle/` (`sniffle_hw.py`, `constants.py`, `measurements.py`, `packet_decoder.py`).
 
-- Source: [nccgroup/Sniffle](https://github.com/nccgroup/Sniffle), tag `v1.11.0`, commit `18252f2c5a05f9ad906865b776652e31c61471c4`. Upstream: https://github.com/nccgroup/Sniffle .
-- Copyright holders: not stated in the repo.
-- License: GPL-3.0. The two ported files carry `SPDX-License-Identifier: GPL-3.0-or-later` headers, matching Sniffle's own license, rather than msdr's own GPL-3.0-only (third-party code keeps its own terms).
-- Covers: `msdr/ble/sniffle_proto.py`, `msdr/ble/sniffle_capture.py` (the SONOFF ZBDongle-P (CC2652P) backend, docs/ble.md).
-- Modifications: ports the serial wire protocol and a receive-only subset of the advertising-PDU decoder. Files consulted: `python_cli/sniffle/sniffle_hw.py` (command encoding, base64/CRLF framing, `SniffleHW.__init__`/`_send_cmd`/`_recv_msg`), `python_cli/sniffle/constants.py` (`BLE_ADV_AA`, `BLE_ADV_CRCI`, `PhyMode`), `python_cli/sniffle/measurements.py` (`VersionMeasurement`), and the advertising-PDU classes of `python_cli/sniffle/packet_decoder.py` (`AdvertMessage`, `AdvIndMessage` and siblings, `AdvExtIndMessage`, `AuxAdvIndMessage`/`AuxScanRspMessage`/`AuxChainIndMessage`, `AuxPtr`, `AdvDataInfo`).
+Not ported: anything that transmits, scans actively or follows connections. msdr is receive-only. Sniffle's firmware was read for the protocol but is not shipped or flashed by msdr; the user installs a Sniffle release on the dongle. `tests/ble/fake_sniffle.py` is msdr's own test double.
 
-msdr is receive-only by construction and ports only what passive advertising
-sniffing needs: the channel/PHY/RSSI/CRC-validation/MAC-filter-clear/
-aux-advertising-follow commands, the marker and version-probe commands, and
-connection-following is explicitly disabled (`cmd_follow(False)`) and never
-re-enabled. Sniffle's connection-following, initiating, active-scan
-(`cmd_scan`), advertise/transmit (`cmd_advertise`, `cmd_advertise_ext`,
-`cmd_transmit`), address/IRK and channel-map/interval-preload commands, and
-the corresponding decoder state for following a connection
-(`ConnectIndMessage`, `AuxConnectReqMessage`/`AuxConnectRspMessage`,
-`DataMessage` and its LL subclasses, `ScanReqMessage`/`AuxScanReqMessage`)
-are not ported at all -- those code paths do not exist in msdr. Every
-received advertising PDU (including each `AUX_CHAIN_IND` continuation of a
-long extended advertisement) is decoded and reported independently instead
-of reproducing Sniffle's own pending-chain/pending-scan-response state
-machine, which exists to support connection-following and active scanning
-that msdr does not do; `msdr/ble/observations.py`'s existing per-address
-merge handles the result the same way it already merges repeated legacy
-reports. `tests/ble/fake_sniffle.py` is an independent fake-firmware test
-double speaking the same real wire framing; it is not derived from
-Sniffle's own test code.
+### opendroneid-core-c
 
-Sniffle's firmware (`fw/CommandTask.c`, `fw/PacketTask.c`, `fw/messenger.c`)
-was consulted for the command/message framing it implements but is not
-built, shipped or flashed by msdr. msdr never flashes firmware: a person
-installs a Sniffle release build (`sniffle_cc1352p1_cc2652p1.hex` for
-CP2102N bridges at 2 Mbaud, or the `_1M.hex` variant with CP2102 (non-N)
-bridges at 921600 baud) onto the dongle themselves before msdr can use it.
+| | |
+|---|---|
+| Source | https://github.com/opendroneid/opendroneid-core-c, commit `6484f26545d4f012682524e2d843fab0fbdc0b34` |
+| Copyright | 2019 Intel Corporation; 2020 Simon Wunderlich, Marek Sobe and Doodle Labs |
+| Licence | Apache-2.0, full text in [LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt) |
+| msdr files | `msdr/remoteid/messages.py`, `msdr/remoteid/transport.py` |
 
-### Remote ID decoding
+These are a hand-written Python port of the Open Drone ID message encoding and Wi-Fi framing (`libopendroneid/opendroneid.c/.h`, `wifi.c`, `odid_wifi.h`). Following Apache-2.0 section 4(b) and 4(d), each file's header names the upstream project, the commit and the licence. Upstream had no NOTICE file at that commit. The BLE framing in `transport.py` follows the ASTM F3411 specification directly and is not ported.
 
-- Source: `opendroneid/opendroneid-core-c` (https://github.com/opendroneid/opendroneid-core-c), commit `6484f26545d4f012682524e2d843fab0fbdc0b34`.
-- Copyright holders: copyright 2019 Intel Corporation and copyright 2020 Simon Wunderlich, Marek Sobe and Doodle Labs.
-- License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0).
-- Covers: `msdr/remoteid/` (docs/remote-id.md), in particular `messages.py` and `transport.py`.
-- Modifications: ports ASTM F3411 / ASD-STAN Open Drone ID message encode/decode semantics. Files consulted: `libopendroneid/opendroneid.c`/`.h` and `libopendroneid/wifi.c`/`odid_wifi.h`.
+Apache-2.0 code may be included in a GPL-3.0 work; msdr as a whole stays GPL-3.0-only.
 
-No modified copy of the upstream source is included in msdr --
-`msdr/remoteid/messages.py` and `transport.py` are a hand-written Python port
-carrying their own `SPDX-License-Identifier: GPL-3.0-only` and a
-NOTICE-equivalent file header naming the project, the commit above and the
-Apache-2.0 license, per Apache License 2.0 section 4(b)/(d). As required by
-section 4, this notice preserves that attribution; no NOTICE file was present
-in the upstream distribution at that commit. msdr remains GPL-3.0-only
-overall; Apache-2.0 is compatible with inclusion in a GPL-3.0 work. The BLE
-legacy advertising framing in `transport.py` (service data UUID 0xFFFA, app
-code 0x0D) follows the same ASTM F3411 / ASD-STAN specification but was not
-copied or ported from opendroneid-core-c's Bluetooth encoder (not among the
-files consulted).
+`tests/remoteid/gen_vectors.c` builds the unmodified upstream library to generate test vectors (`tests/remoteid/data/vectors.json`). It is test tooling only and is not shipped.
 
-`tests/remoteid/gen_vectors.c` links the same opendroneid-core-c sources
-unmodified (via a small macOS `<byteswap.h>` compatibility shim, not part of
-msdr) to generate `tests/remoteid/data/vectors.json`, an independent
-cross-check fixture; see that directory's README for provenance and the
-regeneration command. Neither the generator nor the opendroneid-core-c
-sources it links are built, shipped or imported by msdr itself.
+### SSTV mode specification
 
-### SSTV mode specifications
+SSTV timings and VIS codes follow JL Barber (N7CXI), "Proposal for SSTV Mode Specifications", Dayton SSTV forum, 20 May 2000. No code is copied. See [docs/sstv.md](docs/sstv.md).
 
-SSTV timings and VIS codes follow JL Barber (N7CXI), "Proposal for SSTV Mode
-Specifications" (Dayton SSTV forum, 20 May 2000), cited in [docs/sstv.md](docs/sstv.md).
+---
 
-## Optional external tools (not distributed)
+## External programs
 
-### Raw HCI BLE capture (pyusb and libusb)
+msdr runs these as separate processes or loads them at runtime. None are shipped with msdr, and each keeps its own licence.
 
-BLE reception (`python -m msdr.ble.capture`, docs/ble.md) is msdr's own
-GPL-3.0-only code. It talks HCI to a USB Bluetooth dongle through the optional
-`pyusb` package (BSD-3-Clause, https://github.com/pyusb/pyusb) and the system
-`libusb-1.0` library (LGPL-2.1-or-later, https://libusb.info), loaded at run
-time and never bundled. No controller firmware or vendor patch file is shipped
-or uploaded; the dongle runs whatever firmware it already has. Company and
-service names come from the Bluetooth SIG Assigned Numbers.
+| Program | Used for | Licence |
+|---|---|---|
+| `pyusb` (https://github.com/pyusb/pyusb) and `libusb-1.0` (https://libusb.info) | Raw HCI BLE capture | BSD-3-Clause; LGPL-2.1-or-later |
+| `msdr-wifi-capture` with `xen-proc/rtl8812au-macos` (https://github.com/xen-proc/rtl8812au-macos, commit `347e9f172750e0c0b7c45b6dcfef7e780d70d144`) | Passive Wi-Fi capture | GPL-2.0-only |
+| WSJT-X `jt9`, multimon-ng, minimodem, Dire Wolf, dsd-fme, dump1090, nextpass, iqscan | Decoders and tools | Each its own |
 
-### Wi-Fi capture helper
+- **BLE:** msdr ships no controller firmware or vendor patch files. Company and service names come from the Bluetooth SIG Assigned Numbers.
+- **Wi-Fi:** the driver includes register tables and firmware derived from aircrack-ng/rtl8812au and Realtek sources under GPL-2.0. The helper has its own LICENSE and NOTICE. msdr does not include or link driver code; it only reads the helper's PCAP output. See [docs/wifi.md](docs/wifi.md).
+- **FT8:** validated locally with the official WSJT-X 3.0.2 arm64 app. No WSJT-X executable or recording is included.
+- **Python packages** listed in `pyproject.toml` are installed separately under their own licences.
 
-msdr does not include, link or redistribute driver code. Wi-Fi capture uses
-the separately installed `xen-proc/rtl8812au-macos` userspace driver (pinned
-commit `347e9f172750e0c0b7c45b6dcfef7e780d70d144`, GPL-2.0-only), which
-contains register tables, power sequences and firmware derived from
-aircrack-ng/rtl8812au and Realtek sources under GPL-2.0, and a small wrapper
-program (`msdr-wifi-capture`, GPL-2.0-only) with its own LICENSE and NOTICE.
-msdr starts it as a separate program and reads standard PCAP. Upstream:
-https://github.com/xen-proc/rtl8812au-macos . See [docs/wifi.md](docs/wifi.md).
-
-### External decoders and tools
-
-WSJT-X `jt9`, multimon-ng, minimodem, Dire Wolf, dsd-fme, dump1090, nextpass
-and iqscan are external programs installed by the user and called as
-separate processes. None are bundled; each keeps its own licence.
-
-FT8 uses the separately installed WSJT-X `jt9` executable. The official
-WSJT-X 3.0.2 native arm64 application bundle was used for local validation;
-no executable or recording from that distribution is bundled in msdr.
-
-### Python dependencies
-
-Python dependencies are installed separately and retain their upstream licenses.
-Their license notices must be preserved when redistributing those dependencies.
+---
 
 ## Test fixtures
 
-- `tests/decoder/data/martin_m1_qsstv_sunset.wav`: "SSTV sunset audio" by
-  Mysid, Wikimedia Commons, CC BY 2.5
-  (https://creativecommons.org/licenses/by/2.5). Converted to 11,025 Hz 8-bit
-  mono PCM; details in `martin_m1_qsstv_sunset.LICENSE.txt`.
-- `tests/ble/fake_helper.py` sample reports: four advertising payloads shaped
-  after a local passive scan on 2026-10-02, with addresses rewritten.
+| File | Source | Licence |
+|---|---|---|
+| `tests/decoder/data/martin_m1_qsstv_sunset.wav` | "SSTV sunset audio" by Mysid, Wikimedia Commons; converted to 11,025 Hz 8-bit mono. Details in `martin_m1_qsstv_sunset.LICENSE.txt` | CC BY 2.5 (https://creativecommons.org/licenses/by/2.5) |
+| `tests/ble/fake_helper.py` sample reports | Four advertising payloads modelled on a local scan (2026-10-02), addresses rewritten | msdr's own |

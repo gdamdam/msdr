@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from msdr.catalog.parsers.hfcc import parse_hfcc
+from msdr.catalog.parsers.hfcc import build_tables, load_tables, parse_hfcc, write_tables
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REAL_HFCC_FILE = REPO_ROOT / "tmp" / "a26allx2" / "A26all00.TXT"
@@ -25,6 +25,17 @@ HFCC_FIXTURE = """\
  3215 0100 1200 4,9,27,37-39                   WCR  100 46        0 902 1234567 010926 251026 D       Eng        USA WCR FCC  2461                     
  4930 0530 0700 53,57                          BOT  100 20        0 750 36      220526 241026 D 10750 Eng        BOT AGM AGM  4324                     
 """
+
+
+# Only the rows the fixture needs, in the real files' fixed-width layouts.
+HFCC_TABLE_FILES = {
+    "admin.txt": (";ADM table\nVUT " + "Vanuatu".ljust(51) + "Vanuatu\n").encode(),
+    "broadcas.txt": b"AGM United States Agency for Global Media (USAGM)\n",
+    "site.txt": b"PVL Port Vila                        VUT 17S44 168E19\n",
+    # language.txt is UTF-8 with a BOM
+    "language.txt": "\ufeff;Language\nBis Bislama\nAae Arbëreshë Albanian\n".encode(),
+}
+HFCC_TABLES = build_tables(HFCC_TABLE_FILES)
 
 
 def test_parse_hfcc_fields():
@@ -54,26 +65,28 @@ def test_parse_hfcc_partial_week_mask():
     assert e.days == "..W..S."
 
 
-def test_parse_hfcc_broadcaster_resolved_via_bundled_table():
-    e = next(e for e in parse_hfcc(HFCC_FIXTURE) if e.frequency_hz == 4_930_000)
+def test_parse_hfcc_broadcaster_resolved_via_table():
+    e = next(e for e in parse_hfcc(HFCC_FIXTURE, tables=HFCC_TABLES) if e.frequency_hz == 4_930_000)
     assert e.station == "United States Agency for Global Media (USAGM)"
 
 
-def test_parse_hfcc_country_and_language_resolved_via_bundled_tables():
-    e = parse_hfcc(HFCC_FIXTURE)[0]
+def test_parse_hfcc_country_and_language_resolved_via_tables():
+    e = parse_hfcc(HFCC_FIXTURE, tables=HFCC_TABLES)[0]
     assert e.country == "Vanuatu"  # ADM 'VUT' via admin.txt
     assert e.language == "Bislama"  # LANGUAGE 'Bis' via languages.json
     assert e.location == "Port Vila"  # LOC 'PVL' via site.txt
 
 
-def test_bundled_hfcc_language_names_are_decoded_as_utf8():
-    from msdr.catalog.parsers.hfcc import _load_languages
+def test_hfcc_language_names_are_decoded_as_utf8_and_tables_round_trip(tmp_path):
+    assert HFCC_TABLES["languages"]["Aae"] == "Arbëreshë Albanian"
+    write_tables(tmp_path, HFCC_TABLES)
+    assert load_tables(tmp_path) == HFCC_TABLES
+    assert load_tables(tmp_path / "missing")["languages"] == {}
 
-    languages = _load_languages()
-    assert languages["Aae"] == "Arbëreshë Albanian"
-    assert languages["Acb"] == "Áncá"
-    assert languages["Kwv"] == "Sara Kaba Náà"
-    assert not any("Ã" in value or "Â" in value for value in languages.values())
+
+def test_parse_hfcc_without_tables_keeps_raw_codes():
+    e = parse_hfcc(HFCC_FIXTURE)[0]
+    assert (e.country, e.language, e.location) == ("VUT", "Bis", "PVL")
 
 
 def test_parse_hfcc_unknown_code_falls_back_to_code():

@@ -4,12 +4,14 @@ carries its own column ruler (a ';----+----+...' line) directly above the
 header row, so columns are located by name rather than hard-coded offsets --
 robust to the minor width drift seen between seasons/mirrors.
 
-Reference tables (bundled under msdr/catalog/data/hfcc/, loaded lazily):
+Reference tables are not bundled (no redistribution licence); they come from
+the season ZIP the user downloads, which carries them next to the schedule:
 - broadcas.txt: BRC code -> broadcaster name
 - site.txt: LOC code -> transmitter site name
 - admin.txt: ADM code -> administration (country) English name
-- languages.json: a compact code -> name map extracted from the (800 KB)
-  LANGUAGE.TXT reference table -- the raw table isn't shipped.
+- language.txt: LANGUAGE code -> name (~800 KB, so cached as a compact map)
+`build_tables` extracts them, `write_tables`/`load_tables` cache them as JSON
+so a later direct .TXT refresh can still resolve names.
 
 Unmapped codes fall back to the raw code (never dropped).
 """
@@ -19,14 +21,11 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
-from functools import lru_cache
 from pathlib import Path
 
 from msdr.catalog.models import CatalogEntry
 from msdr.catalog.parsers._days import digits_to_mask
 from msdr.library.models import now_iso
-
-_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "hfcc"
 
 _RULER_RE = re.compile(r"^;[-+]+\s*$")
 
@@ -71,37 +70,31 @@ def _find_columns(lines: list[str]) -> tuple[dict[str, tuple[int, int | None]], 
     return {}, 0
 
 
-@lru_cache(maxsize=1)
-def _load_admin() -> dict[str, str]:
-    return _load_code_name_table(_DATA_DIR / "admin.txt", name_end=55)
+# table key -> (ZIP member name, end column of the name or None for "to EOL").
+# Names after the cut-off are second/third language columns.
+_TABLE_SOURCES: dict[str, tuple[str, int | None]] = {
+    "admin": ("admin.txt", 55),
+    "broadcasters": ("broadcas.txt", None),
+    "sites": ("site.txt", 34),
+    "languages": ("language.txt", None),
+}
+HFCC_TABLE_KEYS = tuple(_TABLE_SOURCES)
 
 
-@lru_cache(maxsize=1)
-def _load_broadcasters() -> dict[str, str]:
-    return _load_code_name_table(_DATA_DIR / "broadcas.txt", name_end=None)
+def _decode_table(data: bytes) -> str:
+    # language.txt is UTF-8 (with BOM); the others are latin-1.
+    try:
+        return data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return data.decode("latin-1")
 
 
-@lru_cache(maxsize=1)
-def _load_sites() -> dict[str, str]:
-    return _load_code_name_table(_DATA_DIR / "site.txt", name_end=34)
-
-
-@lru_cache(maxsize=1)
-def _load_languages() -> dict[str, str]:
-    path = _DATA_DIR / "languages.json"
-    if not path.exists():
-        return {}
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _load_code_name_table(path: Path, *, name_end: int | None) -> dict[str, str]:
+def _parse_code_name_table(text: str, *, name_end: int | None) -> dict[str, str]:
     """These reference tables share a simple layout: a 3-letter code in the
     first 3 columns, then the name from column 4 onward (optionally cut off
     before a second/third language column, per `name_end`)."""
     table: dict[str, str] = {}
-    if not path.exists():
-        return table
-    for raw in path.read_text(encoding="latin-1").splitlines():
+    for raw in text.splitlines():
         if not raw or raw.startswith(";"):
             continue
         code = raw[0:3].strip()
@@ -111,6 +104,38 @@ def _load_code_name_table(path: Path, *, name_end: int | None) -> dict[str, str]
         if name:
             table[code] = name
     return table
+
+
+def build_tables(members: dict[str, bytes]) -> dict[str, dict[str, str]]:
+    """Code -> name maps from the raw reference files of an HFCC ZIP
+    (`members` keyed by lower-cased file name). Missing files give {}."""
+    tables: dict[str, dict[str, str]] = {}
+    for key, (filename, name_end) in _TABLE_SOURCES.items():
+        data = members.get(filename)
+        tables[key] = (
+            _parse_code_name_table(_decode_table(data), name_end=name_end) if data else {}
+        )
+    return tables
+
+
+def write_tables(directory: Path, tables: dict[str, dict[str, str]]) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    for key in HFCC_TABLE_KEYS:
+        (directory / f"{key}.json").write_text(
+            json.dumps(tables.get(key, {}), ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+
+
+def load_tables(directory: Path) -> dict[str, dict[str, str]]:
+    """Cached tables written by `write_tables`; absent/corrupt ones are {}."""
+    tables: dict[str, dict[str, str]] = {}
+    for key in HFCC_TABLE_KEYS:
+        try:
+            tables[key] = json.loads((directory / f"{key}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            tables[key] = {}
+    return tables
 
 
 def _parse_hfcc_date(raw: str) -> dt.date | None:
@@ -135,16 +160,24 @@ def _explicit_coordinate(col, line: str, *names: str) -> float | None:
         return None
 
 
-def parse_hfcc(text: str, *, today: dt.date | None = None) -> list[CatalogEntry]:
+def parse_hfcc(
+    text: str,
+    *,
+    today: dt.date | None = None,
+    tables: dict[str, dict[str, str]] | None = None,
+) -> list[CatalogEntry]:
+    """`tables` is the `build_tables`/`load_tables` result; without it codes
+    stay raw."""
     lines = text.splitlines()
     columns, data_start = _find_columns(lines)
     if not columns:
         return []
 
-    admin = _load_admin()
-    broadcasters = _load_broadcasters()
-    sites = _load_sites()
-    languages = _load_languages()
+    tables = tables or {}
+    admin = tables.get("admin", {})
+    broadcasters = tables.get("broadcasters", {})
+    sites = tables.get("sites", {})
+    languages = tables.get("languages", {})
 
     def col(name: str, line: str) -> str:
         seg = columns.get(name)

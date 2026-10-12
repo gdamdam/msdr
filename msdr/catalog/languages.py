@@ -14,14 +14,26 @@ from functools import lru_cache
 from pathlib import Path
 
 _COMPOUND = re.compile(r"\s*[/,;+&]\s*")
-_HFCC_LANGUAGES_PATH = Path(__file__).resolve().parent / "data" / "hfcc" / "languages.json"
+# HFCC's language table isn't bundled; it is cached from the downloaded season
+# ZIP (see set_hfcc_languages_path). Unset/missing -> no code expansion.
+_hfcc_languages_path: Path | None = None
+
+
+def set_hfcc_languages_path(path: Path | None) -> None:
+    """Point at the cached languages.json and drop memoised lookups."""
+    global _hfcc_languages_path
+    _hfcc_languages_path = path
+    _hfcc_language_names.cache_clear()
+    _hfcc_name_identities.cache_clear()
 
 
 @lru_cache(maxsize=1)
 def _hfcc_language_names() -> dict[str, str]:
-    """Read the bundled HFCC ISO-639-3 code table for legacy raw entries."""
+    """Read the cached HFCC ISO-639-3 code table for legacy raw entries."""
+    if _hfcc_languages_path is None:
+        return {}
     try:
-        return json.loads(_HFCC_LANGUAGES_PATH.read_text(encoding="utf-8"))
+        return json.loads(_hfcc_languages_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
 

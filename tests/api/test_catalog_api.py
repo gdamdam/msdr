@@ -526,6 +526,45 @@ def test_catalog_payload_picks_hfcc_schedule_member_from_zip():
     assert service_module.catalog_payload_text(data, "latin-1", member) == HFCC_FIXTURE
 
 
+async def test_hfcc_zip_refresh_caches_tables_and_plain_txt_reuses_them(
+    tmp_path, monkeypatch
+):
+    import io
+    import zipfile
+
+    from tests.catalog.test_parsers_hfcc import HFCC_FIXTURE, HFCC_TABLE_FILES
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("A26all00.TXT", HFCC_FIXTURE.encode("latin-1"))
+        for name, raw in HFCC_TABLE_FILES.items():
+            zf.writestr(name, raw)
+    zip_data = buf.getvalue()
+    payload = {"data": zip_data}
+
+    def fake_fetch(url, encoding="utf-8", member=None, members_out=None):
+        return service_module.catalog_payload_text(payload["data"], encoding, member, members_out)
+
+    async with running_app() as (app, client, adapter):
+        svc = app.state.service
+        monkeypatch.setattr(svc.settings, "db_path", tmp_path / "msdr.db")
+        monkeypatch.setattr(catalog_module, "fetch_catalog_text", fake_fetch)
+        svc.settings.catalog_sources["hfcc"] = "http://example.test/a26.zip"
+
+        resp = await client.post("/api/catalog/refresh", json={"source": "hfcc"})
+        assert resp.json()["error"] is None
+        assert (tmp_path / "catalog" / "hfcc" / "languages.json").exists()
+        first = svc.catalog.search("", source="hfcc")[0]
+        assert (first.country, first.language) == ("Vanuatu", "Bislama")
+
+        # A direct .TXT URL carries no tables: the cached ones are reused.
+        payload["data"] = HFCC_FIXTURE.encode("latin-1")
+        resp = await client.post("/api/catalog/refresh", json={"source": "hfcc"})
+        assert resp.json()["error"] is None
+        again = svc.catalog.search("", source="hfcc")[0]
+        assert (again.country, again.language) == ("Vanuatu", "Bislama")
+
+
 def test_catalog_payload_zip_errors():
     member = service_module._CATALOG_ZIP_MEMBERS["hfcc"]
     try:

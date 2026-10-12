@@ -11,8 +11,8 @@ A catalog match is schedule or reference data, not proof that a signal was recei
 | Source | What it is | Setup |
 |---|---|---|
 | [EiBi](https://eibispace.de/) | Shortwave broadcast schedules | Built in; follows the current season. |
-| Aoki | Shortwave broadcast schedules | Paste the current season's schedule ZIP URL. |
-| [HFCC](https://new.hfcc.org/data/) | Shortwave broadcast schedules | Paste the current season's schedule ZIP URL. |
+| Aoki | Shortwave broadcast schedules | Paste the current season's schedule ZIP URL. Station, site, country and language names come from the tables in that ZIP (cached locally); a direct `.TXT` URL uses the last cached tables. |
+| [HFCC](https://new.hfcc.org/data/) | Shortwave broadcast schedules | Paste the current season's schedule ZIP URL. Station, site, country and language names come from the tables in that ZIP (cached locally); a direct `.TXT` URL uses the last cached tables. |
 | [NDXC](https://ndxc.info/) | Broadcast frequency list | Built in. |
 | NOAA Radiofax | Weather fax stations | Bundled; no setup. |
 | SigIDWiki | Signal-type reference | Bundled; no setup. |

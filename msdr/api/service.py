@@ -117,6 +117,7 @@ from msdr.api.services.sky import (
 )
 from msdr.api.services.survey import SurveyServiceMixin
 from msdr.api.services.wifi import WifiServiceMixin
+from msdr.catalog.languages import set_hfcc_languages_path
 from msdr.catalog.store import CatalogRepo
 from msdr.engine.confirmed import ConfirmedState, matches
 from msdr.engine.dwell import DwellObserver
@@ -677,6 +678,8 @@ class AppService(
         import_counts = import_legacy(self.db, self.observations)
         logger.info("observations: legacy import counts=%s", import_counts)
         self.catalog = CatalogRepo(self.db)
+        cache_dir = self._hfcc_cache_dir()
+        set_hfcc_languages_path(cache_dir / "languages.json" if cache_dir else None)
         self.tags.ensure_categories()
         self._refresh_ignored_finds()
         await self._start_history_runtime()

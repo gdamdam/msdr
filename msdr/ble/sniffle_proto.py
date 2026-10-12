@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Minimal, receive-only port of the Sniffle serial protocol (nccgroup/Sniffle
 v1.11.0, commit 18252f2c5a05f9ad906865b776652e31c61471c4, GPL-3.0; see
-THIRD_PARTY_NOTICES.md "Passive BLE capture (Sniffle)"). Framing and command
+THIRD_PARTY_NOTICES.md "Sniffle (BLE capture)"). Framing and command
 encoding are ported from `sniffle_hw.py` (`SniffleHW._send_cmd`/`_recv_msg`);
 advertising decode is ported from `packet_decoder.py`'s `AdvertMessage`/
 `AdvExtIndMessage`/`AuxAdvIndMessage` family and `constants.py`/

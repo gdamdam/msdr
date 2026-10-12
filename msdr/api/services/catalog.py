@@ -22,13 +22,14 @@ from fastapi import HTTPException
 from msdr.catalog import CATALOG_KINDS, CATALOG_LABELS, catalog_sources_help
 from msdr.catalog import DEFAULT_URLS as CATALOG_DEFAULT_URLS
 from msdr.catalog import PARSERS as ALL_CATALOG_PARSERS
+from msdr.catalog.languages import set_hfcc_languages_path
 from msdr.catalog.models import CatalogEntry, on_air, on_air_state, tune_recipe
 from msdr.catalog.models import on_air as entry_on_air
 from msdr.catalog.parsers.aoki import parse_aoki
 from msdr.catalog.parsers.eibi import default_url as eibi_default_url
 from msdr.catalog.parsers.eibi import parse_eibi, season_code
 from msdr.catalog.parsers.faa_nasr import fetch_faa_nasr
-from msdr.catalog.parsers.hfcc import parse_hfcc
+from msdr.catalog.parsers.hfcc import build_tables, load_tables, parse_hfcc, write_tables
 from msdr.catalog.parsers.ioos_hfradar import default_url as ioos_hfradar_default_url
 from msdr.catalog.parsers.ioos_hfradar import fetch_ioos_hfradar
 from msdr.catalog.parsers.userlists import parse_gqrx_csv, parse_sdrpp_json
@@ -120,7 +121,10 @@ _MAX_IMPORT_BYTES = 20 * 1024 * 1024
 
 
 def fetch_catalog_text(
-    url: str, encoding: str = "utf-8", member: re.Pattern[str] | None = None
+    url: str,
+    encoding: str = "utf-8",
+    member: re.Pattern[str] | None = None,
+    members_out: dict[str, bytes] | None = None,
 ) -> str:
     """Blocking fetch of a catalog source's raw schedule text. A module-level
     function (not a method) so tests can monkeypatch it directly instead of
@@ -128,7 +132,7 @@ def fetch_catalog_text(
     req = urllib.request.Request(url, headers={"Accept-Encoding": "identity"})
     with urllib.request.urlopen(req, timeout=_CATALOG_FETCH_TIMEOUT_S) as resp:
         data = resp.read()
-    return catalog_payload_text(data, encoding, member)
+    return catalog_payload_text(data, encoding, member, members_out)
 
 
 def fetch_priyom_catalog(days: int = 7) -> tuple[list[CatalogEntry], str]:
@@ -190,12 +194,17 @@ _CATALOG_FETCHERS: dict[str, Callable[[], tuple[list[CatalogEntry], str]]] = {
 
 
 def catalog_payload_text(
-    data: bytes, encoding: str = "utf-8", member: re.Pattern[str] | None = None
+    data: bytes,
+    encoding: str = "utf-8",
+    member: re.Pattern[str] | None = None,
+    members_out: dict[str, bytes] | None = None,
 ) -> str:
     """Decode a fetched schedule. HFCC and Aoki publish ZIPs that bundle the
     schedule with reference tables (sites, languages, an .xlsx...), so a ZIP
     must be opened and the one schedule member picked by `member`; a plain
-    text payload (a URL pointing straight at the .TXT) is decoded as is."""
+    text payload (a URL pointing straight at the .TXT) is decoded as is.
+    `members_out`, when given, receives every other ZIP member (raw bytes,
+    keyed by lower-cased name) so HFCC's reference tables can be cached."""
     if not zipfile.is_zipfile(io.BytesIO(data)):
         if member is not None and data[:2] == b"PK":
             raise ValueError("invalid ZIP archive")
@@ -207,6 +216,10 @@ def catalog_payload_text(
         if not names:
             listing = ", ".join(zf.namelist())
             raise ValueError(f"schedule file not found in ZIP (members: {listing})")
+        if members_out is not None:
+            for name in zf.namelist():
+                if name != names[0] and not name.endswith("/"):
+                    members_out[name.rsplit("/", 1)[-1].lower()] = zf.read(name)
         return zf.read(names[0]).decode(encoding, errors="replace")
 
 
@@ -218,7 +231,7 @@ def _parse_eibi_fetched(text: str, url: str) -> list[CatalogEntry]:
 _CATALOG_PARSERS: dict[str, Callable[[str, str], list[CatalogEntry]]] = {
     "eibi": _parse_eibi_fetched,
     "aoki": lambda text, url: parse_aoki(text),
-    "hfcc": lambda text, url: parse_hfcc(text),
+    "hfcc": lambda text, url: parse_hfcc(text),  # refresh adds the cached tables itself
 }
 
 
@@ -500,9 +513,15 @@ class CatalogServiceMixin:
         encoding = _CATALOG_ENCODINGS.get(source, "utf-8")
         member = _CATALOG_ZIP_MEMBERS.get(source)
         extra = {"member": member} if member is not None else {}
+        hfcc_members: dict[str, bytes] = {}
+        if source == "hfcc":
+            extra["members_out"] = hfcc_members
         try:
             text = await asyncio.to_thread(fetch_catalog_text, url, encoding, **extra)
-            entries = wrapper(text, url) if wrapper is not None else generic(text)
+            if source == "hfcc":
+                entries = self._parse_hfcc_refresh(text, hfcc_members)
+            else:
+                entries = wrapper(text, url) if wrapper is not None else generic(text)
         except Exception as exc:  # never raise: refresh reports failure, doesn't 500
             return {"source": source, "entries": 0, "error": str(exc)}
         if not entries:
@@ -510,6 +529,26 @@ class CatalogServiceMixin:
             # keep the source's current entries rather than wiping them.
             return {"source": source, "entries": 0, "error": "no entries parsed; catalog unchanged"}
         return self._store_refresh(source, entries, url=url)
+
+    def _hfcc_cache_dir(self) -> Path | None:
+        """Where HFCC reference tables are cached; None for an in-memory DB."""
+        db_path = self.settings.db_path
+        if str(db_path) == ":memory:":
+            return None
+        return Path(db_path).parent / "catalog" / "hfcc"
+
+    def _parse_hfcc_refresh(self, text: str, members: dict[str, bytes]) -> list[CatalogEntry]:
+        """Names come from the downloaded ZIP's tables (cached for later); a
+        plain .TXT refresh reuses the last cached tables, else raw codes."""
+        cache_dir = self._hfcc_cache_dir()
+        if members:
+            tables = build_tables(members)
+            if cache_dir is not None and any(tables.values()):
+                write_tables(cache_dir, tables)
+                set_hfcc_languages_path(cache_dir / "languages.json")
+        else:
+            tables = load_tables(cache_dir) if cache_dir is not None else None
+        return parse_hfcc(text, tables=tables)
 
     def _store_refresh(
         self, source: str, entries: list[CatalogEntry], *, url: str, note: str | None = None

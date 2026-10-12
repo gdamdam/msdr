@@ -107,7 +107,21 @@ def test_language_filters_group_source_aliases_and_compounds_without_rewriting_v
     assert imported.language == "E"
 
 
-def test_hfcc_language_codes_use_bundled_names_and_unknown_codes_stay_raw(repo):
+def test_hfcc_language_codes_use_cached_names_and_unknown_codes_stay_raw(repo, tmp_path):
+    from msdr.catalog.languages import set_hfcc_languages_path
+
+    path = tmp_path / "languages.json"
+    path.write_text(
+        '{"Aae":"Arbëreshë Albanian","Aue":"=/Kx\'au//\'ein"}', encoding="utf-8"
+    )
+    set_hfcc_languages_path(path)
+    try:
+        _check_hfcc_language_codes(repo)
+    finally:
+        set_hfcc_languages_path(None)
+
+
+def _check_hfcc_language_codes(repo):
     repo.replace_source("hfcc", [
         _entry(source="hfcc", station="HFCC code", language="Aae"),
         _entry(source="hfcc", station="HFCC slash name", language="Aue"),
