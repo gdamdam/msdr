@@ -13,7 +13,9 @@ def test_messages_window_resizes_without_closing(live_app, page: Page):
     # the drag ends over the backdrop, which must not close the window.
     page.mouse.move(before["x"] + before["width"] - 3, before["y"] + before["height"] - 3)
     page.mouse.down()
-    page.mouse.move(before["x"] + before["width"] + 120, before["y"] + before["height"] + 150, steps=8)
+    page.mouse.move(
+        before["x"] + before["width"] + 120, before["y"] + before["height"] + 150, steps=8
+    )
     page.mouse.up()
     expect(panel).to_be_visible()
     after = panel.bounding_box()
