@@ -24,7 +24,7 @@ from msdr.decoder.backends import (
     build_backend,
     reap_cancelled,
 )
-from msdr.decoder.channelizer import NFMChannel, PolyphaseChannelizer
+from msdr.decoder.channelizer import AMChannel, NFMChannel, PolyphaseChannelizer
 from msdr.decoder.peaks import Peak, PeakDetector
 from msdr.decoder.readiness import decoder_facts
 from msdr.decoder.registry import DECODERS
@@ -58,7 +58,9 @@ class BandChannel:
     # One NFMChannel per distinct decoder input_rate needed on this channel
     # (e.g. 22,050 Hz for POCSAG alongside 48,000 Hz for DMR), keyed by rate;
     # rate_by_decoder says which one feeds each backend.
-    nfm_by_rate: dict[int, NFMChannel] = field(default_factory=dict, repr=False, compare=False)
+    nfm_by_rate: dict[int, NFMChannel | AMChannel] = field(
+        default_factory=dict, repr=False, compare=False
+    )
     rate_by_decoder: dict[str, int] = field(default_factory=dict, repr=False, compare=False)
     backends: dict[str, ProcessBackend] = field(default_factory=dict, repr=False, compare=False)
     event_tasks: list[asyncio.Task] = field(default_factory=list, repr=False, compare=False)
@@ -112,7 +114,15 @@ class BandDecoder:
         calls_dir: Path | None = None,
         fax_dir: Path | None = None,
         track_generation: bool = False,
+        mode: Literal["NFM", "AM"] = "NFM",
+        am_bandwidth_hz: int = 8_000,
+        am_squelch_db: float = 10.0,
     ):
+        # One demodulation mode per band session: the decoders in a session
+        # share it, and it keeps the channel list and API unchanged for NFM.
+        self._mode = mode
+        self._am_bandwidth_hz = am_bandwidth_hz
+        self._am_squelch_db = am_squelch_db
         self._iq_stream_factory = iq_stream_factory
         self._decoders = list(decoders)
         self._binaries = binaries
@@ -419,6 +429,7 @@ class BandDecoder:
         return {
             "active": self._stream is not None,
             "decoders": list(self._decoders),
+            "mode": self._mode,
             "center_hz": self._center_hz,
             "sample_rate_hz": self._sample_rate_hz,
             "spacing_hz": self._channelizer.spacing_hz,
@@ -510,14 +521,23 @@ class BandDecoder:
         rates_needed = {
             DECODERS[decoder_id].input_rate for decoder_id in decoder_ids if decoder_id in DECODERS
         }
-        channel.nfm_by_rate = {
-            rate: NFMChannel(
-                48_000 if self._fixed_extractor is not None else self._channelizer.out_rate,
-                0.0 if self._fixed_extractor is not None else channel.residual_hz,
-                target_rate=rate,
-            )
-            for rate in rates_needed
-        }
+        in_rate = 48_000 if self._fixed_extractor is not None else self._channelizer.out_rate
+        residual_hz = 0.0 if self._fixed_extractor is not None else channel.residual_hz
+        if self._mode == "AM":
+            channel.nfm_by_rate = {
+                rate: AMChannel(
+                    in_rate,
+                    residual_hz,
+                    target_rate=rate,
+                    bandwidth_hz=self._am_bandwidth_hz,
+                    squelch_db=self._am_squelch_db,
+                )
+                for rate in rates_needed
+            }
+        else:
+            channel.nfm_by_rate = {
+                rate: NFMChannel(in_rate, residual_hz, target_rate=rate) for rate in rates_needed
+            }
         for decoder_id in decoder_ids:
             spec = DECODERS.get(decoder_id)
             if spec is None:

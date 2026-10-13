@@ -688,3 +688,27 @@ async def test_retune_drops_pinned_channel_outside_new_span(monkeypatch):
         assert band.status()["channels"] == []
     finally:
         await band.stop()
+
+
+@pytest.mark.asyncio
+async def test_am_mode_builds_am_channels_and_reports_mode(monkeypatch):
+    from msdr.decoder.channelizer import AMChannel
+
+    band, _stream, backends, _events, _statuses = _make_band(
+        monkeypatch, memories=[(CENTER_HZ + SPACING_HZ, "air-1", [])], decoders=("acars",)
+    )
+    band._mode = "AM"
+    await band.start()
+    try:
+        assert band.status()["mode"] == "AM"
+        channel = next(iter(band._channels.values()))
+        assert all(isinstance(c, AMChannel) for c in channel.nfm_by_rate.values())
+        assert "acars" in backends
+    finally:
+        await band.stop()
+
+
+@pytest.mark.asyncio
+async def test_default_mode_is_nfm(monkeypatch):
+    band, *_ = _make_band(monkeypatch, memories=[])
+    assert band.status()["mode"] == "NFM"

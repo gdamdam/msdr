@@ -3,7 +3,7 @@ import time
 import numpy as np
 import pytest
 
-from msdr.decoder.channelizer import NFMChannel, PolyphaseChannelizer
+from msdr.decoder.channelizer import AMChannel, NFMChannel, PolyphaseChannelizer
 
 
 def _tone(freq_hz: float, fs: int, n_samples: int) -> np.ndarray:
@@ -142,3 +142,52 @@ def test_nfm_channel_fine_mixes_residual():
     steady = samples[len(samples) // 2 :]
     # Fine-mixed out, the discriminator should see ~0 Hz deviation -> quiet.
     assert abs(steady.mean()) < 0.05
+
+
+def _am_carrier(offset_hz: float, tone_hz: float, fs: int, n: int, level: float = 0.2):
+    t = np.arange(n) / fs
+    envelope = level * (1 + 0.5 * np.sin(2 * np.pi * tone_hz * t))
+    return (envelope * np.exp(1j * 2 * np.pi * offset_hz * t)).astype(np.complex64)
+
+
+def _dominant_hz(pcm: bytes, rate: int) -> float:
+    x = np.frombuffer(pcm, dtype="<i2").astype(np.float64)
+    spectrum = np.abs(np.fft.rfft(x * np.hanning(x.size)))
+    return float(np.argmax(spectrum) * rate / x.size)
+
+
+def test_am_channels_demodulate_active_and_squelch_silent():
+    fs, rate = 200_000, 22_050
+    n = int(fs * 1.0)
+    rng = np.random.default_rng(1)
+    noise = 0.002 * (rng.normal(size=n) + 1j * rng.normal(size=n))
+    channelizer = PolyphaseChannelizer(fs, spacing_hz=12500)
+    # Two carriers (one 2 kHz off its bin centre, as real channels are), and
+    # bin 8 left empty.
+    x = noise + _am_carrier(25_000, 1000.0, fs, n) + _am_carrier(62_500 + 2_000, 1500.0, fs, n)
+    cols = channelizer.process(x.astype(np.complex64))
+    out = {}
+    for freq in (25_000, 62_500 + 2_000, 100_000):
+        k, residual = channelizer.channel_for(freq, 0.0)
+        am = AMChannel(channelizer.out_rate, residual, target_rate=rate)
+        pcm = am.process(cols[:, k])
+        out[freq] = (pcm, am)
+
+    for freq, tone in ((25_000, 1000.0), (64_500, 1500.0)):
+        pcm, am = out[freq]
+        steady = pcm[(len(pcm) // 4) * 2 :]
+        assert am.squelch_open
+        assert abs(_dominant_hz(steady, rate) - tone) < 30
+        assert np.abs(np.frombuffer(steady, dtype="<i2")).max() > 3000
+    silent_pcm, silent_am = out[100_000]
+    assert not silent_am.squelch_open
+    assert not any(silent_pcm)
+
+
+def test_am_channel_output_matches_nfm_format():
+    am = AMChannel(25_000.0, 0.0, target_rate=22_050)
+    nfm = NFMChannel(25_000.0, 0.0, target_rate=22_050)
+    block = np.ones(2_500, dtype=np.complex64) * 0.1
+    # NFM's first block is one sample short (discriminator history).
+    assert abs(len(am.process(block)) - len(nfm.process(block))) <= 4
+    assert am.process(np.zeros(0, dtype=np.complex64)) == b""
