@@ -565,6 +565,54 @@ async def test_hfcc_zip_refresh_caches_tables_and_plain_txt_reuses_them(
         assert (again.country, again.language) == ("Vanuatu", "Bislama")
 
 
+def test_catalog_payload_skips_unknown_zip_members_for_members_out():
+    # The multi-MB .xlsx is never parsed, so it must not be read into memory.
+    from tests.catalog.test_parsers_hfcc import HFCC_FIXTURE
+
+    data = _zip_bytes({"A26all00.TXT": HFCC_FIXTURE, "Site.txt": "s", "big.xlsx": "x" * 1000})
+    member = service_module._CATALOG_ZIP_MEMBERS["hfcc"]
+    members: dict[str, bytes] = {}
+    service_module.catalog_payload_text(data, "latin-1", member, members)
+    assert members == {"site.txt": b"s"}
+
+
+async def test_hfcc_zip_without_tables_keeps_cached_names(tmp_path, monkeypatch):
+    from tests.catalog.test_parsers_hfcc import HFCC_FIXTURE, HFCC_TABLE_FILES
+
+    tables = {"A26all00.TXT": HFCC_FIXTURE, "big.xlsx": "x"}
+    payload = {"data": None}
+
+    def fake_fetch(url, encoding="utf-8", member=None, members_out=None):
+        return service_module.catalog_payload_text(payload["data"], encoding, member, members_out)
+
+    import io
+    import zipfile
+
+    def build(with_tables):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            for name, text in tables.items():
+                zf.writestr(name, text.encode("latin-1"))
+            if with_tables:
+                for name, raw in HFCC_TABLE_FILES.items():
+                    zf.writestr(name, raw)
+        return buf.getvalue()
+
+    async with running_app() as (app, client, adapter):
+        svc = app.state.service
+        monkeypatch.setattr(svc.settings, "db_path", tmp_path / "msdr.db")
+        monkeypatch.setattr(catalog_module, "fetch_catalog_text", fake_fetch)
+        svc.settings.catalog_sources["hfcc"] = "http://example.test/a26.zip"
+        payload["data"] = build(True)
+        await client.post("/api/catalog/refresh", json={"source": "hfcc"})
+        # A later ZIP with only schedule + .xlsx must reuse the cached tables.
+        payload["data"] = build(False)
+        resp = await client.post("/api/catalog/refresh", json={"source": "hfcc"})
+        assert resp.json()["error"] is None
+        first = svc.catalog.search("", source="hfcc")[0]
+        assert (first.country, first.language) == ("Vanuatu", "Bislama")
+
+
 def test_catalog_payload_zip_errors():
     member = service_module._CATALOG_ZIP_MEMBERS["hfcc"]
     try:

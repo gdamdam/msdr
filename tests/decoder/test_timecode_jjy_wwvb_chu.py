@@ -142,6 +142,15 @@ def test_chu_b_burst_supplies_dut1_but_not_the_year_to_the_next_a_burst():
     assert event.fields["dut1"] == -0.3 and event.fields["tai_utc"] == 37
 
 
+def test_chu_b_burst_with_non_decimal_tai_utc_nibble_is_rejected():
+    b = bytearray(encode_chu_b_burst(2025, dut1_s=-0.3, tai_utc=37))
+    b[3], b[8] = 0x3F, 0xC0  # halves stay complementary; low nibble 15 is not BCD
+    a = encode_chu_burst(datetime(2026, 9, 25, 20, 31, 32))
+    audio = np.concatenate([_fsk(chu_burst_bits(bytes(x))) for x in (b, a)])
+    (event,) = _feed_all(_chu(), audio)
+    assert event.fields["tai_utc"] is None
+
+
 def test_chu_rejects_a_burst_whose_halves_differ():
     burst = bytearray(encode_chu_burst(datetime(2026, 9, 25, 20, 31, 32)))
     burst[7] ^= 0x10

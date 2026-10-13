@@ -15,6 +15,27 @@ import numpy as np
 _STANDARD_RATES = (16000, 22050, 24000, 32000, 44100, 48000)
 
 
+def lowpass_taps(cutoff_norm: float, n_taps: int) -> np.ndarray:
+    """Hamming-windowed-sinc low-pass, unity DC gain. `cutoff_norm` is cutoff / sample rate."""
+    n = np.arange(n_taps, dtype=np.float64) - (n_taps - 1) / 2
+    h = 2 * cutoff_norm * np.sinc(2 * cutoff_norm * n) * np.hamming(n_taps)
+    return h / h.sum()
+
+
+def cs16_to_iq(data: bytes) -> np.ndarray:
+    """Interleaved little-endian int16 I/Q -> complex64 scaled to +-1."""
+    raw = np.frombuffer(data, dtype="<i2").astype(np.float32).reshape(-1, 2)
+    return ((raw[:, 0] + 1j * raw[:, 1]) / 32768.0).astype(np.complex64)
+
+
+def iq_to_cs16(iq: np.ndarray) -> bytes:
+    """complex IQ (full scale = 1.0) -> interleaved little-endian int16, rounded and clipped."""
+    packed = np.empty((len(iq), 2), dtype="<i2")
+    packed[:, 0] = np.clip(np.rint(iq.real * 32768.0), -32768, 32767).astype("<i2")
+    packed[:, 1] = np.clip(np.rint(iq.imag * 32768.0), -32768, 32767).astype("<i2")
+    return packed.tobytes()
+
+
 def to_mono_f32(data: bytes, channels: int) -> np.ndarray:
     """int16 interleaved PCM -> float32 in [-1, 1], first channel only.
 
@@ -54,10 +75,7 @@ class Resampler:
         # fraction of in_rate since the filter runs on the input-rate signal.
         cutoff_hz = 0.45 * min(in_rate, out_rate)
         fc_norm = cutoff_hz / in_rate
-        n = np.arange(num_taps, dtype=np.float64) - (num_taps - 1) / 2
-        h = 2 * fc_norm * np.sinc(2 * fc_norm * n) * np.hamming(num_taps)
-        h /= h.sum()  # unity DC gain
-        return h.astype(np.float32)
+        return lowpass_taps(fc_norm, num_taps).astype(np.float32)
 
     def process(self, x: np.ndarray) -> np.ndarray:
         if x.size == 0:

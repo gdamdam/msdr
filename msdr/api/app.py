@@ -130,16 +130,6 @@ _PCAP_MAGICS = {
 }
 
 
-def _error_body(detail: str) -> dict:
-    """Error JSON with the matching fix-it id (if any) so the UI can offer
-    "How to fix" without re-matching text itself."""
-    body: dict = {"detail": detail}
-    hit = fixit.match(detail)
-    if hit:
-        body["fixit"] = hit.id
-    return body
-
-
 def _origin_is_local(origin: str | None) -> bool:
     """True unless `origin` names a host other than 127.0.0.1/localhost.
 
@@ -194,7 +184,7 @@ def create_app(
 
     @app.exception_handler(ConnectionError)
     async def _connection_error_handler(request: Request, exc: ConnectionError):
-        return JSONResponse(status_code=503, content=_error_body("SDRconnect not connected"))
+        return JSONResponse(status_code=503, content={"detail": "SDRconnect not connected"})
 
     @app.exception_handler(ValidationError)
     async def _validation_error_handler(request: Request, exc: ValidationError):
@@ -216,16 +206,16 @@ def create_app(
     async def _receiver_stopped_handler(request: Request, exc: ReceiverStopped):
         return JSONResponse(
             status_code=503,
-            content=_error_body("Receiver stopped: press Play in SDRconnect"),
+            content={"detail": "Receiver stopped: press Play in SDRconnect"},
         )
 
     @app.exception_handler(RecorderError)
     async def _recorder_error_handler(request: Request, exc: RecorderError):
-        return JSONResponse(status_code=409, content=_error_body(str(exc)))
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
 
     @app.exception_handler(DecoderError)
     async def _decoder_error_handler(request: Request, exc: DecoderError):
-        return JSONResponse(status_code=409, content=_error_body(str(exc)))
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
 
     @app.exception_handler(SurveyError)
     async def _survey_error_handler(request: Request, exc: SurveyError):

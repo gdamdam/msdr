@@ -231,6 +231,7 @@ export class DecodeDeck extends LitElement {
     if (band.active) {
       this._maxChannels = band.max_channels ?? 8;
       this._thresholdDb = band.threshold_db ?? 10;
+      this._bandBandwidth = band.am_bandwidth_hz ?? 8000;
     } else {
       const savedOpts = loadBandOptions();
       this._maxChannels = savedOpts.max_channels ?? 8;

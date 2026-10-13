@@ -191,3 +191,20 @@ def test_am_channel_output_matches_nfm_format():
     # NFM's first block is one sample short (discriminator history).
     assert abs(len(am.process(block)) - len(nfm.process(block))) <= 4
     assert am.process(np.zeros(0, dtype=np.complex64)) == b""
+
+
+def test_am_strong_adjacent_channel_does_not_mute_wanted_carrier():
+    fs, rate = 200_000, 22_050
+    n = int(fs * 1.0)
+    rng = np.random.default_rng(2)
+    noise = 0.002 * (rng.normal(size=n) + 1j * rng.normal(size=n))
+    channelizer = PolyphaseChannelizer(fs, spacing_hz=12500)
+    # Both inside one PFB bin; the neighbour is 20 dB stronger.
+    x = noise + _am_carrier(25_000, 1000.0, fs, n, 0.02) + _am_carrier(33_330, 1500.0, fs, n, 0.2)
+    cols = channelizer.process(x.astype(np.complex64))
+    k, residual = channelizer.channel_for(25_000, 0.0)
+    am = AMChannel(channelizer.out_rate, residual, target_rate=rate, bandwidth_hz=6000.0)
+    pcm = am.process(cols[:, k])
+    steady = pcm[(len(pcm) // 4) * 2 :]
+    assert am.squelch_open
+    assert abs(_dominant_hz(steady, rate) - 1000.0) < 30

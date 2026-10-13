@@ -2701,3 +2701,68 @@ async def test_concurrent_restores_while_doppler_stop_awaits_second_gets_restore
         assert len(errors) == 1 and type(errors[0]).__name__ == "RestoreRunning"
         # Pre-restore snapshot only from the winner (plus at most its post-restore one).
         assert len(pushed) <= 2
+
+
+def _lna_settings() -> Settings:
+    settings = Settings(dwell_seconds=0.05, db_path=":memory:")
+    settings.lna_auto.overload_hold_s = 0.05
+    settings.lna_auto.max_backoff_steps = 2
+    return settings
+
+
+async def test_lna_backoff_leaves_doppler_tracking_running():
+    async with running_app(settings=_lna_settings()) as (app, client, adapter):
+        service = app.state.service
+        signal_id = (
+            await client.post(
+                "/api/signals",
+                json={"name": "Sat pass", "frequency_hz": 145_800_000, "satellite": "ISS"},
+            )
+        ).json()["id"]
+
+        class _Tracker:
+            location = None
+
+            def position(self, label, at=None):
+                pos = SatPosition(
+                    satellite=label, norad=25544, at="2026-01-01T00:00:00Z",
+                    azimuth_deg=1.0, elevation_deg=45.0, range_km=500.0,
+                    range_rate_kms=0.0, visible=True,
+                )
+                return SkyResult(position=pos)
+
+        service.tracker = _Tracker()
+        assert (await client.post(f"/api/track/{signal_id}")).status_code == 200
+        await adapter.external_change("overload", True)
+        await _wait_until(lambda: adapter.state["lna_state"] > 3)
+        assert service.doppler_loop.signal_id == signal_id
+        # An operator LNA change mid-pass doesn't stop tracking either.
+        await client.post("/api/receiver/lna", json={"lna_state": 1})
+        assert service.doppler_loop.signal_id == signal_id
+
+
+async def test_native_lna_change_updates_backoff_baseline():
+    async with running_app(settings=_lna_settings()) as (app, client, adapter):
+        service = app.state.service
+        await adapter.external_change("lna_state", 7)
+        await _wait_until(lambda: service._lna_baseline == 7)
+        assert service._lna_baseline == 7
+
+
+async def test_overload_at_connect_starts_backoff_watch():
+    adapter = FakeAdapter()
+    adapter.state["overload"] = True
+    async with running_app(adapter=adapter, settings=_lna_settings()) as (app, client, _a):
+        await _wait_until(lambda: adapter.state["lna_state"] > 3)
+        assert adapter.state["lna_state"] > 3
+
+
+async def test_lna_locked_tune_leaves_baseline_unchanged():
+    async with running_app(settings=_lna_settings()) as (app, client, adapter):
+        service = app.state.service
+        await client.post("/api/receiver/lna", json={"lna_state": 4})
+        await client.patch("/api/settings", json={"lna_locked": True})
+        assert service._lna_baseline == 4
+        await client.post("/api/tune/frequency", json={"hz": 1_090_000_000})
+        assert adapter.state["lna_state"] == 4
+        assert service._lna_baseline == 4

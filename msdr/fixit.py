@@ -276,10 +276,9 @@ def match(text: str | None) -> FixIt | None:
     """The first table entry (in table order) whose pattern is found in `text`."""
     if not text:
         return None
-    for fix in FIXITS:
-        for pat, owner in _COMPILED:
-            if owner is fix and pat.search(text):
-                return fix
+    for pat, fix in _COMPILED:
+        if pat.search(text):
+            return fix
     return None
 
 

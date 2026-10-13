@@ -236,7 +236,10 @@ export class InstrumentPanel extends LitElement {
       }
     }
     if (this._lnaRequested != null) {
-      if (changed.has("state") && this.state?.props?.lna_state === this._lnaRequested) {
+      // Any change of lna_state settles the request: a backoff step or device
+      // clamp can confirm a value other than the one asked for, and waiting
+      // for equality would leave the input disabled until reload.
+      if (changed.has("state") && changed.get("state")?.props?.lna_state !== this.state?.props?.lna_state) {
         this._lnaRequested = null;
       } else if (changed.has("failure") && this.failure) {
         this._lnaRequested = null;

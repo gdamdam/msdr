@@ -1140,3 +1140,29 @@ async def test_process_backend_failed_start_removes_dsdfme_event_log(tmp_path):
     with pytest.raises(OSError):
         await backend.start()
     assert not list(tmp_path.glob("*-events.log"))
+
+
+def test_loop_event_queue_put_after_loop_closed_does_not_raise():
+    import threading
+
+    loop = asyncio.new_event_loop()
+    queue = loop.run_until_complete(_make_loop_queue())
+    loop.close()
+    errors = []
+
+    def put():
+        try:
+            queue.put_nowait(1)
+        except BaseException as exc:
+            errors.append(exc)
+
+    thread = threading.Thread(target=put)
+    thread.start()
+    thread.join()
+    assert errors == []
+
+
+async def _make_loop_queue():
+    from msdr.decoder.backends import LoopEventQueue
+
+    return LoopEventQueue()

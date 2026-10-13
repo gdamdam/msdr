@@ -643,7 +643,7 @@ def decode_mesh_payload(
     if protocol == "meshcore":
         return _decode_meshcore_packet(payload)
     wan = parse_lorawan(payload, sync_word=sync_word)
-    if wan is not None:
+    if wan is not None and wan["lorawan_evidence"] == "sync_word":
         # Header only; FRMPayload stays encrypted and the MIC is never checked.
         return {
             **wan,
@@ -655,6 +655,12 @@ def decode_mesh_payload(
             "text": f"LoRaWAN {wan['lorawan_summary']} ({len(payload)} bytes)",
             "provenance": "LoRaWAN header parsed; payload not decrypted, MIC not verified",
         }
+    guess = {"lorawan_guess": wan} if wan is not None else {}
+    if wan is not None:
+        # About 1 in 32 random payloads pass the MHDR checks, so without the 0x34
+        # sync word the parse is only a hint and must not surface DevAddr/operator
+        # as the frame's primary protocol.
+        guess["provenance"] = "LoRa PHY decoded; header resembles LoRaWAN (plausible_header only)"
     return {
         "protocol": "LoRa",
         "packet_type": "raw",
@@ -663,6 +669,7 @@ def decode_mesh_payload(
         "payload_bytes": len(payload),
         "text": f"LoRa packet ({len(payload)} bytes)",
         "provenance": "LoRa PHY decoded; application payload left uninterpreted",
+        **guess,
     }
 
 

@@ -257,6 +257,7 @@ export class SetupDrawer extends LitElement {
     _sourceErrors: { state: true },
     _ndbRows: { state: true },
     _ndbError: { state: true },
+    _lnaAutoError: { state: true },
     _ndbRadiusKm: { state: true },
   };
 
@@ -275,6 +276,7 @@ export class SetupDrawer extends LitElement {
     this._draft = null;
     this._ndbRows = null;
     this._ndbError = null;
+    this._lnaAutoError = null;
     this._ndbRadiusKm = 300;
     this._orig = null;
     this._loading = false;
@@ -994,8 +996,24 @@ export class SetupDrawer extends LitElement {
     // Auto LNA: `bands` is replaced as a whole list, so send it whole when
     // any row changed (the backend validates ordering/open-ended last band).
     const origLna = o.lna_auto ?? {};
-    const bands = d.lnaAutoBands.map((b) => ({
-      up_to_hz: b.upToMhz === "" ? null : Math.round(Number(b.upToMhz) * 1e6),
+    // Number("") is 0 (max gain) and Number("x") is NaN (JSON null = open-ended
+    // band), so reject blank/non-numeric cells instead of saving a wrong value.
+    // The last row's edge is not editable (always open-ended).
+    this._lnaAutoError = null;
+    for (let i = 0; i < d.lnaAutoBands.length; i++) {
+      const b = d.lnaAutoBands[i];
+      const last = i === d.lnaAutoBands.length - 1;
+      if (String(b.lnaState).trim() === "" || !Number.isFinite(Number(b.lnaState))) {
+        this._lnaAutoError = `Auto LNA band ${i + 1}: LNA state must be a number`;
+        return null;
+      }
+      if (!last && (String(b.upToMhz).trim() === "" || !Number.isFinite(Number(b.upToMhz)))) {
+        this._lnaAutoError = `Auto LNA band ${i + 1}: upper edge (MHz) must be a number`;
+        return null;
+      }
+    }
+    const bands = d.lnaAutoBands.map((b, i) => ({
+      up_to_hz: i === d.lnaAutoBands.length - 1 ? null : Math.round(Number(b.upToMhz) * 1e6),
       lna_state: Number(b.lnaState),
     }));
     const lnaPatch = {};
@@ -1036,12 +1054,14 @@ export class SetupDrawer extends LitElement {
           </tr>`;
         })}</tbody>
       </table>
+      ${this._lnaAutoError ? html`<p class="setup-catalog-error" role="alert">${this._lnaAutoError}</p>` : ""}
       <span class="dim" style="font-size:0.8em">Higher LNA state = more attenuation. Values above the device's maximum are clamped.</span>
     </div>`);
   }
 
   async _save() {
     const patch = this._buildPatch();
+    if (patch === null) return; // inline error already set (_lnaAutoError)
     if (Object.keys(patch).length === 0) {
       this.dispatchEvent(new CustomEvent("action", { detail: { message: "setup saved" } }));
       this._close();

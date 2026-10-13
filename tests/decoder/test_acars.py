@@ -126,6 +126,15 @@ def test_two_frames_back_to_back_in_odd_chunks():
     assert [e.fields["registration"] for e in ev] == ["N1", "N2"]
 
 
+def test_two_frames_in_one_feed_call():
+    rng = np.random.default_rng(7)
+    sig = np.concatenate(
+        [modulate(build_frame(reg="N1"), 12.0, rng), modulate(build_frame(reg="N2"), 12.0, rng)]
+    )
+    ev = run(sig, chunk=sig.size)
+    assert [e.fields["registration"] for e in ev] == ["N1", "N2"]
+
+
 def test_inverted_nrzi_polarity_still_decodes():
     # Opposite NRZI reading: the tone changes on 1 instead of 0.
     ev = run(modulate(build_frame(), None, np.random.default_rng(8), invert=True))

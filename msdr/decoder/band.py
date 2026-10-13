@@ -430,6 +430,7 @@ class BandDecoder:
             "active": self._stream is not None,
             "decoders": list(self._decoders),
             "mode": self._mode,
+            "am_bandwidth_hz": self._am_bandwidth_hz,
             "center_hz": self._center_hz,
             "sample_rate_hz": self._sample_rate_hz,
             "spacing_hz": self._channelizer.spacing_hz,

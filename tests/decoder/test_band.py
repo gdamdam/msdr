@@ -183,6 +183,7 @@ async def test_memory_channel_present_from_start(monkeypatch):
     await band.start()
     try:
         status = band.status()
+        assert status["am_bandwidth_hz"] == 8_000
         assert len(status["channels"]) == 1
         channel = status["channels"][0]
         assert channel["source"] == "memory"

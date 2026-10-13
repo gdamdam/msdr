@@ -29,7 +29,13 @@ from msdr.catalog.parsers.aoki import parse_aoki
 from msdr.catalog.parsers.eibi import default_url as eibi_default_url
 from msdr.catalog.parsers.eibi import parse_eibi, season_code
 from msdr.catalog.parsers.faa_nasr import fetch_faa_nasr
-from msdr.catalog.parsers.hfcc import build_tables, load_tables, parse_hfcc, write_tables
+from msdr.catalog.parsers.hfcc import (
+    _TABLE_SOURCES,
+    build_tables,
+    load_tables,
+    parse_hfcc,
+    write_tables,
+)
 from msdr.catalog.parsers.ioos_hfradar import default_url as ioos_hfradar_default_url
 from msdr.catalog.parsers.ioos_hfradar import fetch_ioos_hfradar
 from msdr.catalog.parsers.userlists import parse_gqrx_csv, parse_sdrpp_json
@@ -56,6 +62,8 @@ _NO_LOCATION_DETAIL = "No receiver location configured; set it in Settings → L
 # refused (see CatalogServiceMixin._store_refresh); below this many existing
 # rows the ratio is noise and the refresh always goes through.
 _SHRINK_GUARD_MIN_ROWS = 20
+# HFCC ZIP members worth keeping; the rest (e.g. .xlsx) are never parsed.
+_HFCC_MEMBER_NAMES = frozenset(name for name, _ in _TABLE_SOURCES.values())
 
 
 # One line per source for the SETUP → Catalog group, next to CATALOG_KINDS'
@@ -217,9 +225,12 @@ def catalog_payload_text(
             listing = ", ".join(zf.namelist())
             raise ValueError(f"schedule file not found in ZIP (members: {listing})")
         if members_out is not None:
+            # Only the reference tables build_tables knows: the ZIP also holds
+            # multi-MB .xlsx files that would be read into memory for nothing.
             for name in zf.namelist():
-                if name != names[0] and not name.endswith("/"):
-                    members_out[name.rsplit("/", 1)[-1].lower()] = zf.read(name)
+                base = name.rsplit("/", 1)[-1].lower()
+                if name != names[0] and not name.endswith("/") and base in _HFCC_MEMBER_NAMES:
+                    members_out[base] = zf.read(name)
         return zf.read(names[0]).decode(encoding, errors="replace")
 
 
@@ -541,12 +552,14 @@ class CatalogServiceMixin:
         """Names come from the downloaded ZIP's tables (cached for later); a
         plain .TXT refresh reuses the last cached tables, else raw codes."""
         cache_dir = self._hfcc_cache_dir()
-        if members:
-            tables = build_tables(members)
-            if cache_dir is not None and any(tables.values()):
+        tables = build_tables(members) if members else None
+        if tables is not None and any(tables.values()):
+            if cache_dir is not None:
                 write_tables(cache_dir, tables)
                 set_hfcc_languages_path(cache_dir / "languages.json")
         else:
+            # No usable tables in this download (none present, or none parsed):
+            # keep the last good cache rather than falling back to raw codes.
             tables = load_tables(cache_dir) if cache_dir is not None else None
         return parse_hfcc(text, tables=tables)
 

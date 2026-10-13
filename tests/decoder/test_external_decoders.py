@@ -243,3 +243,17 @@ async def test_real_rtl433_decodes_synthetic_nexus_through_backend():
     await backend.stop()
     assert ev.fields["model"] == "Nexus-TH" and ev.fields["id"] == 0x5A
     assert ev.fields["temperature_C"] == 21.5 and ev.fields["humidity"] == 55
+
+
+def test_channelizer_two_to_one_has_no_full_rate_resampler_and_rejects_alias():
+    rate, out = 2_000_000, 1_000_000
+    n = np.arange(rate // 2)
+    ch = IQChannelizer(rate, 0, out)
+    assert ch._ri is None and ch._d1 == 2
+
+    def level(freq):
+        iq = 0.5 * np.exp(2j * np.pi * freq * n / rate)
+        y = IQChannelizer(rate, 0, out).process(_cs16(iq))
+        return np.sqrt(np.mean(np.abs(y[len(y) // 3 :]) ** 2))
+
+    assert 20 * np.log10(level(100_000) / level(0.6 * out)) >= 40

@@ -51,6 +51,15 @@ def test_unconfirmed_uplink_ttn_with_fopts():
     assert r["lorawan_mic"] == "deadbeef"
 
 
+def test_non_lorawan_sync_word_is_not_relabelled():
+    frame = _data(0x40, 0x26000001, 0, 1, b"", 1, b"hi")
+    f = decode_mesh_payload(frame, "lora", 0x12)
+    assert f["protocol"] == "LoRa" and f["packet_type"] == "raw"
+    assert "lorawan_dev_addr" not in f and f["encrypted"] is None
+    assert f["lorawan_guess"]["lorawan_evidence"] == "plausible_header"
+    assert f["lorawan_guess"]["lorawan_dev_addr"] == "26000001"
+
+
 def test_confirmed_downlink_flags_and_mac_commands():
     # ACK + FPending, FOptsLen 5: LinkADRReq (4 bytes) after DevStatusReq... order: 06 then 03+4.
     fopts = b"\x06" + b"\x03\x00\x00\x00\x00"[:5]

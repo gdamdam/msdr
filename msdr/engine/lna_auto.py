@@ -21,6 +21,7 @@ def auto_lna_state(
     current_hz: float | None,
     config: LnaAutoSettings,
     lna_max: int | None = None,
+    lna_min: int | None = None,
 ) -> int | None:
     """The band's LNA state when tuning target_hz crosses into a different
     band than current_hz (or current is unknown), else None -- retuning
@@ -31,7 +32,11 @@ def auto_lna_state(
     if target is None or target == band_index(current_hz, config):
         return None
     state = config.bands[target].lna_state
-    return min(state, lna_max) if lna_max is not None else state
+    if lna_max is not None:
+        state = min(state, lna_max)
+    if lna_min is not None:
+        state = max(state, lna_min)
+    return state
 
 
 def backoff_state(

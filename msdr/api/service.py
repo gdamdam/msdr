@@ -660,6 +660,9 @@ class AppService(
         # Frequency-adaptive LNA: the band's starting LNA state (overload
         # backoff counts steps from it) and the running overload watch.
         self._lna_baseline: int | None = None
+        # Targets of our own in-flight backoff steps, so their native echo isn't
+        # mistaken for an operator LNA change (which resets the baseline).
+        self._lna_backoff_pending: set[int] = set()
         self._lna_overload_task: asyncio.Task | None = None
         self._telemetry_at: float = float("-inf")
         self._recorder_task: asyncio.Task | None = None
@@ -839,6 +842,10 @@ class AppService(
             for name in _RECORDER_FORWARD_PROPS:
                 if name in props:
                     self.recorder.on_property(name, props[name])
+        if props.get("overload"):
+            # _on_overload only sees changes; already overloaded at connect
+            # would otherwise never get a backoff.
+            self._on_overload(True)
         if failed:
             # Any restorable prop missing here leaves confirmed state stale,
             # so capture/restore stay 503 until it can be read -- say which.
@@ -862,6 +869,14 @@ class AppService(
                         self.confirmed.apply(ev)
                     if ev.property == "overload":
                         self._on_overload(bool(ev.value))
+                    if (
+                        ev.property == "lna_state"
+                        and isinstance(ev.value, int)
+                        and ev.value not in self._lna_backoff_pending
+                        and not self._executor.running
+                    ):
+                        # Native/operator change: the new reference for backoff.
+                        self._lna_baseline = ev.value
                     if ev.property in _TELEMETRY_PROPS and self.settings.features.telemetry:
                         self._note_telemetry()
                     if (
@@ -1253,30 +1268,32 @@ class AppService(
         steps, desired = plan_with_desired(
             confirmed=self.confirmed.props, profile=ProfileSettings(lna_state=lna_state)
         )
-        # A hand-set LNA is the new reference for overload backoff.
-        self._lna_baseline = lna_state
-        return await self._restore(steps, desired=desired, kind="lna")
+        # LNA is independent of the VFO, so a hand-set LNA mid-pass must not stop
+        # Doppler tracking. _restore makes the confirmed value the backoff baseline.
+        return await self._restore(steps, desired=desired, kind="lna", stop_tracking=False)
 
     def _with_auto_lna(self, profile: ProfileSettings | None, target_hz: int):
         """Frequency-adaptive LNA (settings.lna_auto): a tune into another
         band gets that band's LNA state, unless the signal/profile already
-        sets one or the LNA is locked. Also resets the backoff baseline."""
+        sets one or the LNA is locked. (The backoff baseline follows the confirmed
+        state after the restore, see _restore.)"""
         config = self.settings.lna_auto
         current_hz = self.confirmed.props.get("device_vfo_frequency")
         if band_index(target_hz, config) == band_index(current_hz, config):
             return profile
         if profile is not None and profile.lna_state is not None:
-            self._lna_baseline = profile.lna_state
             return profile
-        self._lna_baseline = None
         if self.settings.lna_locked:
             return profile
         state = auto_lna_state(
-            target_hz, current_hz, config, self.confirmed.props.get("lna_state_max")
+            target_hz,
+            current_hz,
+            config,
+            self.confirmed.props.get("lna_state_max"),
+            self.confirmed.props.get("lna_state_min"),
         )
         if state is None:
             return profile
-        self._lna_baseline = state
         return (profile or ProfileSettings()).model_copy(update={"lna_state": state})
 
     def _on_overload(self, overloaded: bool) -> None:
@@ -1310,13 +1327,23 @@ class AppService(
             steps, desired = plan_with_desired(
                 confirmed=props, profile=ProfileSettings(lna_state=nxt)
             )
+            self._lna_backoff_pending.add(nxt)
             try:
+                # Attenuation only: Doppler tracking and dwell are unaffected.
                 await self._restore(
-                    steps, desired=desired, kind="lna", push_history=False, journal_action=False
+                    steps,
+                    desired=desired,
+                    kind="lna",
+                    push_history=False,
+                    journal_action=False,
+                    stop_tracking=False,
+                    backoff=True,
                 )
             except Exception as exc:  # noqa: BLE001 -- best effort; stop on refusal
                 logger.info("LNA overload backoff stopped: %s", exc)
                 return
+            finally:
+                self._lna_backoff_pending.discard(nxt)
             logger.info("LNA overload backoff: %s -> %s", current, nxt)
 
     async def apply_profile(self, profile_id: str) -> RestoreReport:
@@ -1642,6 +1669,8 @@ class AppService(
         journal_action: bool = True,
         note: str | None = None,
         manual_mode: bool = False,
+        stop_tracking: bool = True,
+        backoff: bool = False,
     ) -> RestoreReport:
         if self.workbench.owns_receiver and kind != "watch_span":
             raise RestoreRunning("stop the cycling signal watch before tuning")
@@ -1666,7 +1695,9 @@ class AppService(
         # Mutually exclusive with the Doppler loop: a restore and a tracking
         # tick both command the VFO, so the explicit user action wins and the
         # loop is stopped before any history is pushed.
-        await self.doppler_loop.stop()
+        # LNA-only steps (stop_tracking=False) don't touch the VFO, so they leave it.
+        if stop_tracking:
+            await self.doppler_loop.stop()
         # Re-check: a concurrent restore may have passed the guard above while
         # we awaited, and would otherwise push a duplicate pre-restore history
         # entry before executor.run() raises on the second caller.
@@ -1706,7 +1737,8 @@ class AppService(
             # restart HistoryRepo.load() + StateRepo.get_many() can't find the
             # row and silently drop this entry (F2).
             self.states.add(pre_snapshot)
-        self.dwell.note_app_action()
+        if stop_tracking:
+            self.dwell.note_app_action()
 
         async def on_progress(outcome: StepOutcome) -> None:
             await self.broadcaster.publish(
@@ -1714,6 +1746,18 @@ class AppService(
             )
 
         report = await self._executor.run(steps, on_progress, desired=desired)
+
+        if not backoff:
+            # Baseline follows what the receiver confirmed (a locked LNA keeps
+            # its old value), not what we asked for.
+            confirmed_lna = self.confirmed.props.get("lna_state")
+            if report.status in ("confirmed", "partial") and confirmed_lna is not None:
+                self._lna_baseline = confirmed_lna
+            # A watch that gave up (max steps) or never started needs re-arming
+            # once the baseline has moved.
+            task = self._lna_overload_task
+            if self.confirmed.props.get("overload") and (task is None or task.done()):
+                self._on_overload(True)
 
         # An "interrupted"/"failed" restore can still have moved the receiver
         # -- SDRconnect couples the VFO to the centre frequency, so a tune can

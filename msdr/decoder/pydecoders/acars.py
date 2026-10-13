@@ -22,6 +22,7 @@ from collections import deque
 import numpy as np
 
 from msdr.decoder.backends import DecodeEvent
+from msdr.decoder.pcm import lowpass_taps
 
 _FS = 22050
 _BAUD = 2400.0
@@ -52,9 +53,7 @@ def _odd_parity_ok(byte: int) -> bool:
 
 
 def _lowpass_taps() -> np.ndarray:
-    n = np.arange(_TAPS) - (_TAPS - 1) / 2
-    h = np.sinc(2 * _CUTOFF_HZ / _FS * n) * np.hamming(_TAPS)
-    return h / h.sum()
+    return lowpass_taps(_CUTOFF_HZ / _FS, _TAPS)
 
 
 def _syn_bits() -> list[int]:
@@ -105,9 +104,13 @@ class AcarsDecoder:
         for d in dz.tolist():
             bit = self._clock(d)
             if bit is not None:
+                new: list[DecodeEvent] = []
                 for framer in self._framers:
-                    events.extend(framer.on_bit(bit))
-                if events:
+                    new.extend(framer.on_bit(bit))
+                events.extend(new)
+                # Only a frame emitted by THIS bit aborts the framers; testing the
+                # accumulated list would block sync for the rest of the chunk.
+                if new:
                     for framer in self._framers:
                         framer.abort()
         return events
