@@ -40,9 +40,12 @@ function loadBandOptions() {
   }
 }
 
-function saveBandOptions(maxChannels, thresholdDb) {
+function saveBandOptions(maxChannels, thresholdDb, mode = "NFM", bandwidthHz = null) {
   try {
-    localStorage.setItem(BAND_OPTIONS_KEY, JSON.stringify({ max_channels: maxChannels, threshold_db: thresholdDb }));
+    localStorage.setItem(
+      BAND_OPTIONS_KEY,
+      JSON.stringify({ max_channels: maxChannels, threshold_db: thresholdDb, mode, bandwidth_hz: bandwidthHz })
+    );
   } catch {
     /* ignore */
   }
@@ -78,6 +81,8 @@ export class DecodeDeck extends LitElement {
     _singleHint: { state: true },
     _selected: { state: true },
     _bandSelected: { state: true },
+    _bandMode: { state: true },
+    _bandBandwidth: { state: true },
     _maxChannels: { state: true },
     _thresholdDb: { state: true },
     _dropWarn: { state: true },
@@ -105,6 +110,8 @@ export class DecodeDeck extends LitElement {
     this._decoderQuery = "";
     this._selected = new Set();
     this._bandSelected = new Set();
+    this._bandMode = "NFM";
+    this._bandBandwidth = 8000;
     this._maxChannels = 8;
     this._thresholdDb = 10;
     this._prevDropped = null;
@@ -220,6 +227,7 @@ export class DecodeDeck extends LitElement {
     this._selected = new Set(status.active ? (status.decoders ?? []).map((d) => d.id) : loadIds(SELECTION_KEY));
     const band = status.band ?? {};
     this._bandSelected = new Set(band.active ? band.decoders ?? [] : loadIds(BAND_SELECTION_KEY));
+    if (band.active && band.mode) this._bandMode = band.mode === "AM" ? "AM" : "NFM";
     if (band.active) {
       this._maxChannels = band.max_channels ?? 8;
       this._thresholdDb = band.threshold_db ?? 10;
@@ -227,6 +235,8 @@ export class DecodeDeck extends LitElement {
       const savedOpts = loadBandOptions();
       this._maxChannels = savedOpts.max_channels ?? 8;
       this._thresholdDb = savedOpts.threshold_db ?? 10;
+      this._bandMode = savedOpts.mode === "AM" ? "AM" : "NFM";
+      this._bandBandwidth = savedOpts.bandwidth_hz ?? 8000;
     }
     this._setupOpen = true;
   }
@@ -311,13 +321,15 @@ export class DecodeDeck extends LitElement {
   _startBand() {
     if (!this._bandSelected.size) return;
     saveIds(BAND_SELECTION_KEY, this._bandSelected);
-    saveBandOptions(this._maxChannels, this._thresholdDb);
+    saveBandOptions(this._maxChannels, this._thresholdDb, this._bandMode, this._bandBandwidth);
     this.dispatchEvent(
       new CustomEvent("band-start", {
         detail: {
           decoders: Array.from(this._bandSelected),
           max_channels: this._maxChannels,
           threshold_db: this._thresholdDb,
+          mode: this._bandMode,
+          bandwidth_hz: this._bandMode === "AM" ? this._bandBandwidth : null,
         },
       })
     );
@@ -361,7 +373,13 @@ export class DecodeDeck extends LitElement {
     const opts = loadBandOptions();
     this.dispatchEvent(
       new CustomEvent("band-start", {
-        detail: { decoders: ids, max_channels: opts.max_channels ?? 8, threshold_db: opts.threshold_db ?? 10 },
+        detail: {
+          decoders: ids,
+          max_channels: opts.max_channels ?? 8,
+          threshold_db: opts.threshold_db ?? 10,
+          mode: opts.mode === "AM" ? "AM" : "NFM",
+          bandwidth_hz: opts.mode === "AM" ? opts.bandwidth_hz ?? 8000 : null,
+        },
       })
     );
   }
@@ -645,7 +663,7 @@ export class DecodeDeck extends LitElement {
           <section class="decoder-category" aria-label=${category}>
             <h3 class="decoder-category-title">${category}</h3>
         ${decoders.map((d) => {
-          const qualifies = (d.demodulators ?? []).includes("NFM");
+          const qualifies = (d.demodulators ?? []).includes(this._bandMode);
           const enabled = qualifies && d.available;
           return html`
             <label
@@ -674,6 +692,36 @@ export class DecodeDeck extends LitElement {
       </div>
       <div class="control-row" style="margin-top:8px;gap:12px">
         <label class="dim mono" style="font-size:0.85em;display:flex;align-items:center;gap:4px"
+          >MODE
+          <select
+            ?disabled=${active}
+            .value=${this._bandMode}
+            @change=${(e) => {
+              this._bandMode = e.target.value === "AM" ? "AM" : "NFM";
+              this._bandSelected = new Set();
+              saveIds(BAND_SELECTION_KEY, this._bandSelected);
+              saveBandOptions(this._maxChannels, this._thresholdDb, this._bandMode, this._bandBandwidth);
+            }}
+          >
+            <option value="NFM">NFM</option>
+            <option value="AM">AM (airband)</option>
+          </select></label>
+        ${this._bandMode === "AM"
+          ? html`<label class="dim mono" style="font-size:0.85em;display:flex;align-items:center;gap:4px"
+              >SPACING
+              <select
+                ?disabled=${active}
+                .value=${String(this._bandBandwidth)}
+                @change=${(e) => {
+                  this._bandBandwidth = Number(e.target.value) || 8000;
+                  saveBandOptions(this._maxChannels, this._thresholdDb, this._bandMode, this._bandBandwidth);
+                }}
+              >
+                <option value="8000">25 kHz</option>
+                <option value="6000">8.33 kHz</option>
+              </select></label>`
+          : ""}
+        <label class="dim mono" style="font-size:0.85em;display:flex;align-items:center;gap:4px"
           >MAX CHANNELS
           <input
             type="number"
@@ -682,7 +730,7 @@ export class DecodeDeck extends LitElement {
             .value=${String(this._maxChannels)}
             @change=${(e) => {
               this._maxChannels = Number(e.target.value) || 8;
-              saveBandOptions(this._maxChannels, this._thresholdDb);
+              saveBandOptions(this._maxChannels, this._thresholdDb, this._bandMode, this._bandBandwidth);
             }}
         /></label>
         <label class="dim mono" style="font-size:0.85em;display:flex;align-items:center;gap:4px"
@@ -694,7 +742,7 @@ export class DecodeDeck extends LitElement {
             .value=${String(this._thresholdDb)}
             @change=${(e) => {
               this._thresholdDb = Number(e.target.value) || 10;
-              saveBandOptions(this._maxChannels, this._thresholdDb);
+              saveBandOptions(this._maxChannels, this._thresholdDb, this._bandMode, this._bandBandwidth);
             }}
         /></label>
       </div>

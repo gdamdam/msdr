@@ -126,3 +126,107 @@ class NFMChannel:
         resampled = self._resampler.process(audio)
         normalized = self._normalizer.process(resampled)
         return to_s16(normalized)
+
+
+class AMChannel:
+    """One channel's AM demod chain at the channelizer's out_rate (airband).
+
+    Same interface and output format as NFMChannel (mono s16 at target_rate)
+    so the band pump feeds either kind of channel to its backends unchanged.
+    Unlike NFM, which relies on the decoder to cope with noise, AM carries a
+    squelch: with no carrier the channel emits silence (not nothing, so decoder
+    timing stays continuous) rather than amplified noise through the AGC.
+    """
+
+    # Squelch decisions are made per ~20 ms chunk: short enough to catch a
+    # transmission start, long enough for a stable power estimate.
+    _CHUNK_S = 0.02
+    _HYSTERESIS_DB = 3.0
+    _HANG_CHUNKS = 5  # keep audio ~100 ms after the carrier drops (word gaps)
+    _NUM_TAPS = 101
+
+    def __init__(
+        self,
+        out_rate: float,
+        residual_hz: float,
+        target_rate: int = 22050,
+        bandwidth_hz: float = 8000.0,
+        squelch_db: float = 10.0,
+    ):
+        self.out_rate = out_rate
+        self.residual_hz = residual_hz
+        self.bandwidth_hz = bandwidth_hz
+        self.squelch_db = squelch_db
+        self.squelch_open = False
+        self._phase = 0.0
+        self._phase_step = -2 * np.pi * residual_hz / out_rate
+        # Channel filter: bandwidth_hz is the full width (+-4 kHz for 25 kHz
+        # spacing, +-3 kHz for 8.33 kHz), which also rejects the neighbouring
+        # channel's carrier that the 12.5 kHz-wide PFB bin lets through.
+        fc = (bandwidth_hz / 2) / out_rate
+        n = np.arange(self._NUM_TAPS, dtype=np.float64) - (self._NUM_TAPS - 1) / 2
+        h = 2 * fc * np.sinc(2 * fc * n) * np.hamming(self._NUM_TAPS)
+        self._h = (h / h.sum()).astype(np.float32)
+        self._filt_state = np.zeros(self._NUM_TAPS - 1, dtype=np.complex64)
+        self._chunk = max(1, int(round(out_rate * self._CHUNK_S)))
+        self._carrier: float | None = None
+        self._dc = 0.0
+        self._hang = 0
+        self._resampler = Resampler(int(round(out_rate)), target_rate)
+        self._normalizer = Normalizer(rate=target_rate)
+
+    def process(self, ch: np.ndarray) -> bytes:
+        if ch.size == 0:
+            return b""
+        n = np.arange(ch.size, dtype=np.float64)
+        mixer = np.exp(1j * (self._phase + self._phase_step * n)).astype(np.complex64)
+        self._phase = float((self._phase + self._phase_step * ch.size) % (2 * np.pi))
+        mixed = ch.astype(np.complex64) * mixer
+
+        combined = np.concatenate([self._filt_state, mixed])
+        filtered = np.convolve(combined, self._h, mode="valid").astype(np.complex64)
+        self._filt_state = combined[-(self._NUM_TAPS - 1) :]
+
+        envelope = np.abs(filtered)
+        audio = np.zeros(ch.size, dtype=np.float32)
+        for start in range(0, ch.size, self._chunk):
+            stop = min(start + self._chunk, ch.size)
+            if not self._update_squelch(mixed[start:stop], envelope[start:stop]):
+                continue
+            seg = envelope[start:stop]
+            # Dividing by the tracked carrier is the AGC for modulation
+            # depth; it also leaves the carrier at 1.0 so "- 1" strips DC.
+            audio[start:stop] = seg / max(self._carrier or 0.0, 1e-9) - 1.0
+            self._dc += 0.05 * (float(audio[start:stop].mean()) - self._dc)
+            audio[start:stop] -= self._dc
+
+        resampled = self._resampler.process(audio)
+        normalized = self._normalizer.process(resampled)
+        return to_s16(normalized)
+
+    def _update_squelch(self, mixed: np.ndarray, envelope: np.ndarray) -> bool:
+        """Carrier-to-noise estimate for one chunk; True while audio passes.
+
+        In-band power is measured after the channel filter, noise density from
+        what the filter removed (the rest of the PFB bin), so a noise-only
+        channel reads ~0 dB whatever the absolute IQ level -- no calibration.
+        """
+        p_total = float(np.mean(np.abs(mixed) ** 2))
+        p_in = float(np.mean(envelope**2))
+        rest_bw = max(self.out_rate - self.bandwidth_hz, 1.0)
+        noise_in = max(p_total - p_in, 1e-15) / rest_bw * self.bandwidth_hz
+        snr_db = 10 * np.log10(max(p_in - noise_in, 1e-15) / noise_in)
+        level = self.squelch_db - (self._HYSTERESIS_DB if self.squelch_open else 0.0)
+        if snr_db >= level:
+            self.squelch_open = True
+            self._hang = self._HANG_CHUNKS
+            mean_env = float(envelope.mean())
+            if self._carrier is None:
+                self._carrier = mean_env
+            else:
+                self._carrier += 0.2 * (mean_env - self._carrier)
+        elif self._hang > 0:
+            self._hang -= 1
+        else:
+            self.squelch_open = False
+        return self.squelch_open

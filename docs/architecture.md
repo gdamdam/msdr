@@ -106,7 +106,7 @@ Most decoders read SDRconnect's demodulated audio. Decoders marked `iq_only` rea
 | External program (`backends.py`) | multimon-ng (POCSAG, FLEX, EAS, APRS, 9600 baud packet, DTMF, CW), minimodem (RTTY), direwolf (300 baud packet), dsd-fme (DMR, P25, NXDN, D-STAR, YSF, dPMR, M17), jt9 (FT8) |
 | In-process Python (`pydecoders/`) | RTTY, SSTV, WEFAX, NAVTEX, WWV/DCF77/MSF time codes, AIS |
 | Native IQ receivers (`pydecoders/`, `iq_backend.py`, `iq_session.py`) | ADS-B, LoRa, RS41, DSC, End-of-Train, VOR, ILS |
-| Band decode (`channelizer.py`, `band.py`) | many NFM channels decoded at once from one wideband IQ stream |
+| Band decode (`channelizer.py`, `band.py`) | many NFM or AM (airband, with squelch) channels decoded at once from one wideband IQ stream; one mode per session |
 
 A missing binary makes that decoder unavailable without breaking startup. Per-decoder notes are linked from the [README](../README.md#decoders).
 
