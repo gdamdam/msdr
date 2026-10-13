@@ -66,6 +66,19 @@ The default endpoint is `http://127.0.0.1:5000`; change the URL if the server li
 
 Paths and response fields come from the upstream [FreeDATA server routes](https://github.com/DJ2LS/FreeDATA/blob/main/freedata_server/server.py), [message API](https://github.com/DJ2LS/FreeDATA/blob/main/freedata_server/api/freedata.py) and [modem state API](https://github.com/DJ2LS/FreeDATA/blob/main/freedata_server/api/modem.py). FreeDATA documents the local REST interface in its [API guide](https://wiki.freedata.app/en/rest-api-redoc).
 
+## Outbound feeds
+
+The other direction: msdr can send its own decodes to other applications. Both feeds are off by default and are set under **Setup → Integrations → Outbound feeds** (or `feeds.*` in settings). `GET /api/feeds` reports whether each is active, the SBS client count, lines/sentences sent and the last error.
+
+| Feed | Default | Carries | Used by |
+|---|---|---|---|
+| SBS-1 over TCP (`sbs_enabled`, `sbs_host`, `sbs_port`) | `127.0.0.1:30003` | ADS-B / Mode S decodes as BaseStation `MSG,1`..`MSG,8` lines (callsign, position, velocity, squawk, altitude) | tar1090 / readsb, Virtual Radar Server, PlanePlotter |
+| NMEA over UDP (`nmea_enabled`, `nmea_host`, `nmea_port`) | `127.0.0.1:10110` | AIS frames as `!AIVDM` sentences rebuilt from the CRC-verified frame, split into fragments when long | OpenCPN (UDP connection) |
+
+- SBS is a TCP server that any number of clients can connect to. A client that falls behind is disconnected rather than buffered without bound.
+- Events whose integrity check failed are not forwarded. Binding to a non-local address makes the feed visible to your network.
+- Send-only: neither feed accepts commands, and APRS-IS upload is not provided.
+
 ## Testing status
 
 Protocol handling for all three is tested against deterministic local TCP/HTTP test servers. Those tests cover packet parsing and HTTP response handling only. They do not simulate RF, show off-air decoding performance, or check behavior against installed JS8Call, Pat or FreeDATA binaries. No JS8Call version has been tested against a real running application.

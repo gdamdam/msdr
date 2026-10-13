@@ -18,6 +18,7 @@ from msdr.settings import (
     DecoderSettings,
     ExtraSatellite,
     Features,
+    FeedsSettings,
     HistorySettings,
     IntegrationsSettings,
     Layout,
@@ -203,6 +204,7 @@ class SettingsPatch(BaseModel):
     history: HistorySettings | None = None
     native_audio: NativeAudioSettings | None = None
     integrations: IntegrationsSettings | None = None
+    feeds: FeedsSettings | None = None
     survey: SurveySettings | None = None
     # Shallow-merged like `features` (AppService.apply_settings); `bands`
     # is replaced as a whole list.

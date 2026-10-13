@@ -7,6 +7,8 @@ const REFRESH_MS = 5000;
 export class IntegrationPanel extends LitElement {
   static properties = {
     settings: { type: Object },
+    feeds: { type: Object },
+    _feedsStatus: { state: true },
     _draft: { state: true },
     _status: { state: true },
     _messages: { state: true },
@@ -19,6 +21,8 @@ export class IntegrationPanel extends LitElement {
   constructor() {
     super();
     this.settings = {};
+    this.feeds = {};
+    this._feedsStatus = {};
     this._draft = {};
     this._status = {};
     this._messages = [];
@@ -39,18 +43,21 @@ export class IntegrationPanel extends LitElement {
   }
 
   willUpdate(changed) {
-    if (changed.has("settings")) {
-      this._draft = structuredClone(this.settings ?? {});
+    if (changed.has("settings") || changed.has("feeds")) {
+      // Feeds are top-level settings, not under `integrations`; the draft keeps them side by side.
+      this._draft = { ...structuredClone(this.settings ?? {}), feeds: structuredClone(this.feeds ?? {}) };
     }
   }
 
   async _refresh() {
     try {
-      const [status, messages] = await Promise.all([
+      const [status, messages, feeds] = await Promise.all([
         api.getIntegrationStatus(),
         api.listIntegrationMessages(100),
+        api.getFeedsStatus(),
       ]);
       this._status = status;
+      this._feedsStatus = feeds;
       this._messages = messages;
       this._error = null;
     } catch (err) {
@@ -127,6 +134,7 @@ export class IntegrationPanel extends LitElement {
         <p class="dim">Start FreeDATA’s server. Received text, file names and modem status appear here; open FreeDATA to use attachments or send.</p>
         <button ?disabled=${this._busy} @click=${() => this._save("freedata")}>SAVE FREEDATA</button>
       `)}
+      ${this._feedsCard()}
       ${this._error ? html`<p class="integration-error">${this._error}</p>` : ""}
       <h3>Received messages</h3>
       ${this._messages.length ? html`<ol class="integration-messages">
@@ -149,6 +157,45 @@ export class IntegrationPanel extends LitElement {
         </li>`)}
       </ol>` : html`<p class="dim">No received messages yet. JS8Call events appear as they arrive; Pat and FreeDATA inboxes appear after their first successful check.</p>`}
     </div>`;
+  }
+
+  _feedState(key, active) {
+    const st = this._feedsStatus[key] ?? {};
+    if (!st.enabled) return "off";
+    if (st.last_error) return st.last_error;
+    return active ? "on" : "starting";
+  }
+
+  _feedsCard() {
+    const f = this._draft.feeds ?? {};
+    const sbs = this._feedsStatus.sbs ?? {};
+    const nmea = this._feedsStatus.nmea ?? {};
+    const set = (key, value) => { this._draft = { ...this._draft, feeds: { ...f, [key]: value } }; };
+    return html`<article class="integration-card">
+      <div class="integration-card-head"><h3>Outbound feeds</h3></div>
+      <p class="dim">Send decoded data to other apps on this network. Both are off by default; msdr only sends, and never accepts commands.</p>
+      <div class="integration-card-head"><h4>ADS-B as SBS (TCP)</h4>
+        <span class="integration-state ${sbs.listening ? "is-connected" : ""}">${this._feedState("sbs", sbs.listening)}</span></div>
+      <label class="integration-toggle"><input type="checkbox" .checked=${!!f.sbs_enabled}
+        @change=${e => set("sbs_enabled", e.target.checked)} /> Serve SBS-1 lines</label>
+      <div class="integration-fields">
+        <label>Bind address <input .value=${f.sbs_host ?? "127.0.0.1"} @input=${e => set("sbs_host", e.target.value)} /></label>
+        <label>TCP port <input type="number" min="1" max="65535" .value=${f.sbs_port ?? 30003}
+          @input=${e => set("sbs_port", Number(e.target.value))} /></label>
+      </div>
+      <p class="dim">Clients: ${sbs.clients ?? 0} · lines sent: ${sbs.sent ?? 0}. For tar1090/readsb, Virtual Radar Server and PlanePlotter. A non-local bind address exposes the feed to your network.</p>
+      <div class="integration-card-head"><h4>AIS as NMEA (UDP)</h4>
+        <span class="integration-state ${nmea.active ? "is-connected" : ""}">${this._feedState("nmea", nmea.active)}</span></div>
+      <label class="integration-toggle"><input type="checkbox" .checked=${!!f.nmea_enabled}
+        @change=${e => set("nmea_enabled", e.target.checked)} /> Send !AIVDM sentences</label>
+      <div class="integration-fields">
+        <label>Destination host <input .value=${f.nmea_host ?? "127.0.0.1"} @input=${e => set("nmea_host", e.target.value)} /></label>
+        <label>UDP port <input type="number" min="1" max="65535" .value=${f.nmea_port ?? 10110}
+          @input=${e => set("nmea_port", Number(e.target.value))} /></label>
+      </div>
+      <p class="dim">Sentences sent: ${nmea.sent ?? 0}. For OpenCPN (Connections → UDP, port 10110).</p>
+      <button ?disabled=${this._busy} @click=${() => this._save("feeds")}>SAVE FEEDS</button>
+    </article>`;
   }
 
   _applicationCard(name, source, connection, contents) {

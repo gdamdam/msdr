@@ -135,6 +135,7 @@ from msdr.engine.scanner import (
     ScannerEngine,
 )
 from msdr.engine.state import Observation, ProfileSettings, ReceiverState, TuneRecipe
+from msdr.feeds import FeedsRuntime
 from msdr.integrations.manager import IntegrationManager
 from msdr.journal.service import JournalService
 from msdr.library.models import Signal, now_iso
@@ -473,6 +474,9 @@ class AppService(
             on_event=self.broadcaster.publish,
         )
 
+        # Outbound SBS/NMEA feeds of decodes (docs/integrations.md); off by default.
+        self.feeds = FeedsRuntime(settings.feeds)
+
         self.signals = SignalRepo(db)
         self.profiles = ProfileRepo(db)
         # The profile the operator last applied (directly or via a signal's
@@ -720,6 +724,7 @@ class AppService(
             await self._start_decoder_runtime()
 
         await self.integrations.start()
+        await self.feeds.start()
 
         # The hub fans adapter SpectrumFrames out to the scanner and the survey;
         # without its task nothing downstream ever sees a frame (live check
@@ -764,6 +769,7 @@ class AppService(
         await self._stop_recorder_runtime()
         await self._stop_decoder_runtime()
         await self.integrations.stop()
+        await self.feeds.stop()
         async with self._review_lifecycle_lock:
             await self._detach_virtual_receiver()
             await self._stop_survey_runtime()
@@ -1423,6 +1429,9 @@ class AppService(
                     for key, value in integrations_patch.items()
                 },
             }
+        feeds_patch = patch.get("feeds")
+        if feeds_patch:
+            patch["feeds"] = {**data["feeds"], **feeds_patch}
         lna_auto_patch = patch.get("lna_auto")
         if lna_auto_patch:
             patch["lna_auto"] = {**data["lna_auto"], **lna_auto_patch}
@@ -1546,6 +1555,7 @@ class AppService(
             if not self.ble.running:
                 await self._apply_pending_ble_settings()
         await self.integrations.configure(self.settings.integrations)
+        await self.feeds.configure(self.settings.feeds)
         if not recorder_root_changed and str(self.settings.db_path) != ":memory:":
             self.settings.save(self.settings_path)
         self.dwell.dwell_seconds = self.settings.dwell_seconds
