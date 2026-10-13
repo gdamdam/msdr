@@ -1,4 +1,5 @@
 import { LitElement, html } from "../vendor/lit.js";
+import "./fixit-dialog.js";
 
 const HELP = "A receiver msdr was using went away. msdr only listens, so nothing was transmitted; retry once the hardware is reconnected.";
 
@@ -31,7 +32,7 @@ export class ReceiverLostBar extends LitElement {
         <div class="receiver-lost-text">
           <strong>${a.title}</strong>
           <span>${a.detail}</span>
-          ${a.error ? html`<span class="receiver-lost-error">Retry failed: ${a.error}</span>` : ""}
+          ${a.error ? html`<span class="receiver-lost-error">Retry failed: ${a.error}</span><fixit-link .text=${a.error}></fixit-link>` : ""}
         </div>
         <button ?disabled=${a.busy} @click=${() => this._emit("retry", { kind: a.kind })}>${a.busy ? "Retrying…" : "Retry"}</button>
         <button @click=${() => this._emit("dismiss", { kind: a.kind })}>Dismiss</button>

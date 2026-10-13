@@ -1,4 +1,5 @@
 import { LitElement, html } from "../vendor/lit.js";
+import "./fixit-dialog.js";
 import * as api from "../api.js";
 
 const STATUS_REFRESH_MS = 1000;
@@ -283,7 +284,7 @@ export class BleSetupSection extends LitElement {
       <p>Status: <strong>${s ? (STATE_LABELS[s.state] ?? s.state) : "loading…"}</strong>
         ${s ? html`· ${s.advertiser_count ?? 0} advertisers` : ""}</p>
       ${explanation ? html`<p class="dim">${explanation}</p>` : ""}
-      ${s?.last_error ? html`<p role="alert">${s.last_error}</p>` : ""}
+      ${s?.last_error ? html`<p role="alert">${s.last_error} <fixit-link .text=${s.last_error}></fixit-link></p>` : ""}
       ${running && s?.controller
         ? html`<p class="dim">${sniffle
             ? html`Sniffle ${s.controller.firmware_version ?? "?"} · ${s.controller.baud ?? "?"} baud · ${(s.controller.phy ?? "1m").toUpperCase()} PHY · channel ${s.controller.channel ?? "37"}${s.controller.extended ? " · extended advertising" : ""}`

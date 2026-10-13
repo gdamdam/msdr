@@ -1,4 +1,5 @@
 import { LitElement, html } from "../vendor/lit.js";
+import "./fixit-dialog.js";
 
 /** Small inline "subject failed: detail  ×" note. Panels render one when
  * app.js's `failure` state names them as its source (see app.js's
@@ -25,6 +26,7 @@ export class FailureNote extends LitElement {
     return html`
       <div class="row" style="cursor:default;color:var(--danger);border:1px solid var(--danger)">
         <span class="mono" style="font-size:0.85em">${subject ?? "action"} ${status ?? "failed"}${detailText}</span>
+        <fixit-link .text=${detail ?? ""}></fixit-link>
         <span class="spacer"></span>
         <button
           title="dismiss"

@@ -1,4 +1,5 @@
 import { LitElement, html } from "../vendor/lit.js";
+import "./fixit-dialog.js";
 
 /** Pre-roll IQ recorder.
  * ARM keeps a rolling on-disk buffer from its own SDRconnect stream; REC
@@ -89,7 +90,7 @@ export class RecorderControl extends LitElement {
   }
 
   _readout(s) {
-    if (s.error) return html`<span class="dim mono" style="font-size:0.85em">${s.error}</span>`;
+    if (s.error) return html`<span class="dim mono" style="font-size:0.85em">${s.error}</span> <fixit-link .text=${s.error}></fixit-link>`;
     if (s.state === "finalizing") {
       return html`<span class="dim mono" style="font-size:0.85em">finalizing…</span>`;
     }

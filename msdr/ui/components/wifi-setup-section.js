@@ -1,4 +1,5 @@
 import { LitElement, html } from "../vendor/lit.js";
+import "./fixit-dialog.js";
 import * as api from "../api.js";
 
 const STATUS_REFRESH_MS = 1000;
@@ -246,7 +247,7 @@ export class WifiSetupSection extends LitElement {
         ${s ? html`· ${s.frames ?? 0} frames · ${s.frame_rate != null ? `${s.frame_rate.toFixed(1)} fps` : "-- fps"} · ${s.drops ?? 0} drops` : ""}</p>
       ${s?.channel != null ? html`<p class="dim">Channel ${s.channel}${s.frequency_mhz != null ? ` (${s.frequency_mhz} MHz)` : ""}
         ${s.last_frame_at != null ? `· last frame ${Math.max(0, Math.round(Date.now() / 1000 - s.last_frame_at))}s ago` : "· no frames yet"}</p>` : ""}
-      ${s?.last_error ? html`<p role="alert">${s.last_error}</p>` : ""}
+      ${s?.last_error ? html`<p role="alert">${s.last_error} <fixit-link .text=${s.last_error}></fixit-link></p>` : ""}
       ${s?.helper?.upstream_commit ? html`<p class="dim mono">helper ${s.helper.upstream_commit}</p>
         ${s.helper.host_tx_dma_disabled === true
           ? html`<p class="dim">Host transmit path: disabled</p>`

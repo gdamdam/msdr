@@ -6,6 +6,7 @@ The only module allowed to import fastapi/starlette/uvicorn in msdr.
 import asyncio
 import contextlib
 import dataclasses
+import platform
 import sqlite3
 import struct
 import tempfile
@@ -29,6 +30,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
+from msdr import __version__, fixit
 from msdr.api.schemas import (
     AllocationRefreshIn,
     AntennaIn,
@@ -128,6 +130,16 @@ _PCAP_MAGICS = {
 }
 
 
+def _error_body(detail: str) -> dict:
+    """Error JSON with the matching fix-it id (if any) so the UI can offer
+    "How to fix" without re-matching text itself."""
+    body: dict = {"detail": detail}
+    hit = fixit.match(detail)
+    if hit:
+        body["fixit"] = hit.id
+    return body
+
+
 def _origin_is_local(origin: str | None) -> bool:
     """True unless `origin` names a host other than 127.0.0.1/localhost.
 
@@ -182,7 +194,7 @@ def create_app(
 
     @app.exception_handler(ConnectionError)
     async def _connection_error_handler(request: Request, exc: ConnectionError):
-        return JSONResponse(status_code=503, content={"detail": "SDRconnect not connected"})
+        return JSONResponse(status_code=503, content=_error_body("SDRconnect not connected"))
 
     @app.exception_handler(ValidationError)
     async def _validation_error_handler(request: Request, exc: ValidationError):
@@ -204,16 +216,16 @@ def create_app(
     async def _receiver_stopped_handler(request: Request, exc: ReceiverStopped):
         return JSONResponse(
             status_code=503,
-            content={"detail": "Receiver stopped: press Play in SDRconnect"},
+            content=_error_body("Receiver stopped: press Play in SDRconnect"),
         )
 
     @app.exception_handler(RecorderError)
     async def _recorder_error_handler(request: Request, exc: RecorderError):
-        return JSONResponse(status_code=409, content={"detail": str(exc)})
+        return JSONResponse(status_code=409, content=_error_body(str(exc)))
 
     @app.exception_handler(DecoderError)
     async def _decoder_error_handler(request: Request, exc: DecoderError):
-        return JSONResponse(status_code=409, content={"detail": str(exc)})
+        return JSONResponse(status_code=409, content=_error_body(str(exc)))
 
     @app.exception_handler(SurveyError)
     async def _survey_error_handler(request: Request, exc: SurveyError):
@@ -262,9 +274,36 @@ def create_app(
     async def get_state(service: AppService = Depends(get_service)):
         return service.state_payload()
 
+    @app.get("/api/fixit")
+    async def get_fixit(text: str = Query(default="", max_length=2000)):
+        hit = fixit.match(text)
+        if hit is None:
+            raise HTTPException(404, "no fix-it entry for this text")
+        return hit.as_api()
+
+    @app.get("/api/diagnostics", response_class=PlainTextResponse)
+    async def get_diagnostics(service: AppService = Depends(get_service)):
+        # Plain text so it pastes straight into a bug report.
+        enabled = sorted(k for k, v in service.settings.features.model_dump().items() if v is True)
+        return fixit.format_diagnostics(
+            {
+                "msdr": __version__,
+                "python": platform.python_version(),
+                "os": f"{platform.system()} {platform.release()} ({platform.machine()})",
+                "sdrconnect": "connected" if service.adapter.connected else "not connected",
+                "sdrconnect_api": service.confirmed.api_version or "unknown",
+                "features": ", ".join(enabled),
+            }
+        )
+
     @app.get("/api/integrations")
     async def integrations_status(service: AppService = Depends(get_service)):
         return service.integrations.status()
+
+    @app.get("/api/feeds")
+    async def feeds_status(service: AppService = Depends(get_service)):
+        # Read-only status; enable/host/port are changed via PATCH /api/settings {"feeds": {...}}.
+        return {"settings": service.settings.feeds.model_dump(), **service.feeds.status()}
 
     @app.get("/api/integrations/messages")
     async def integration_messages(

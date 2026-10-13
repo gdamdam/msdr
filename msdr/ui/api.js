@@ -147,6 +147,7 @@ export const journalDays = () => fetchJson("/api/journal/days");
 export const exportLibrary = () => fetchJson("/api/export");
 export const getSettings = () => fetchJson("/api/settings");
 export const patchSettings = (patch) => fetchJson("/api/settings", { method: "PATCH", body: patch });
+export const getFeedsStatus = () => fetchJson("/api/feeds");
 export const getIntegrationStatus = () => fetchJson("/api/integrations");
 export const listIntegrationMessages = (limit = 100) =>
   fetchJson(`/api/integrations/messages?limit=${encodeURIComponent(limit)}`);
@@ -569,3 +570,7 @@ export const deleteRule = (id) =>
 export const listRuleEvents = (params = {}) => fetchJson(`/api/rules/events${qs(params)}`);
 export const testRule = (id) =>
   fetchJson(`/api/rules/${encodeURIComponent(id)}/test`, { method: "POST" });
+
+/** Matching "how to fix" entry for error text, or null when there is none. */
+export const fixitFor = (text) => fetchJson(`/api/fixit${qs({ text })}`).catch(() => null);
+export const diagnosticsText = async () => (await fetch("/api/diagnostics")).text();

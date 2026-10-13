@@ -1,6 +1,7 @@
 import { LitElement, html } from "../vendor/lit.js";
 import * as api from "../api.js";
 import "./led-dot.js";
+import "./fixit-dialog.js";
 
 const DISCONNECTED_HINT = "Enable SDRconnect ▸ Preferences ▸ WebSocket Server (port 5454)";
 
@@ -147,7 +148,7 @@ export class DiagBanner extends LitElement {
               <div class="row" style="cursor:default">
                 <led-dot .color=${c.ok ? "var(--ok)" : "var(--danger)"} .lit=${!c.unknown}></led-dot>
                 <span class="label" style="flex:none">${c.label}</span>
-                ${c.hint ? html`<span class="dim mono" style="font-size:0.85em">${c.hint}</span>` : ""}
+                ${c.hint ? html`<span class="dim mono" style="font-size:0.85em">${c.hint}</span><fixit-link .text=${c.hint}></fixit-link>` : ""}
               </div>
             `
           )}
