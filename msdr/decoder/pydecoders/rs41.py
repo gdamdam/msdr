@@ -200,6 +200,9 @@ class RS41Backend:
         self._frame_bits: list[int] = []
         self._in_frame = False
         self._sample_invert = False
+        # Discriminator bias per sample from a carrier offset (sonde drift or
+        # off-centre tuning), measured on the preamble and removed before slicing.
+        self._dc = 0.0
         self._sync_found = False
         self._sync_search_bits = 0
         self._frame_bytes = bytearray()
@@ -230,7 +233,7 @@ class RS41Backend:
                 if len(self._acquisition) > keep:
                     self._acquisition = self._acquisition[-keep:].copy()
                 return
-            remaining = acquired
+            remaining = acquired - np.float32(self._dc)
             complete = len(remaining) // _SPS
             self._sps_tail = remaining[complete * _SPS :].copy()
             if not complete:
@@ -239,6 +242,7 @@ class RS41Backend:
                 (self._symbols, remaining[: complete * _SPS].reshape(-1, _SPS).sum(axis=1))
             )
         else:
+            discr = discr - np.float32(self._dc)
             if len(self._sps_tail):
                 discr = np.concatenate((self._sps_tail, discr))
             complete = len(discr) // _SPS
@@ -338,7 +342,10 @@ class RS41Backend:
             symbols = symbols[: len(symbols) // _SPS * _SPS].reshape(-1, _SPS).sum(axis=1)
             if len(symbols) < _PREAMBLE_BITS + 64:
                 continue
-            bits = symbols >= 0
+            # Slice against a local mean, not zero: a carrier offset larger than
+            # the 2.4 kHz deviation otherwise puts every symbol on one side.
+            local_mean = np.convolve(symbols, np.full(64, 1 / 64), mode="same")
+            bits = symbols >= local_mean
             windows = np.lib.stride_tricks.sliding_window_view(bits, 64)
             errors = np.count_nonzero(windows != sync_bits, axis=1)
             inverted = 64 - errors
@@ -352,12 +359,16 @@ class RS41Backend:
                     continue
                 invert = bool(inverted[sync_index] < errors[sync_index])
                 start = phase + sync_index * _SPS
-                candidates.append((int(best_errors[sync_index]), -score, start, invert))
+                # The alternating preamble averages to zero, so its mean over an
+                # even number of symbols is the offset's bias.
+                even = len(preamble) // 2 * 2
+                dc = float(preamble[-even:].mean()) / _SPS if even else 0.0
+                candidates.append((int(best_errors[sync_index]), -score, start, invert, dc))
         if not candidates:
             return None
         # Prefer the first complete frame in a large feed. Selecting the
         # strongest later burst can leave a complete earlier frame unused.
-        _, _, sync_start, self._sample_invert = min(
+        _, _, sync_start, self._sample_invert, self._dc = min(
             candidates, key=lambda item: (item[2], item[0], item[1])
         )
         self._in_frame = True
