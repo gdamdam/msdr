@@ -442,7 +442,7 @@ export class SkyView extends LitElement {
         <span class="dim mono" style="font-size:0.8em">${tleAge}</span>
         <span class="spacer"></span>
         ${this.trackingFeature && !trackActive
-          ? html`<label class="dim mono" style="font-size:0.8em" title="Also start the matching AX.25 decoder (ISS APRS, GRBAlpha 9600) and tag frames with this pass">
+          ? html`<label class="dim mono" style="font-size:0.8em" title="Also start the matching AX.25 decoder (ISS APRS only) and tag frames with this pass">
               <input type="checkbox" .checked=${this._decode}
                 @change=${(e) => { this._decode = e.target.checked; this.requestUpdate(); }} /> decode
             </label>`

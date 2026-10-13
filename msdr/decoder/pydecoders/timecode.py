@@ -773,7 +773,6 @@ class _PulseFrameDecoder:
 
 # JJY keys the carrier at full power for 0.2 s (marker) / 0.5 s (1) / 0.8 s
 # (0) at the start of each second, then drops it to ~10 %.
-_JJY_NOMINAL_S = {"M": 0.2, "1": 0.5, "0": 0.8}
 _JJY_BANDS = (
     ("M", 0.2, 0.10, 0.35),
     ("1", 0.5, 0.35, 0.65),
@@ -858,7 +857,6 @@ class JjyDecoder(_PulseFrameDecoder):
 # WWVB drops the carrier ~17 dB at the start of each second for 0.2 s (0),
 # 0.5 s (1) or 0.8 s (marker) -- the low time is the symbol, the opposite
 # polarity to JJY.
-_WWVB_NOMINAL_S = {"0": 0.2, "1": 0.5, "M": 0.8}
 _WWVB_BANDS = (
     ("0", 0.2, 0.10, 0.35),
     ("1", 0.5, 0.35, 0.65),
@@ -1097,7 +1095,7 @@ class ChuDecoder:
 
     def _take_b(self, a: list[int]) -> None:
         nib = [n for byte in a for n in (byte >> 4, byte & 0xF)]
-        if nib[0] > 1 or any(n > 9 for n in nib[1:7]) or nib[1] > 9:
+        if nib[0] > 1 or any(n > 9 for n in nib[1:8]):
             return
         year = nib[2] * 1000 + nib[3] * 100 + nib[4] * 10 + nib[5]
         self._b = {

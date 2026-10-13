@@ -12,7 +12,7 @@ channelizer column instead of SDRconnect's own audio stream.
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
-from msdr.decoder.pcm import Normalizer, Resampler, to_s16
+from msdr.decoder.pcm import Normalizer, Resampler, lowpass_taps, to_s16
 
 # NBFM standard peak deviation (Carson's rule with the P1 12,500 Hz default
 # bandwidth: ~1,250 Hz audio + 5,000 Hz deviation each side): normalises the
@@ -164,9 +164,7 @@ class AMChannel:
         # spacing, +-3 kHz for 8.33 kHz), which also rejects the neighbouring
         # channel's carrier that the 12.5 kHz-wide PFB bin lets through.
         fc = (bandwidth_hz / 2) / out_rate
-        n = np.arange(self._NUM_TAPS, dtype=np.float64) - (self._NUM_TAPS - 1) / 2
-        h = 2 * fc * np.sinc(2 * fc * n) * np.hamming(self._NUM_TAPS)
-        self._h = (h / h.sum()).astype(np.float32)
+        self._h = lowpass_taps(fc, self._NUM_TAPS).astype(np.float32)
         self._filt_state = np.zeros(self._NUM_TAPS - 1, dtype=np.complex64)
         self._chunk = max(1, int(round(out_rate * self._CHUNK_S)))
         self._carrier: float | None = None
@@ -191,7 +189,7 @@ class AMChannel:
         audio = np.zeros(ch.size, dtype=np.float32)
         for start in range(0, ch.size, self._chunk):
             stop = min(start + self._chunk, ch.size)
-            if not self._update_squelch(mixed[start:stop], envelope[start:stop]):
+            if not self._update_squelch(filtered[start:stop], envelope[start:stop]):
                 continue
             seg = envelope[start:stop]
             # Dividing by the tracked carrier is the AGC for modulation
@@ -204,17 +202,27 @@ class AMChannel:
         normalized = self._normalizer.process(resampled)
         return to_s16(normalized)
 
-    def _update_squelch(self, mixed: np.ndarray, envelope: np.ndarray) -> bool:
+    def _update_squelch(self, filtered: np.ndarray, envelope: np.ndarray) -> bool:
         """Carrier-to-noise estimate for one chunk; True while audio passes.
 
-        In-band power is measured after the channel filter, noise density from
-        what the filter removed (the rest of the PFB bin), so a noise-only
-        channel reads ~0 dB whatever the absolute IQ level -- no calibration.
+        Noise density is the median bin level of the filtered chunk's spectrum
+        inside the passband (carrier bins excluded). Measuring what the filter
+        removed instead would count a strong adjacent 8.33 kHz channel as noise
+        and mute a good carrier; the median also shrugs off sparse sidebands.
         """
-        p_total = float(np.mean(np.abs(mixed) ** 2))
         p_in = float(np.mean(envelope**2))
-        rest_bw = max(self.out_rate - self.bandwidth_hz, 1.0)
-        noise_in = max(p_total - p_in, 1e-15) / rest_bw * self.bandwidth_hz
+        n = filtered.size
+        w = np.hanning(n)
+        spec = np.abs(np.fft.fft(filtered * w)) ** 2 / float(np.sum(w**2))
+        freqs = np.fft.fftfreq(n, 1.0 / self.out_rate)
+        inband = np.abs(freqs) <= 0.4 * self.bandwidth_hz  # stay off the filter roll-off
+        peak = int(np.argmax(np.where(inband, spec, 0.0)))
+        inband[np.arange(peak - 3, peak + 4) % n] = False  # carrier + window leakage
+        if not inband.any():
+            return self.squelch_open
+        # For white noise the median of exponential-distributed bin power is ln2 * mean.
+        density = float(np.median(spec[inband])) / np.log(2)
+        noise_in = max(density * self.bandwidth_hz / self.out_rate, 1e-15)
         snr_db = 10 * np.log10(max(p_in - noise_in, 1e-15) / noise_in)
         level = self.squelch_db - (self._HYSTERESIS_DB if self.squelch_open else 0.0)
         if snr_db >= level:

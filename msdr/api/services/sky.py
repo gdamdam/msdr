@@ -4,6 +4,7 @@ AppService mixin: methods moved verbatim from msdr/api/service.py;
 all attributes they use are initialised in AppService.__init__.
 """
 
+import functools
 import logging
 import time
 from datetime import UTC, datetime
@@ -344,31 +345,43 @@ class SkyServiceMixin:
             if plan is None:
                 raise HTTPException(400, f"no known decodable downlink for {signal.satellite}")
             self._require_decoder()
+            # End any previous pass first: its on_end hook stops the decoder,
+            # and running it later (from doppler_loop.start) would kill the
+            # decoder we are about to start and null the new tags. Stopping
+            # also keeps its watcher from seeing our tune as an external retune.
+            await self.doppler_loop.stop()
             # Tags first so the very first frame is already grouped by pass;
             # decoder_start tunes to the table downlink (Doppler f0) and fails
             # loudly if the tune isn't confirmed.
-            self.decoder.event_tags = {
+            tags = {
                 "satellite": plan.name,
                 "norad": plan.norad,
                 "pass_id": f"{plan.norad}-{int(time.time())}",
             }
+            self.decoder.event_tags = tags
             try:
                 await self.decoder_start([plan.decoder], plan.frequency_hz)
             except Exception:
                 self.decoder.event_tags = None
                 raise
             f0_hz = int(self.confirmed.props.get("device_vfo_frequency") or plan.frequency_hz)
-            on_end = self._end_pass_decode
+            on_end = functools.partial(self._end_pass_decode, tags["pass_id"])
         result = await self.doppler_loop.start(
             signal_id, signal.satellite, f0_hz, on_end=on_end
         )
         if plan is not None:
-            result = {**result, "decode": {"decoder": plan.decoder, **self.decoder.event_tags}}
+            result = {**result, "decode": {"decoder": plan.decoder, **tags}}
         await self._publish_owner()
         return result
 
-    async def _end_pass_decode(self) -> None:
-        """LOS / stop / retune: stop the pass decoder and drop the tags."""
+    async def _end_pass_decode(self, pass_id: str | None = None) -> None:
+        """LOS / stop / retune: stop the pass decoder and drop the tags.
+
+        Bound to the pass that registered it: a stale hook must not stop a
+        decoder that a newer pass has since started."""
+        current = self.decoder.event_tags
+        if pass_id is not None and (not current or current.get("pass_id") != pass_id):
+            return
         self.decoder.event_tags = None
         try:
             await self.decoder.stop_decoding("pass ended")

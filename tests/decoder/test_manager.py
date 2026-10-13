@@ -229,6 +229,29 @@ async def test_retune_stops_decoding_with_reason(
 
 
 @pytest.mark.asyncio
+async def test_user_stop_clears_pass_event_tags(
+    monkeypatch, adapter, stream, repo, confirmed, published, settings
+):
+    manager, _backends = _make_manager(
+        monkeypatch,
+        adapter=adapter,
+        stream=stream,
+        repo=repo,
+        confirmed=confirmed,
+        published=published,
+        settings=settings,
+    )
+    await manager.start()
+    try:
+        manager.event_tags = {"pass_id": "p1"}
+        await manager.start_decoding(["pocsag"], 152_840_000, "memory", signal_id="sig-1")
+        await manager.stop_decoding("user")
+        assert manager.event_tags is None
+    finally:
+        await manager.stop()
+
+
+@pytest.mark.asyncio
 async def test_unavailable_decoder_warns_but_others_start(
     monkeypatch, adapter, stream, repo, confirmed, published, settings
 ):

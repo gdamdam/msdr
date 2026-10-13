@@ -17,6 +17,8 @@ from datetime import UTC, datetime
 
 import numpy as np
 
+from msdr.decoder.pcm import cs16_to_iq as _sc16_to_iq
+from msdr.decoder.pcm import iq_to_cs16 as _iq_to_sc16
 from msdr.validation import fixtures as fx
 from msdr.validation import impairments as imp
 
@@ -230,7 +232,7 @@ def _run_ais(seed: int = 0) -> DecoderOutcome:
     except ImportError as exc:
         return DecoderOutcome("ais", "unavailable", detail=f"AisDecoder not importable yet: {exc}")
     try:
-        from tests.helpers.gmsk import ais_type1, iq_to_flat, make_burst
+        from msdr.validation.fixtures_ais import ais_type1, iq_to_flat, make_burst
     except ImportError as exc:
         return DecoderOutcome(
             "ais", "unavailable", detail=f"tests/helpers/gmsk.py not importable: {exc}"
@@ -549,18 +551,6 @@ _ADSB_HEX = "8D485020994409940838175B284F"  # published velocity frame (tests/de
 _ADSB_RATE = 4_000_000  # 2 samples/chip, integer path of NativeADSBBackend
 
 
-def _sc16_to_iq(data: bytes) -> np.ndarray:
-    raw = np.frombuffer(data, dtype="<i2").astype(np.float32).reshape(-1, 2)
-    return ((raw[:, 0] + 1j * raw[:, 1]) / 32768.0).astype(np.complex64)
-
-
-def _iq_to_sc16(iq: np.ndarray) -> bytes:
-    packed = np.empty((len(iq), 2), dtype="<i2")
-    packed[:, 0] = np.clip(np.rint(iq.real * 32768.0), -32768, 32767).astype("<i2")
-    packed[:, 1] = np.clip(np.rint(iq.imag * 32768.0), -32768, 32767).astype("<i2")
-    return packed.tobytes()
-
-
 def _adsb_burst_iq(rate: int = _ADSB_RATE, amplitude: float = 0.5) -> np.ndarray:
     bits = np.unpackbits(np.frombuffer(bytes.fromhex(_ADSB_HEX), dtype=np.uint8)).astype(np.float32)
     preamble = np.zeros(16, dtype=np.float32)
@@ -585,7 +575,7 @@ def _drain(backend) -> list:
 
 def _impair_ais(profile: str) -> tuple[bool, str]:
     from msdr.decoder.pydecoders.ais import AisDecoder
-    from tests.helpers.gmsk import ais_type1, iq_to_flat, make_burst
+    from msdr.validation.fixtures_ais import ais_type1, iq_to_flat, make_burst
 
     mmsi = 366123456
     payload = ais_type1(mmsi=mmsi, nav_status=0, sog_tenths=123, lon_deg=-122.4194, lat_deg=37.8081)
@@ -615,7 +605,7 @@ async def _impair_adsb(profile: str) -> tuple[bool, str]:
 
 async def _impair_rs41(profile: str) -> tuple[bool, str]:
     from msdr.decoder.pydecoders.rs41 import RS41Backend
-    from tests.decoder.rs41_fixtures import rs41_iq, rs41_test_frame
+    from msdr.validation.fixtures_rs41 import rs41_iq, rs41_test_frame
 
     iq = _sc16_to_iq(rs41_iq(rs41_test_frame(), leading_samples=5))
     iq = imp.apply_profile(profile, iq, 57_600.0, 0, 403e6)

@@ -30,7 +30,13 @@ from msdr.decoder.backends import (
     ProcessBackend,
     policy_integrity,
 )
-from msdr.decoder.pcm import Resampler, wav_stream_header
+from msdr.decoder.pcm import (
+    Resampler,
+    cs16_to_iq,
+    iq_to_cs16,
+    lowpass_taps,
+    wav_stream_header,
+)
 from msdr.decoder.registry import DecoderSpec
 
 # IQ is ~1 MB/s at 250 kS/s cs16 (ProcessBackend's own cap is sized for audio):
@@ -72,23 +78,25 @@ class IQChannelizer:
         self.rate_out = int(rate_out)
         self._count = 0
         self._d1 = max(1, self.rate_in // (4 * self.rate_out))
+        if self._d1 == 1:
+            # Below 4x the polyphase stage used to be skipped, leaving the 127-tap
+            # Resampler to run at the full device rate; decimate by the integer ratio.
+            self._d1 = max(1, self.rate_in // self.rate_out)
         self._rem = np.empty(0, np.complex64)
         # Cutoff at 0.45 of the post-decimation Nyquist-limited rate, 8 taps per branch.
-        self._k = 8
-        n = np.arange(self._k * self._d1) - (self._k * self._d1 - 1) / 2
-        fc = 0.45 / self._d1
-        h = 2 * fc * np.sinc(2 * fc * n) * np.hamming(len(n))
-        self._h = (h / h.sum()).astype(np.float32).reshape(self._k, self._d1)
+        self._k = 8 if self._d1 >= 4 else 32 // self._d1  # short branches need more taps
+        h = lowpass_taps(0.45 / self._d1, self._k * self._d1)
+        self._h = h.astype(np.float32).reshape(self._k, self._d1)
         rate = self.rate_in / self._d1
-        n = np.arange(49) - 24
-        h = 0.45 * np.sinc(0.45 * n) * np.hamming(49)
-        self._taps = (h / h.sum()).astype(np.float32)
+        self._taps = lowpass_taps(0.225, 49).astype(np.float32)
         self._stages: list[list] = []
         while rate / 2 >= 1.5 * self.rate_out:
             self._stages.append([np.zeros(48, np.complex64), 0])
             rate /= 2
-        self._ri = Resampler(int(round(rate)), self.rate_out)
-        self._rq = Resampler(int(round(rate)), self.rate_out)
+        # An exact ratio needs no fractional resampler at all.
+        exact = int(round(rate)) == self.rate_out
+        self._ri = None if exact else Resampler(int(round(rate)), self.rate_out)
+        self._rq = None if exact else Resampler(int(round(rate)), self.rate_out)
 
     def _decimate(self, x: np.ndarray) -> np.ndarray:
         d, k = self._d1, self._k
@@ -104,9 +112,7 @@ class IQChannelizer:
         return y
 
     def process(self, data: bytes) -> np.ndarray:
-        raw = np.frombuffer(data[: len(data) & ~3], dtype="<i2").astype(np.float32)
-        raw = raw.reshape(-1, 2)
-        x = ((raw[:, 0] + 1j * raw[:, 1]) / 32768).astype(np.complex64)
+        x = cs16_to_iq(data[: len(data) & ~3])
         if not len(x):
             return np.empty(0, np.complex64)
         if self.offset_hz:
@@ -127,14 +133,13 @@ class IQChannelizer:
             stage[1] = count + len(filtered)
         if not len(x):
             return np.empty(0, np.complex64)
+        if self._ri is None:
+            return x
         return (self._ri.process(x.real) + 1j * self._rq.process(x.imag)).astype(np.complex64)
 
 
 def _to_cs16(iq: np.ndarray, gain: float) -> bytes:
-    out = np.empty((len(iq), 2), dtype="<i2")
-    out[:, 0] = np.clip(iq.real * gain * 32768, -32768, 32767)
-    out[:, 1] = np.clip(iq.imag * gain * 32768, -32768, 32767)
-    return out.tobytes()
+    return iq_to_cs16(iq * gain)
 
 
 class ExternalIQBackend(ProcessBackend):

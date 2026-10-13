@@ -62,7 +62,13 @@ class LoopEventQueue(asyncio.Queue):
             return
         if self.full():
             raise asyncio.QueueFull
-        self._owner.call_soon_threadsafe(self._put_from_thread, item)
+        try:
+            self._owner.call_soon_threadsafe(self._put_from_thread, item)
+        except RuntimeError:
+            # Owning loop already closed (session torn down while a feed thread
+            # was still running): the event is meaningless now, so drop it
+            # rather than erroring the whole session.
+            logger.debug("LoopEventQueue: loop closed, dropping event")
 
     def _put_from_thread(self, item) -> None:
         # full() was checked in the worker thread; a race can only overfill

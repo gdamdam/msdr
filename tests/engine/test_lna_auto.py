@@ -12,6 +12,7 @@ def test_band_change_applies_band_state_clamped_to_device_max():
     assert auto_lna_state(1_090_000_000, 162_000_000, config) == 0
     assert auto_lna_state(162_000_000, 1_090_000_000, config) == 8
     assert auto_lna_state(162_000_000, 1_090_000_000, config, lna_max=5) == 5
+    assert auto_lna_state(1_090_000_000, 162_000_000, config, lna_min=2) == 2  # min clamp
     assert auto_lna_state(162_025_000, 161_975_000, config) is None  # same band
     assert auto_lna_state(162_000_000, None, config) == 8  # unknown current
     assert auto_lna_state(162_000_000, None, config.model_copy(update={"enabled": False})) is None

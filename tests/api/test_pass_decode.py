@@ -34,7 +34,16 @@ class _Decoder:
 
 
 class _Loop:
+    on_end = None
+
+    async def stop(self):
+        # Mirrors DopplerLoop._teardown: the hook runs once, then is cleared.
+        on_end, self.on_end = self.on_end, None
+        if on_end is not None:
+            await on_end()
+
     async def start(self, signal_id, satellite, f0_hz, on_end=None):
+        await self.stop()
         self.on_end = on_end
         self.f0_hz = f0_hz
         return {"signal_id": signal_id}
@@ -66,7 +75,7 @@ def _stub(satellite="ISS", norad=25544):
         doppler_loop=_Loop(),
         _publish_owner=publish_owner,
     )
-    stub._end_pass_decode = lambda: SkyServiceMixin._end_pass_decode(stub)
+    stub._end_pass_decode = lambda pass_id=None: SkyServiceMixin._end_pass_decode(stub, pass_id)
     return stub, started
 
 
@@ -84,6 +93,25 @@ async def test_pass_start_starts_decoder_with_tags_and_los_stops():
     await stub.doppler_loop.on_end()  # LOS
     assert stub.decoder.stopped == ["pass ended"]
     assert stub.decoder.event_tags is None
+
+
+async def test_retrack_with_decode_keeps_new_decoder_and_tags():
+    stub, started = _stub()
+    await SkyServiceMixin.start_tracking(stub, "sig", decode=True)
+    stub.decoder.stopped.clear()
+    second = await SkyServiceMixin.start_tracking(stub, "sig", decode=True)
+    # Old pass's hook stopped the old decoder before the new one started...
+    assert len(started) == 2
+    # ...and the new pass keeps its tags and is not stopped afterwards.
+    assert second["decode"]["pass_id"] == stub.decoder.event_tags["pass_id"]
+    assert stub.decoder.stopped == ["pass ended"]  # only the old pass's stop
+
+
+async def test_stale_end_hook_ignored():
+    stub, _ = _stub()
+    stub.decoder.event_tags = {"pass_id": "new"}
+    await SkyServiceMixin._end_pass_decode(stub, "old")
+    assert stub.decoder.stopped == [] and stub.decoder.event_tags == {"pass_id": "new"}
 
 
 async def test_no_decode_leaves_decoder_alone():

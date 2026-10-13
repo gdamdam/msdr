@@ -18,6 +18,7 @@ import numpy as np
 
 from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
 from msdr.decoder.payloads import decode_payload
+from msdr.decoder.pcm import lowpass_taps
 from msdr.decoder.pydecoders.rs41_fec import correct_rs41_frame
 
 _TARGET_RATE = 57_600
@@ -110,9 +111,7 @@ class _StreamingResampler:
         g = math.gcd(rate, _TARGET_RATE * (1 << stages))
         self.step, self.den = rate // g, _TARGET_RATE * (1 << stages) // g
         self.rate, self.offset = rate, offset
-        taps = np.arange(49) - 24
-        h = 0.45 * np.sinc(0.45 * taps) * np.hamming(49)
-        self.stage_taps = (h / h.sum()).astype(np.float32)
+        self.stage_taps = lowpass_taps(0.225, 49).astype(np.float32)
         self.stages = [[np.zeros(48, np.complex64), 0] for _ in range(stages)]
         self.half = 24
         self.offsets = np.arange(-self.half, self.half + 1)

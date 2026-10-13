@@ -2472,6 +2472,10 @@ export class MsdrApp extends LitElement {
           .failure=${this._failureFor("library")}
           .refreshAt=${this._libraryRefreshAt}
           .profiles=${this.profiles}
+          .activeId=${this.state?.active_profile_id ?? null}
+          .disabled=${!this.state?.connected || !this.state?.can_control || this.wsDown
+            || (this.state?.connected && !(this.state?.started ?? true))
+            || !!this.state?.survey?.replay}
           @open-profile=${(ev) => this._openProfile(ev.detail.id)}
           @apply-profile=${(ev) => this._doApplyProfile(ev.detail.id)}
           @refresh=${() => this._loadProfiles()}

@@ -211,3 +211,35 @@ async def test_rs41_frame_survives_a_dropped_stream_frame():
         assert events and events[0].integrity == "passed"
     finally:
         await session.stop()
+
+
+@pytest.mark.asyncio
+async def test_stop_waits_for_in_flight_feed_before_stopping_backend():
+    order = []
+
+    class SlowBackend(Backend):
+        def feed(self, data):
+            order.append("feed-start")
+            time.sleep(0.2)
+            order.append("feed-end")
+
+        async def stop(self):
+            order.append("backend-stop")
+
+    stream, backend = Stream(), SlowBackend()
+    session = IQDecoderSession(
+        stream=stream,
+        backends={"adsb": backend},
+        frequency_hz=1090000000,
+        signal_id="signal",
+        on_event=lambda e: None,
+        on_status=lambda: None,
+    )
+    await session.start()
+    stream.queue.put_nowait(SimpleNamespace(data=b"\x01\x00\x02\x00"))
+    for _ in range(200):
+        if "feed-start" in order:
+            break
+        await asyncio.sleep(0.005)
+    await session.stop()
+    assert order == ["feed-start", "feed-end", "backend-stop"]

@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 # and decoders resynchronise on their own after a long silence anyway.
 _MAX_GAP_FILL_SAMPLES = 1 << 20
 
+# Bound on waiting for an in-flight worker-thread feed before stopping backends.
+_STOP_FEED_TIMEOUT_S = 5.0
+
 
 def gap_fill(expected: tuple[int | None, int] | None, frame) -> bytes:
     """Zero IQ standing in for live frames dropped just before `frame`.
@@ -45,6 +48,7 @@ class IQDecoderSession:
         self._on_status = on_status
         self._running = False
         self._tasks = []
+        self._feeding = None
         self._last_frame = None
         self._error = None
         self._counts = {key: 0 for key in backends}
@@ -91,7 +95,12 @@ class IQDecoderSession:
                 # VOR/ILS, DSC, RS41, LoRa) are CPU-heavy, and running two at
                 # full IQ rate on the loop starved the web UI until the app
                 # froze. They emit through LoopEventQueue, which is safe here.
-                await asyncio.to_thread(self._feed_all, fill + frame.data if fill else frame.data)
+                # Keep the future: cancelling this task doesn't stop the worker
+                # thread, so stop() must wait on it before stopping backends.
+                self._feeding = asyncio.ensure_future(
+                    asyncio.to_thread(self._feed_all, fill + frame.data if fill else frame.data)
+                )
+                await asyncio.shield(self._feeding)
                 for key, backend in self._backends.items():
                     if backend.error != self._backend_errors.get(key):
                         self._backend_errors[key] = backend.error
@@ -143,6 +152,15 @@ class IQDecoderSession:
         for task in self._tasks:
             await reap_cancelled(task)
         self._tasks = []
+        feeding, self._feeding = self._feeding, None
+        if feeding is not None and not feeding.done():
+            try:
+                await asyncio.wait_for(asyncio.shield(feeding), _STOP_FEED_TIMEOUT_S)
+            except TimeoutError:
+                logger.warning("IQ decoder feed still running after %ss; stopping anyway",
+                               _STOP_FEED_TIMEOUT_S)
+            except Exception:
+                pass  # feed errors already surfaced through the pump
         failure = None
         try:
             await self._stream.stop()

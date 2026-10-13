@@ -525,6 +525,11 @@ class DecoderManager:
         return self.status()
 
     async def stop_decoding(self, reason: str = "user") -> dict:
+        # Pass tags belong to the decode they were set for; leaving them after
+        # any stop would tag later unrelated decodes and keep retune handling
+        # off. Only the public stop clears: the internal "restarted" stop runs
+        # after a caller has already set tags for the incoming decode.
+        self.event_tags = None
         async with self._lock:
             return await self._stop_decoding_locked(reason)
 
