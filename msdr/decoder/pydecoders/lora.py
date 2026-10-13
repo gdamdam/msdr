@@ -22,6 +22,7 @@ import numpy as np
 
 from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
 from msdr.decoder.pydecoders.lora_phy import LoRaParams, LoRaReceiver
+from msdr.decoder.pydecoders.lorawan import parse_lorawan
 
 _MAX_SOURCE_CHUNKS = 24
 _MAX_DECODE_EVENTS = 256
@@ -228,7 +229,7 @@ class LoRaBackend:
             # No CRC in the frame (crc_valid is None) or a CRC mismatch:
             # never emitted, same policy as the gr-lora_sdr backend.
             return
-        fields = decode_mesh_payload(packet.payload, self.protocol)
+        fields = decode_mesh_payload(packet.payload, self.protocol, self.sync_word)
         event = DecodeEvent(
             ts=time.time(),
             decoder="lora",
@@ -551,7 +552,7 @@ class GrLoRaBackend:
     def _accept_packet(self, payload: bytes, crc_valid: bool) -> None:
         if not self._running or not crc_valid:
             return
-        fields = decode_mesh_payload(payload, self.protocol)
+        fields = decode_mesh_payload(payload, self.protocol, self.sync_word)
         event = DecodeEvent(
             ts=time.time(),
             decoder="lora",
@@ -633,12 +634,27 @@ def _pmt_dict(pmt: Any, value: Any) -> dict[str, Any]:
     return result
 
 
-def decode_mesh_payload(payload: bytes, protocol: str) -> dict[str, Any]:
+def decode_mesh_payload(
+    payload: bytes, protocol: str, sync_word: int | None = None
+) -> dict[str, Any]:
     """Decode known outer packet metadata; never infer plaintext from ciphertext."""
     if protocol == "meshtastic":
         return _decode_meshtastic_packet(payload)
     if protocol == "meshcore":
         return _decode_meshcore_packet(payload)
+    wan = parse_lorawan(payload, sync_word=sync_word)
+    if wan is not None:
+        # Header only; FRMPayload stays encrypted and the MIC is never checked.
+        return {
+            **wan,
+            "protocol": "LoRaWAN",
+            "packet_type": "lorawan",
+            "opaque": True,
+            "encrypted": True,
+            "payload_bytes": len(payload),
+            "text": f"LoRaWAN {wan['lorawan_summary']} ({len(payload)} bytes)",
+            "provenance": "LoRaWAN header parsed; payload not decrypted, MIC not verified",
+        }
     return {
         "protocol": "LoRa",
         "packet_type": "raw",
