@@ -7,7 +7,7 @@ analyzer/decoder code paths behave correctly on a *known* synthetic signal.
 Field validation (a real off-air capture) is tracked separately --
 see `docs/validation/corpus.md` and `tests/corpus/manifest.json`.
 
-Generated: 2026-10-13T14:58:32.459964+00:00
+Generated: 2026-10-13T15:02:48.359541+00:00
 
 ## Detectors
 
@@ -63,13 +63,15 @@ Generated: 2026-10-13T14:58:32.459964+00:00
 
 Each decoder's known synthetic burst is degraded by `msdr.validation.impairments` and decoded; pass = the expected payload is recovered with a passed integrity check. `n/a` = profile not expressible for that decoder's input. Failures are reported as found, not tuned away. Synthetic only -- not off-air validation.
 
-| decoder | clean | ppm_20 | off_centre | dc_spike | iq_swap | iq_imbalance | drops | 8bit | low_snr | nonfinite |
-|---|---|---|---|---|---|---|---|---|---|---|
-| ais | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
-| adsb | pass | pass | pass | pass | pass | pass | FAIL | pass | pass | n/a |
-| rs41 | pass | pass | pass | pass | pass | pass | FAIL | pass | pass | n/a |
+| decoder | clean | ppm_20 | off_centre | dc_spike | iq_swap | iq_imbalance | drops | lost_frame | 8bit | low_snr | nonfinite |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| ais | pass | pass | pass | pass | pass | pass | pass | FAIL | pass | pass | pass |
+| adsb | pass | pass | pass | pass | pass | pass | FAIL | FAIL | pass | pass | n/a |
+| rs41 | pass | pass | pass | pass | pass | pass | FAIL | pass | pass | pass | n/a |
 
 Failing cells:
 
+- ais / lost_frame: 0 event(s), stats={'preambles': 1, 'frames_ok': 0, 'crc_fail': 0, 'framing_fail': 1, 'no_mmsi': 0}
 - adsb / drops: 0 event(s), error=None
+- adsb / lost_frame: 0 event(s), error=None
 - rs41 / drops: 0 event(s)

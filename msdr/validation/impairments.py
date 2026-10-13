@@ -79,6 +79,16 @@ def drop_blocks(x: np.ndarray, block: int = 2048, drop_every: int = 4) -> np.nda
     return fx.dropped_blocks_iq(x, block=block, drop_every=drop_every)
 
 
+def lost_frame(x: np.ndarray, block: int = 1024, at: float = 0.5) -> np.ndarray:
+    """One IQ frame lost on queue overflow, as decoders see it after the IQ
+    session zero-fills the gap (msdr.decoder.iq_session.gap_fill): a single
+    zeroed block with timing intact."""
+    out = x.copy()
+    start = int(len(out) * at)
+    out[start : start + block] = 0
+    return out
+
+
 def quantise_8bit(x: np.ndarray, full_scale: float | None = None) -> np.ndarray:
     """8-bit ADC: round each rail to 256 levels. `full_scale` is the input
     amplitude mapped to +/-127 (default: the signal's own peak, i.e. a
@@ -168,6 +178,11 @@ PROFILES: dict[str, ImpairmentProfile] = {
             "drops",
             "one 2048-sample block in four dropped",
             lambda iq, rate, seed, fc: drop_blocks(iq),
+        ),
+        _p(
+            "lost_frame",
+            "one 1024-sample IQ frame lost mid-signal, gap zero-filled",
+            lambda iq, rate, seed, fc: lost_frame(iq),
         ),
         _p("8bit", "8-bit ADC quantisation", lambda iq, rate, seed, fc: quantise_8bit(iq)),
         _p(

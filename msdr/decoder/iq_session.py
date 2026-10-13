@@ -10,6 +10,30 @@ from msdr.decoder.readiness import decoder_facts
 
 logger = logging.getLogger(__name__)
 
+# Larger gaps are left unfilled: zeros would cost as much CPU as the lost data,
+# and decoders resynchronise on their own after a long silence anyway.
+_MAX_GAP_FILL_SAMPLES = 1 << 20
+
+
+def gap_fill(expected: tuple[int | None, int] | None, frame) -> bytes:
+    """Zero IQ standing in for live frames dropped just before `frame`.
+
+    The stream drops whole frames on overflow, so later samples arrive early
+    and timing-continuous decoders (RS41, DSC, LoRa mid-packet) lose bit sync.
+    Zeros of the same length keep their timing, so FEC can repair the hole.
+    `expected` is (session_generation, next stream_offset) after the last frame.
+    """
+    offset = getattr(frame, "stream_offset", None)
+    if expected is None or offset is None:
+        return b""
+    generation, next_offset = expected
+    if generation != getattr(frame, "session_generation", None):
+        return b""
+    missing = offset - next_offset
+    if missing <= 0 or missing > _MAX_GAP_FILL_SAMPLES:
+        return b""
+    return bytes(missing * 4)
+
 
 class IQDecoderSession:
     def __init__(self, *, stream, backends, frequency_hz, signal_id, on_event, on_status):
@@ -50,16 +74,24 @@ class IQDecoderSession:
             raise DecoderError(f"IQ decoder startup failed: {exc}") from exc
 
     async def _pump(self):
+        expected = None
         try:
             async for frame in self._stream.frames():
                 if not self._running:
                     break
                 self._last_frame = time.monotonic()
+                fill = gap_fill(expected, frame)
+                offset = getattr(frame, "stream_offset", None)
+                expected = (
+                    None
+                    if offset is None
+                    else (getattr(frame, "session_generation", None), offset + len(frame.data) // 4)
+                )
                 # Off the event loop: in-process decoders (End-of-Train,
                 # VOR/ILS, DSC, RS41, LoRa) are CPU-heavy, and running two at
                 # full IQ rate on the loop starved the web UI until the app
                 # froze. They emit through LoopEventQueue, which is safe here.
-                await asyncio.to_thread(self._feed_all, frame.data)
+                await asyncio.to_thread(self._feed_all, fill + frame.data if fill else frame.data)
                 for key, backend in self._backends.items():
                     if backend.error != self._backend_errors.get(key):
                         self._backend_errors[key] = backend.error

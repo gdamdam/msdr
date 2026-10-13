@@ -18,7 +18,8 @@ Covered synthetically by `msdr/validation/impairments.py` and the
 - [ ] Off-centre tuning: `off_centre`
 - [ ] DC spike at the centre: `dc_spike`
 - [ ] I/Q swapped or imbalanced: `iq_swap`, `iq_imbalance`
-- [ ] Dropped sample blocks (USB loss): `drops`
+- [ ] Dropped sample blocks (USB loss): `drops` (heavy: a quarter of the signal)
+- [ ] One IQ frame lost on queue overflow, zero-filled by the IQ session: `lost_frame`
 - [ ] 8-bit ADC: `8bit`
 - [ ] Low SNR: `low_snr`
 - [ ] NaN/inf or huge values from upstream: `nonfinite`, and

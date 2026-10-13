@@ -35,6 +35,9 @@ class IQFrame:
     sample_index: int | None = None  # first sample's index in its run
     run_index: int = 0  # replay timeline run; live streams use run 0
     session_generation: int | None = None  # live socket lifecycle; separate from source generation
+    # Live only: samples received in this session before this frame, counting
+    # frames later dropped on overflow, so a consumer can see where a gap is.
+    stream_offset: int | None = None
 
 
 class IQStream:
@@ -69,6 +72,7 @@ class IQStream:
         self._generation = 0
         self._dropped_count = 0
         self._dropped_samples = 0
+        self._received_samples = 0
 
     @property
     def generation(self) -> int:
@@ -92,6 +96,7 @@ class IQStream:
         self._generation += 1
         self._dropped_count = 0
         self._dropped_samples = 0
+        self._received_samples = 0
         self._stopped = False
         self._reader_task = asyncio.create_task(self._run())
 
@@ -153,9 +158,16 @@ class IQStream:
                     dropped = self._queue.get_nowait()
                     self._dropped_count += 1
                     self._dropped_samples += len(dropped.data) // 4
+            data = message[2:]
             self._queue.put_nowait(
-                IQFrame(message[2:], time.time(), session_generation=self._generation)
+                IQFrame(
+                    data,
+                    time.time(),
+                    session_generation=self._generation,
+                    stream_offset=self._received_samples,
+                )
             )
+            self._received_samples += len(data) // 4
         # anything else (text, other binary payload types) is ignored here
 
     async def _send(self, on: bool) -> None:
