@@ -50,3 +50,26 @@ def test_no_center_exclusion_retains_center_bin_and_full_coverage():
     assert exported["holes"] == []
     assert exported["slices"][0]["values_db"][256] == 100.0
     assert max(exported["bins"], key=lambda item: item["max_db"])["frequency_hz"] == 256
+
+
+def rolled_off(center, at=1):
+    # Flat -100 dB floor whose outer eighth on each side sags 10 dB, like a
+    # receiver filter's roll-off.
+    bins = [-110.0 if i < 64 or i >= 448 else -100.0 for i in range(512)]
+    return {"bins": bins, "center_hz": center, "span_hz": 512, "at": at}
+
+
+def test_overlap_takes_each_bin_from_the_slice_nearer_its_centre():
+    capture = SpectrumCapture(0, 896, native_bin_width_hz=1)
+    # 25% overlap: [0, 512) and [384, 896) share 384-512, which is the
+    # second slice's sagging left edge and the first slice's flat inside.
+    capture.add(rolled_off(256, at=1))
+    capture.add(rolled_off(640, at=2))
+    capture.add(rolled_off(256, at=3))  # a revisit still counts towards the owner
+    bins = {round(b["frequency_hz"]): b for b in capture.export()["bins"]}
+    for hz in (384, 420, 447):  # overlap owned by the first slice: flat there
+        assert bins[hz]["typical_db"] == -100.0
+        assert bins[hz]["sample_count"] == 2
+    for hz in (448, 500):  # nearer the second slice's centre, which is flat there
+        assert bins[hz]["typical_db"] == -100.0
+    assert bins[10]["typical_db"] == -110.0  # an outer edge has no better view
