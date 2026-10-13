@@ -115,13 +115,18 @@ def test_audio_decoder_survives_hostile_input(name, kind, tmp_path):
     decoder = _AUDIO[name](tmp_path)
     n = int(decoder.input_rate * _AUDIO_S)
     t0 = time.monotonic()
-    for chunk in _float_inputs(kind, n, rng):
-        events = decoder.feed(chunk)
-        assert isinstance(events, list)
-    assert isinstance(decoder.flush(), list)
-    # Decoder must still work on a following ordinary block (no poisoned state crash).
-    decoder.feed(rng.standard_normal(n).astype(np.float32))
-    decoder.flush()
+    # Contract is "no exception", not "no numpy FP warning": inf/huge floats
+    # overflow in any filter, and CI's -W error would turn those into failures.
+    # Production audio is s16 scaled to +-1, so these values never reach them.
+    with np.errstate(all="ignore"):
+        for chunk in _float_inputs(kind, n, rng):
+            events = decoder.feed(chunk)
+            assert isinstance(events, list)
+        assert isinstance(decoder.flush(), list)
+        # Decoder must still work on a following ordinary block (no poisoned
+        # state crash); NaN left in filter state may still warn, which is fine.
+        decoder.feed(rng.standard_normal(n).astype(np.float32))
+        decoder.flush()
     _bounded(t0, f"{name}/{kind}")
 
 
