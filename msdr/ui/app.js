@@ -1271,7 +1271,7 @@ export class MsdrApp extends LitElement {
    * starting) rather than calling api.startTrack/stopTrack directly, so the
    * "track" conflicts check lives in one place. `source`, when given ("drawer"),
    * routes a failure into that panel's inline note, same as _reportFailure. */
-  async _doTrackToggle(active, id, source) {
+  async _doTrackToggle(active, id, source, decode = false) {
     if (active) {
       try {
         await api.stopTrack();
@@ -1286,7 +1286,7 @@ export class MsdrApp extends LitElement {
     if (!id) return;
     if (!(await this.confirmInterrupt("track"))) return;
     try {
-      await api.startTrack(id);
+      await api.startTrack(id, decode);
       this._action("tracking started");
       if (source) this._clearFailure(source);
     } catch (err) {
@@ -1786,6 +1786,8 @@ export class MsdrApp extends LitElement {
         decoders: detail.decoders,
         max_channels: detail.max_channels,
         threshold_db: detail.threshold_db,
+        mode: detail.mode ?? "NFM",
+        bandwidth_hz: detail.bandwidth_hz ?? null,
       });
       this.state = { ...(this.state ?? {}), decoder: status };
       this._action("band decode started");
@@ -2568,7 +2570,7 @@ export class MsdrApp extends LitElement {
           .trackingFeature=${this.features.tracking}
           @select-pass=${(ev) => this._onSelectPass(ev.detail)}
           @refresh=${() => this._loadSignals()}
-          @track-toggle=${(ev) => this._doTrackToggle(ev.detail.active, ev.detail.id, "sky")}
+          @track-toggle=${(ev) => this._doTrackToggle(ev.detail.active, ev.detail.id, "sky", !!ev.detail.decode)}
           @api-error=${(ev) => this._status(ev.detail.message)}
           @setup=${() => (this.setupOpen = true)}
         ></sky-view>`;

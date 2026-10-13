@@ -4,6 +4,8 @@ AppService mixin: methods moved verbatim from msdr/api/service.py;
 all attributes they use are initialised in AppService.__init__.
 """
 
+import logging
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -12,6 +14,7 @@ from fastapi import HTTPException
 from msdr.api.services._common import _ALL_SIGNALS_LIMIT, RestoreRunning
 from msdr.library.models import now_iso
 from msdr.providers.nextpass import SATELLITES, Downlink, Pass, PassesResult
+from msdr.providers.sat_decode import decode_plan
 from msdr.providers.tracking import (
     CATALOG,
     CATALOG_BY_LABEL,
@@ -317,7 +320,7 @@ class SkyServiceMixin:
             raise HTTPException(404, "feature disabled: sky")
         return await self._refresh_tles()
 
-    async def start_tracking(self, signal_id: str) -> dict:
+    async def start_tracking(self, signal_id: str, decode: bool = False) -> dict:
         self._require_band_scan_idle()
         if not self.settings.features.tracking:
             raise HTTPException(404, "feature disabled: tracking")
@@ -332,9 +335,45 @@ class SkyServiceMixin:
             # A restore in flight is already driving the VFO; letting the
             # Doppler loop start would have the two fight over it.
             raise RestoreRunning("restore running")
-        result = await self.doppler_loop.start(signal_id, signal.satellite, signal.frequency_hz)
+        f0_hz = signal.frequency_hz
+        on_end = None
+        plan = None
+        if decode:
+            entry = self._catalog_entry(signal.satellite)
+            plan = decode_plan(entry["norad"]) if entry else None
+            if plan is None:
+                raise HTTPException(400, f"no known decodable downlink for {signal.satellite}")
+            self._require_decoder()
+            # Tags first so the very first frame is already grouped by pass;
+            # decoder_start tunes to the table downlink (Doppler f0) and fails
+            # loudly if the tune isn't confirmed.
+            self.decoder.event_tags = {
+                "satellite": plan.name,
+                "norad": plan.norad,
+                "pass_id": f"{plan.norad}-{int(time.time())}",
+            }
+            try:
+                await self.decoder_start([plan.decoder], plan.frequency_hz)
+            except Exception:
+                self.decoder.event_tags = None
+                raise
+            f0_hz = int(self.confirmed.props.get("device_vfo_frequency") or plan.frequency_hz)
+            on_end = self._end_pass_decode
+        result = await self.doppler_loop.start(
+            signal_id, signal.satellite, f0_hz, on_end=on_end
+        )
+        if plan is not None:
+            result = {**result, "decode": {"decoder": plan.decoder, **self.decoder.event_tags}}
         await self._publish_owner()
         return result
+
+    async def _end_pass_decode(self) -> None:
+        """LOS / stop / retune: stop the pass decoder and drop the tags."""
+        self.decoder.event_tags = None
+        try:
+            await self.decoder.stop_decoding("pass ended")
+        except Exception:
+            logging.getLogger(__name__).exception("stopping pass decoder failed")
 
     async def stop_tracking(self) -> None:
         await self.doppler_loop.stop()

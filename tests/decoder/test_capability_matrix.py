@@ -72,3 +72,15 @@ def test_confirmed_live_decoders_are_not_labeled_fixture_only():
         entry = MATRIX[decoder_id]
         assert entry.validation.state == "live_output_observed"
         assert entry.validation.report == "docs/validation/live-vhf-uhf-2026-10-03.md"
+
+
+def test_acars_is_crc_checked_and_synthetic_only():
+    entry = MATRIX["acars"]
+    assert entry.integrity_policy == "crc"
+    assert entry.validation.state == "fixture_tested"
+
+
+def test_jjy_chu_ale_report_their_integrity_policies():
+    assert MATRIX["jjy"].integrity_policy == "parity"
+    assert MATRIX["chu"].integrity_policy == "repeat_fields"
+    assert MATRIX["ale"].integrity_policy == "fec"

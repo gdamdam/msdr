@@ -10,6 +10,7 @@ route, and tests monkeypatch it.
 import asyncio
 import contextlib
 import json
+import logging
 import math
 import urllib.request
 import warnings
@@ -536,6 +537,9 @@ class DopplerLoop:
         # create_task() can be collected mid-flight, leaving the loop running.
         self._stop_task: asyncio.Task | None = None
         self._confirmed_q: asyncio.Queue | None = None
+        # Awaited once when tracking ends (LOS, user stop, retune): lets the
+        # caller stop a pass decoder without the loop knowing about decoders.
+        self._on_end = None
 
     @property
     def status(self) -> dict | None:
@@ -550,7 +554,7 @@ class DopplerLoop:
             "active": True,
         }
 
-    async def start(self, signal_id: str, satellite: str, f0_hz: float) -> dict:
+    async def start(self, signal_id: str, satellite: str, f0_hz: float, on_end=None) -> dict:
         """Start tracking. Caller (AppService) has already validated the
         signal exists, has a bound satellite, and the receiver is connected
         and started -- this class stays free of the web-framework HTTPException
@@ -558,6 +562,7 @@ class DopplerLoop:
         those directly)."""
         await self.stop()
 
+        self._on_end = on_end
         self.signal_id = signal_id
         self.satellite = satellite
         self.f0_hz = f0_hz
@@ -608,6 +613,12 @@ class DopplerLoop:
         self.satellite = None
         self.f0_hz = None
         self._last_commanded_hz = None
+        on_end, self._on_end = self._on_end, None
+        if on_end is not None:
+            try:
+                await on_end()
+            except Exception:
+                logging.getLogger(__name__).exception("tracking on_end hook failed")
         if was_active:
             await self.service.broadcaster.publish({"type": "tracking"})
 

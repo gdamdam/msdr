@@ -1270,6 +1270,11 @@ def build_backend(
     if spec.backend == "dsdfme":
         return _dsdfme_backend(spec, binaries, calls_dir or Path("decoder/calls"))
 
+    if spec.backend == "freedv":
+        from msdr.decoder.external_decoders import build_freedv_backend
+
+        return build_freedv_backend(spec, binaries)
+
     if spec.backend == "python":
         return _python_backend(spec, fax_dir)
 

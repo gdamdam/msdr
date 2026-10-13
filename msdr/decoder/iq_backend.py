@@ -15,6 +15,10 @@ def build_iq_backend(
     if abs(frequency_hz - center_hz) + spec.default_bandwidth_hz / 2 > sample_rate_hz / 2:
         raise DecoderError(f"{spec.label}: full signal bandwidth must fit in recorded IQ span")
     kw = dict(sample_rate_hz=sample_rate_hz, center_hz=center_hz, frequency_hz=frequency_hz)
+    if spec.backend == "external_iq":
+        from msdr.decoder.external_decoders import build_external_iq_backend
+
+        return build_external_iq_backend(spec, binaries, **kw)
     if spec.backend == "standalone_adsb":
         from msdr.decoder.standalone_adsb import StandaloneADSBBackend
 

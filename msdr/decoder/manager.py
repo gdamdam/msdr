@@ -40,8 +40,18 @@ logger = logging.getLogger(__name__)
 
 
 def _make_protocol_iq_backend(
-    spec, *, sample_rate_hz, center_hz, frequency_hz, decoder_settings=None
+    spec, *, sample_rate_hz, center_hz, frequency_hz, decoder_settings=None, binaries=None
 ):
+    if spec.backend == "external_iq":
+        from msdr.decoder.external_decoders import build_external_iq_backend
+
+        return build_external_iq_backend(
+            spec,
+            binaries or {},
+            sample_rate_hz=sample_rate_hz,
+            center_hz=center_hz,
+            frequency_hz=frequency_hz,
+        )
     module_name, class_name = spec.args[0].split(":", 1)
     decoder_class = getattr(importlib.import_module(module_name), class_name)
     kwargs = {}
@@ -81,6 +91,10 @@ class AudioStreamLike(Protocol):
 
 
 class DecoderManager:
+    # Extra fields merged into every stored event (satellite pass tagging).
+    # While set, the Doppler loop owns the VFO, so VFO drift is not a retune.
+    event_tags: dict | None = None
+
     def __init__(
         self,
         *,
@@ -294,6 +308,7 @@ class DecoderManager:
                             center_hz=center,
                             frequency_hz=frequency_hz,
                             decoder_settings=settings,
+                            binaries=binaries,
                         )
                     )
                     for spec in raw_iq
@@ -631,10 +646,16 @@ class DecoderManager:
         *,
         max_channels: int | None = None,
         threshold_db: float | None = None,
+        mode: str = "NFM",
+        bandwidth_hz: int | None = None,
     ) -> dict:
         async with self._band_lock:
             return await self._start_band_locked(
-                decoders, max_channels=max_channels, threshold_db=threshold_db
+                decoders,
+                max_channels=max_channels,
+                threshold_db=threshold_db,
+                mode=mode,
+                bandwidth_hz=bandwidth_hz,
             )
 
     async def _start_band_locked(
@@ -643,14 +664,16 @@ class DecoderManager:
         *,
         max_channels: int | None = None,
         threshold_db: float | None = None,
+        mode: str = "NFM",
+        bandwidth_hz: int | None = None,
     ) -> dict:
         if not self._feature_enabled():
             raise DecoderError("decoder feature disabled")
-        invalid = [
-            d for d in decoders if d not in DECODERS or "NFM" not in DECODERS[d].demodulators
-        ]
+        if mode not in ("NFM", "AM"):
+            raise DecoderError(f"unknown band mode: {mode}")
+        invalid = [d for d in decoders if d not in DECODERS or mode not in DECODERS[d].demodulators]
         if invalid:
-            raise DecoderError(f"not NFM-family decoders: {', '.join(invalid)}")
+            raise DecoderError(f"not {mode}-family decoders: {', '.join(invalid)}")
 
         # Same "enabling while stopped" precedent as the IQ stream / single
         # decode: nothing arrives until Play, so refuse rather than spin up
@@ -691,6 +714,8 @@ class DecoderManager:
             on_status=self._publish_status,
             calls_dir=self._calls_dir,
             fax_dir=self._fax_dir,
+            mode=mode,
+            **({"am_bandwidth_hz": bandwidth_hz} if bandwidth_hz else {}),
         )
         await band.start()
         self._band = band
@@ -783,7 +808,13 @@ class DecoderManager:
         self._publish_status()
         return self.status()
 
+    def _tag(self, event: DecodeEvent) -> DecodeEvent:
+        if not self.event_tags:
+            return event
+        return replace(event, fields={**event.fields, **self.event_tags})
+
     def _on_band_event(self, event: DecodeEvent) -> None:
+        event = self._tag(event)
         stored = self._repo.add(event)
         self._events_total = self._repo.count()
         self._publish({"type": "decoder_event", "event": stored})
@@ -875,6 +906,7 @@ class DecoderManager:
         try:
             async for event in channel.events():
                 event = replace(event, frequency_hz=self._frequency_hz, signal_id=self._signal_id)
+                event = self._tag(event)
 
                 # wefax: the finishing event carries update_of_path
                 # instead of a fresh image_path -- merge it into the event
@@ -949,6 +981,7 @@ class DecoderManager:
             self._active
             and sc.property == "device_vfo_frequency"
             and self._frequency_hz is not None
+            and not self.event_tags
         ):
             with contextlib.suppress(TypeError, ValueError):
                 new_vfo = float(sc.new)

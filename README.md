@@ -48,6 +48,9 @@ msdr runs with SDRconnect alone. Each item below only switches on the feature na
 | AX.25 300 baud packet | `brew install direwolf` |
 | RTTY cross-check | `brew install minimodem` (the built-in RTTY decoder needs nothing) |
 | DMR, P25, NXDN, D-STAR, YSF, dPMR, M17 | `dsd-fme`: build from source (mbelib, itpp, libsndfile, ncurses from Homebrew), copy to `~/.local/bin` |
+| ISM sensors, wireless M-Bus | `brew install rtl_433` |
+| FreeDV 700D/700E/1600 (text and sync only) | `brew install codec2` (provides `freedv_rx`) |
+| DFM, M10, M20, RS92 radiosondes | `dfm09mod`, `m10mod`, `m20mod`, `rs92mod`: build `demod/mod` from [radiosonde_auto_rx](https://github.com/projecthorus/radiosonde_auto_rx) with `make`, copy to `~/.local/bin` |
 | FT8 | [WSJT-X](https://wsjt.sourceforge.io/wsjtx.html) (`jt9` on `PATH` or inside `wsjtx.app`) |
 | Wi-Fi networks | An ALFA AWUS036ACH and the `msdr-wifi-capture` helper: [docs/wifi.md](docs/wifi.md) |
 | BLE advertisements | A Bluetooth 4 USB dongle (`brew install libusb`) or a SONOFF ZBDongle-P with Sniffle firmware, plus `pip install '.[ble]'`: [docs/ble.md](docs/ble.md) |
@@ -55,7 +58,7 @@ msdr runs with SDRconnect alone. Each item below only switches on the feature na
 | IQ recording analysis | [iqscan](https://github.com/gdamdam/iqscan): `pip install git+https://github.com/gdamdam/iqscan` |
 | JS8Call, Winlink, FreeDATA messages | The JS8Call, Pat or FreeDATA application, running (Setup → Integrations) |
 
-Built in, nothing to install: LoRa (Meshtastic and MeshCore headers), ADS-B / Mode S, AIS, RS41 radiosondes, DSC, WEFAX, SSTV, NAVTEX, RTTY, WWV/DCF77/MSF time codes, End-of-Train, VOR and ILS.
+Built in, nothing to install: LoRa (Meshtastic and MeshCore headers), ADS-B / Mode S, ACARS, AIS, RS41 radiosondes, Orbcomm satellite downlinks (synthetic-validated only), DSC, WEFAX, SSTV, NAVTEX, RTTY, PSK31, HF ALE, WWV/WWVB/DCF77/MSF/JJY/CHU time codes, End-of-Train, VOR and ILS.
 
 ## Features
 

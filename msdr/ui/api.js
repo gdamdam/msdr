@@ -168,7 +168,8 @@ export const getSky = () => fetchJson("/api/sky");
 export const getSkyFor = (label, hours, start, end) =>
   fetchJson(`/api/sky/${encodeURIComponent(label)}${qs({ hours, start, end })}`);
 export const refreshTle = () => fetchJson("/api/sky/refresh", { method: "POST" });
-export const startTrack = (signalId) => fetchJson(`/api/track/${signalId}`, { method: "POST" });
+export const startTrack = (signalId, decode = false) =>
+  fetchJson(`/api/track/${signalId}${decode ? "?decode=true" : ""}`, { method: "POST" });
 export const stopTrack = () => fetchJson("/api/track", { method: "DELETE" });
 // Reference-catalog filters (docs/reference-catalogs.md "API and UI"):
 // `network`, `station_id`, `ref_type` ("schedule"/"station"/"navaid"/

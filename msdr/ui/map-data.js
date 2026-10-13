@@ -58,7 +58,7 @@ function entityId(fields, decoder) {
     decoder === 'ais' ? fields.mmsi :
     decoder === 'dsc' ? fields.sender_mmsi :
     decoder === 'aprs' || decoder.includes('packet') ? fields.from :
-    decoder === 'rs41' ? fields.serial :
+    decoder === 'rs41' || decoder.includes('sonde') ? fields.serial :
     fields.entity_id ?? fields.address;
   return id === null || id === undefined || id === '' ? null : String(id);
 }

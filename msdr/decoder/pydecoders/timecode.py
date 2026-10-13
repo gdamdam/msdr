@@ -1,4 +1,12 @@
-"""WWV/WWVH, DCF77 and MSF time-code decoders -- round 2.
+"""WWV/WWVH, DCF77 and MSF time-code decoders -- round 2 -- plus JJY, WWVB and CHU.
+
+JJY and WWVB (bottom of this file) reuse the same envelope front end with a
+shared frame engine (`_PulseFrameDecoder`); CHU is different in kind (a
+Bell 103 300-baud FSK burst in seconds 31-39, not a pulse width) and has its
+own FSK demodulator. Their frame layouts are reconstructions too, with the
+same caveats as the three below, and CHU's A/B byte layout in particular is
+this module's own reading of the format (not checked against an off-air
+recording).
 
 Shared signal model: a once-per-second pulse whose ON (WWV/WWVH) or OFF
 (DCF77/MSF) duration carries one symbol. All three decoders share the same
@@ -654,4 +662,493 @@ class MsfDecoder:
                     "month/year": month_year_ok,
                 }
             ),
+        )
+
+
+# =============================================================================
+# JJY (Japan, 40/60 kHz) and WWVB (USA, 60 kHz) -- shared pulse-frame engine
+# =============================================================================
+
+_MINUTE_MARKERS = (0, 9, 19, 29, 39, 49, 59)
+
+
+def _set_msb(bits: list[str], start: int, value: int, n: int) -> None:
+    """Writes `value` as n binary digits, most significant first, into
+    bits[start:start+n] -- JJY/WWVB list their BCD weights high-to-low
+    (unlike WWV/DCF77's low-to-high _set_digit)."""
+    for i in range(n):
+        bits[start + i] = "1" if value & (1 << (n - 1 - i)) else "0"
+
+
+def _classify_by_bands(
+    width_s: float, bands: tuple[tuple[str, float, float, float], ...]
+) -> tuple[str | None, float]:
+    for label, nominal, lo, hi in bands:
+        if lo <= width_s < hi:
+            return label, max(0.4, 1.0 - abs(width_s - nominal) / (nominal * 0.6))
+    return None, 0.0
+
+
+class _PulseFrameDecoder:
+    """Once-per-second pulse whose *width* carries 0/1/marker, 60 pulses per
+    frame with markers at seconds 0, 9, 19, ... 59. Subclasses set the pulse
+    polarity (`_START_IS_HIGH`: the width is the high time -> JJY, the low
+    time -> WWVB), the width bands and `_decode_frame`. Like WWV, a frame is
+    recognised by all seven marker positions reading "M" in the last 60
+    pulses, so a missed pulse just delays lock by up to one minute."""
+
+    input_rate = _FS
+    _DECODER_ID = ""
+    _START_IS_HIGH = True
+    _BANDS: tuple[tuple[str, float, float, float], ...] = ()
+
+    def __init__(self, clock: Callable[[], float] = time.time):
+        self._edges = _EnvelopeEdges(self.input_rate)
+        self._host_clock = _HostClock(clock)
+        self._start: int | None = None
+        self._pulses: list[tuple[int, str, float]] = []
+
+    def feed(self, samples: np.ndarray) -> list[DecodeEvent]:
+        if samples.size == 0:
+            return []
+        self._host_clock.mark_feed(len(samples))
+        out: list[DecodeEvent] = []
+        for is_high, idx in self._edges.process(samples.astype(np.float64)):
+            if is_high == self._START_IS_HIGH:
+                self._start = idx
+            elif self._start is not None:
+                width_s = (idx - self._start) / self.input_rate
+                out.extend(self._on_pulse(self._start, width_s))
+                self._start = None
+        return out
+
+    def flush(self) -> list[DecodeEvent]:
+        return []
+
+    def _on_pulse(self, start_idx: int, width_s: float) -> list[DecodeEvent]:
+        label, conf = _classify_by_bands(width_s, self._BANDS)
+        if label is None:
+            return []
+        self._pulses.append((start_idx, label, conf))
+        if len(self._pulses) > 130:
+            self._pulses = self._pulses[-130:]
+        if len(self._pulses) < 60:
+            return []
+        window = self._pulses[-60:]
+        if not all(window[p][1] == "M" for p in _MINUTE_MARKERS):
+            return []
+        self._pulses = []
+        decoded = self._decode_frame([w[1] for w in window])
+        if decoded is None:
+            return []
+        utc_dt, extra, integrity = decoded
+        host_time = self._host_clock.host_time_at(window[0][0], self.input_rate)
+        offset_s = host_time - utc_dt.timestamp()
+        quality = max(0.0, min(1.0, sum(w[2] for w in window) / 60))
+        if integrity["integrity"] == "failed":
+            quality *= 0.6
+        return [
+            DecodeEvent(
+                ts=time.time(),
+                decoder=self._DECODER_ID,
+                kind="time",
+                text=f"UTC {utc_dt:%H:%M:%S} · host {offset_s:+.2f} s",
+                fields={
+                    "utc": utc_dt.isoformat(),
+                    "offset_s": offset_s,
+                    "quality": quality,
+                    **extra,
+                },
+                **integrity,
+            )
+        ]
+
+    def _decode_frame(
+        self, bits: list[str]
+    ) -> tuple[datetime, dict[str, object], dict[str, str]] | None:
+        raise NotImplementedError
+
+
+# -- JJY ----------------------------------------------------------------------
+
+# JJY keys the carrier at full power for 0.2 s (marker) / 0.5 s (1) / 0.8 s
+# (0) at the start of each second, then drops it to ~10 %.
+_JJY_NOMINAL_S = {"M": 0.2, "1": 0.5, "0": 0.8}
+_JJY_BANDS = (
+    ("M", 0.2, 0.10, 0.35),
+    ("1", 0.5, 0.35, 0.65),
+    ("0", 0.8, 0.65, 0.95),
+)
+_JJY_UTC_OFFSET_H = 9  # the code carries JST
+
+
+def encode_jjy_minute(dt: datetime) -> list[str]:
+    """Reference encoder: the 60 per-second labels ('0'/'1'/'M') for the JST
+    minute starting at `dt` (dt.second==0; naive local time).
+
+    Bit table (BCD, most significant weight first; unlisted seconds are 0):
+      0,9,19,29,39,49,59: marker
+      1-3: minute tens [40,20,10]   5-8: minute units [8,4,2,1]
+      12-13: hour tens [20,10]      15-18: hour units [8,4,2,1]
+      22-23: day-of-year hundreds [200,100]   25-28: tens [80,40,20,10]
+      30-33: day-of-year units [8,4,2,1]
+      36: PA1 even parity of the hour bits   37: PA2 even parity of the minute bits
+      41-44: year tens [80,40,20,10]   45-48: year units [8,4,2,1]
+      50-52: weekday [4,2,1] (Sunday=0)
+    Summer-time (38,40) and leap-second (53-54) bits are not used (Japan has
+    no DST) and are sent as 0.
+    """
+    day = dt.timetuple().tm_yday
+    bits = ["0"] * 60
+    for pos in _MINUTE_MARKERS:
+        bits[pos] = "M"
+    _set_msb(bits, 1, dt.minute // 10, 3)
+    _set_msb(bits, 5, dt.minute % 10, 4)
+    _set_msb(bits, 12, dt.hour // 10, 2)
+    _set_msb(bits, 15, dt.hour % 10, 4)
+    _set_msb(bits, 22, day // 100, 2)
+    _set_msb(bits, 25, (day // 10) % 10, 4)
+    _set_msb(bits, 30, day % 10, 4)
+    bits[36] = _even_parity_bit(bits[12:14] + bits[15:19])
+    bits[37] = _even_parity_bit(bits[1:4] + bits[5:9])
+    _set_msb(bits, 41, (dt.year % 100) // 10, 4)
+    _set_msb(bits, 45, dt.year % 10, 4)
+    _set_msb(bits, 50, dt.isoweekday() % 7, 3)
+    return bits
+
+
+class JjyDecoder(_PulseFrameDecoder):
+    """JJY 40/60 kHz: carrier-on width 0.2/0.5/0.8 s = marker/1/0; see
+    `encode_jjy_minute`. Parity (PA1 hour, PA2 minute) is checked and drives
+    the integrity flag and quality."""
+
+    _DECODER_ID = "jjy"
+    _START_IS_HIGH = True
+    _BANDS = _JJY_BANDS
+
+    def _decode_frame(self, bits):
+        minute = _bcd(bits[1:4], [40, 20, 10]) + _bcd(bits[5:9], [8, 4, 2, 1])
+        hour = _bcd(bits[12:14], [20, 10]) + _bcd(bits[15:19], [8, 4, 2, 1])
+        day = (
+            _bcd(bits[22:24], [200, 100])
+            + _bcd(bits[25:29], [80, 40, 20, 10])
+            + _bcd(bits[30:34], [8, 4, 2, 1])
+        )
+        year = _bcd(bits[41:45], [80, 40, 20, 10]) + _bcd(bits[45:49], [8, 4, 2, 1])
+        hour_ok = _even_parity_bit(bits[12:14] + bits[15:19]) == bits[36]
+        minute_ok = _even_parity_bit(bits[1:4] + bits[5:9]) == bits[37]
+        if not (0 <= minute <= 59 and 0 <= hour <= 23 and 1 <= day <= 366):
+            return None
+        try:
+            jst = datetime(2000 + year, 1, 1) + timedelta(days=day - 1, hours=hour, minutes=minute)
+        except (ValueError, OverflowError):
+            return None
+        utc_dt = (jst - timedelta(hours=_JJY_UTC_OFFSET_H)).replace(tzinfo=UTC)
+        extra = {
+            "dut1": None,
+            "leap": None,
+            "station": "JJY",
+            "parity_ok": hour_ok and minute_ok,
+        }
+        return utc_dt, extra, _parity_integrity({"hour": hour_ok, "minute": minute_ok})
+
+
+# -- WWVB ---------------------------------------------------------------------
+
+# WWVB drops the carrier ~17 dB at the start of each second for 0.2 s (0),
+# 0.5 s (1) or 0.8 s (marker) -- the low time is the symbol, the opposite
+# polarity to JJY.
+_WWVB_NOMINAL_S = {"0": 0.2, "1": 0.5, "M": 0.8}
+_WWVB_BANDS = (
+    ("0", 0.2, 0.10, 0.35),
+    ("1", 0.5, 0.35, 0.65),
+    ("M", 0.8, 0.65, 0.95),
+)
+
+
+def encode_wwvb_minute(dt: datetime, *, dut1_s: float = 0.0, leap_year: bool | None = None):
+    """Reference encoder: the 60 per-second labels ('0'/'1'/'M') for the UTC
+    minute starting at `dt` (dt.second==0).
+
+    Bit table (BCD, most significant weight first; unlisted seconds are 0):
+      0,9,19,29,39,49,59: marker
+      1-3: minute tens [40,20,10]   5-8: minute units [8,4,2,1]
+      12-13: hour tens [20,10]      15-18: hour units [8,4,2,1]
+      22-23: day-of-year hundreds [200,100]   25-28: tens [80,40,20,10]
+      30-33: day-of-year units [8,4,2,1]
+      36-38: UT1 sign (positive = 1,0,1; negative = 0,1,0)
+      40-43: UT1 magnitude [0.8,0.4,0.2,0.1] s
+      45-48: year tens [80,40,20,10]   50-53: year units [8,4,2,1]
+      55: leap-year flag
+    Real WWVB has no parity bits; the DST (57-58) and leap-second (56) bits
+    are not used and are sent as 0.
+    """
+    day = dt.timetuple().tm_yday
+    bits = ["0"] * 60
+    for pos in _MINUTE_MARKERS:
+        bits[pos] = "M"
+    _set_msb(bits, 1, dt.minute // 10, 3)
+    _set_msb(bits, 5, dt.minute % 10, 4)
+    _set_msb(bits, 12, dt.hour // 10, 2)
+    _set_msb(bits, 15, dt.hour % 10, 4)
+    _set_msb(bits, 22, day // 100, 2)
+    _set_msb(bits, 25, (day // 10) % 10, 4)
+    _set_msb(bits, 30, day % 10, 4)
+    positive = dut1_s >= 0
+    bits[36], bits[37], bits[38] = ("1", "0", "1") if positive else ("0", "1", "0")
+    _set_msb(bits, 40, int(round(abs(dut1_s) * 10)), 4)
+    _set_msb(bits, 45, (dt.year % 100) // 10, 4)
+    _set_msb(bits, 50, dt.year % 10, 4)
+    if leap_year is None:
+        leap_year = dt.year % 4 == 0 and (dt.year % 100 != 0 or dt.year % 400 == 0)
+    bits[55] = "1" if leap_year else "0"
+    return bits
+
+
+class WwvbDecoder(_PulseFrameDecoder):
+    """WWVB 60 kHz: carrier-low width 0.2/0.5/0.8 s = 0/1/marker; see
+    `encode_wwvb_minute`. No parity on the air, so (like WWV) integrity is the
+    marker framing plus a field range check."""
+
+    _DECODER_ID = "wwvb"
+    _START_IS_HIGH = False
+    _BANDS = _WWVB_BANDS
+
+    def _decode_frame(self, bits):
+        minute = _bcd(bits[1:4], [40, 20, 10]) + _bcd(bits[5:9], [8, 4, 2, 1])
+        hour = _bcd(bits[12:14], [20, 10]) + _bcd(bits[15:19], [8, 4, 2, 1])
+        day = (
+            _bcd(bits[22:24], [200, 100])
+            + _bcd(bits[25:29], [80, 40, 20, 10])
+            + _bcd(bits[30:34], [8, 4, 2, 1])
+        )
+        year = _bcd(bits[45:49], [80, 40, 20, 10]) + _bcd(bits[50:54], [8, 4, 2, 1])
+        sign = 1 if bits[36] == "1" and bits[38] == "1" else -1
+        dut1 = sign * _bcd(bits[40:44], [8, 4, 2, 1]) / 10.0
+        if not (0 <= minute <= 59 and 0 <= hour <= 23 and 1 <= day <= 366):
+            return None
+        try:
+            utc_dt = datetime(2000 + year, 1, 1, tzinfo=UTC) + timedelta(
+                days=day - 1, hours=hour, minutes=minute
+            )
+        except (ValueError, OverflowError):
+            return None
+        extra = {"dut1": dut1, "leap": None, "station": "WWVB"}
+        integrity = {
+            "integrity": "passed",
+            "integrity_note": "WWVB marker framing and field range check",
+        }
+        return utc_dt, extra, integrity
+
+
+# =============================================================================
+# CHU (Canada, 3330 / 7850 / 14670 kHz) -- Bell 103 FSK time bursts
+# =============================================================================
+
+_CHU_MARK_HZ = 2225.0
+_CHU_SPACE_HZ = 2025.0
+_CHU_BAUD = 300.0
+_CHU_BYTE_BITS = 11  # start + 8 data (LSB first) + 2 stop
+
+
+def encode_chu_burst(dt: datetime) -> bytes:
+    """Reference encoder: the 10-byte FSK burst CHU sends in second
+    `dt.second` (31-39) of the UTC minute.
+
+    Format A (seconds 32-39): bytes 0-4 are BCD nibbles 6, day-of-year (3
+    digits), hour, minute, second -- `6d dd hh mm ss` -- and bytes 5-9 repeat
+    them exactly. (Format B for second 31: see `encode_chu_b_burst`.)
+    """
+    day = dt.timetuple().tm_yday
+    nib = [
+        6,
+        day // 100,
+        (day // 10) % 10,
+        day % 10,
+        dt.hour // 10,
+        dt.hour % 10,
+        dt.minute // 10,
+        dt.minute % 10,
+        dt.second // 10,
+        dt.second % 10,
+    ]
+    a = bytes((nib[i] << 4) | nib[i + 1] for i in range(0, 10, 2))
+    return a + a
+
+
+def encode_chu_b_burst(year: int, *, dut1_s: float = 0.0, tai_utc: int = 37, dst: int = 0) -> bytes:
+    """Format B (second 31): bytes 0-4 are DUT1 (high nibble 0 = positive, 1 =
+    negative; low nibble tenths of a second), year (4 BCD digits), TAI-UTC
+    (2 BCD digits) and a DST byte; bytes 5-9 are their bitwise complement."""
+    d = int(round(abs(dut1_s) * 10))
+    y = [int(c) for c in f"{year:04d}"]
+    t = [tai_utc // 10, tai_utc % 10]
+    a = bytes(
+        [((1 if dut1_s < 0 else 0) << 4) | d, (y[0] << 4) | y[1], (y[2] << 4) | y[3],
+         (t[0] << 4) | t[1], dst & 0xFF]
+    )
+    return a + bytes(~x & 0xFF for x in a)
+
+
+def chu_burst_bits(burst: bytes) -> list[int]:
+    """UART bit stream for a burst: per byte 0 (start), 8 data bits LSB first,
+    1, 1 (stop). 1 = mark (2225 Hz), 0 = space (2025 Hz)."""
+    out: list[int] = []
+    for byte in burst:
+        out.append(0)
+        out.extend((byte >> i) & 1 for i in range(8))
+        out.extend((1, 1))
+    return out
+
+
+class ChuDecoder:
+    """CHU Bell 103 time bursts (USB audio: mark 2225 Hz, space 2025 Hz,
+    300 baud, 11-bit bytes, 10 bytes per second in seconds 31-39).
+
+    Demod: one-bit boxcar tone correlators -> sign of (mark - space energy);
+    each mark->space transition is a candidate start bit and the byte is read
+    at the bit centres. Ten back-to-back bytes form a burst: format A when the
+    two halves are identical (`encode_chu_burst`), format B when the second
+    half is the complement of the first; BCD fields must be plausible. One
+    event per UTC minute: the first valid burst.
+
+    Limits: the burst carries day-of-year but no year, so the year comes from
+    the host clock; `offset_s` assumes the burst starts on the second mark
+    (the real fixed delay after the tick is not compensated).
+    """
+
+    input_rate = _FS
+
+    def __init__(self, clock: Callable[[], float] = time.time):
+        fs = self.input_rate
+        self._clock = clock
+        self._host_clock = _HostClock(clock)
+        self._bit = fs / _CHU_BAUD
+        self._win = int(round(self._bit))
+        self._tail = np.zeros(self._win - 1)
+        self._n = 0  # samples consumed so far
+        self._d = np.zeros(0)  # mark-minus-space energy, one value per sample
+        self._d_base = 0  # absolute sample index of _d[0]
+        self._skip_until = 0  # absolute index: ignore transitions before it
+        self._burst: list[int] = []
+        self._burst_x = 0
+        self._last_x = 0
+        self._last_minute: tuple[int, int, int] | None = None
+        self._b: dict[str, object] = {}  # latest format-B facts (year, DUT1, TAI-UTC)
+
+    def feed(self, samples: np.ndarray) -> list[DecodeEvent]:
+        if samples.size == 0:
+            return []
+        self._host_clock.mark_feed(len(samples))
+        fs = self.input_rate
+        ext = np.concatenate((self._tail, samples.astype(np.float64)))
+        t = (self._n - len(self._tail) + np.arange(len(ext))) / fs
+        box = np.ones(self._win)
+        mark = np.convolve(ext * np.exp(-2j * np.pi * _CHU_MARK_HZ * t), box, "valid")
+        space = np.convolve(ext * np.exp(-2j * np.pi * _CHU_SPACE_HZ * t), box, "valid")
+        self._tail = ext[-(self._win - 1) :]
+        self._n += len(samples)
+        self._d = np.concatenate((self._d, np.abs(mark) ** 2 - np.abs(space) ** 2))
+        return self._parse()
+
+    def flush(self) -> list[DecodeEvent]:
+        return []
+
+    def _parse(self) -> list[DecodeEvent]:
+        d, bit = self._d, self._bit
+        events: list[DecodeEvent] = []
+        positive = d > 0
+        falls = np.flatnonzero(positive[:-1] & ~positive[1:]) + 1
+        reach = int(round((_CHU_BYTE_BITS - 0.5) * bit))
+        keep = max(len(d) - 1, 0)
+        for x in falls:
+            if self._d_base + x < self._skip_until:
+                continue
+            if x + reach >= len(d):
+                keep = max(int(x) - 1, 0)  # wait for the rest of this byte
+                break
+            # A boxcar window ending at index m is centred T/2 earlier, so the
+            # transition at x sits T/2 behind the true edge and bit k is read
+            # at x + (k + 0.5) T.
+            bits = [d[x + int(round((k + 0.5) * bit))] > 0 for k in range(_CHU_BYTE_BITS)]
+            if bits[0] or not (bits[9] and bits[10]):
+                continue
+            byte = sum(int(b) << i for i, b in enumerate(bits[1:9]))
+            self._skip_until = self._d_base + x + int(10.5 * bit)
+            event = self._take_byte(byte, self._d_base + int(x))
+            if event is not None:
+                events.append(event)
+        self._d = d[keep:]
+        self._d_base += keep
+        return events
+
+    def _take_byte(self, byte: int, x_abs: int) -> DecodeEvent | None:
+        contiguous = abs(x_abs - self._last_x - _CHU_BYTE_BITS * self._bit) <= 0.6 * self._bit
+        if self._burst and contiguous:
+            self._burst.append(byte)
+        else:
+            self._burst = [byte]
+            self._burst_x = x_abs
+        self._last_x = x_abs
+        if len(self._burst) < 10:
+            return None
+        burst, self._burst = self._burst, []
+        return self._decode_burst(burst)
+
+    def _take_b(self, a: list[int]) -> None:
+        nib = [n for byte in a for n in (byte >> 4, byte & 0xF)]
+        if nib[0] > 1 or any(n > 9 for n in nib[1:7]) or nib[1] > 9:
+            return
+        year = nib[2] * 1000 + nib[3] * 100 + nib[4] * 10 + nib[5]
+        self._b = {
+            "year": year,
+            "dut1": (-1 if nib[0] else 1) * nib[1] / 10.0,
+            "tai_utc": nib[6] * 10 + nib[7],
+        }
+
+    def _decode_burst(self, burst: list[int]) -> DecodeEvent | None:
+        a, b = burst[:5], burst[5:]
+        if all(b[i] == (~a[i] & 0xFF) for i in range(5)):
+            self._take_b(a)  # format B carries no time, only context for A
+            return None
+        if a != b:
+            return None
+        nib = [n for byte in a for n in (byte >> 4, byte & 0xF)]
+        if nib[0] != 6 or any(n > 9 for n in nib[1:]):
+            return None
+        day = nib[1] * 100 + nib[2] * 10 + nib[3]
+        hour, minute, second = nib[4] * 10 + nib[5], nib[6] * 10 + nib[7], nib[8] * 10 + nib[9]
+        if not (1 <= day <= 366 and hour <= 23 and minute <= 59 and 31 <= second <= 39):
+            return None
+        # Year from the host clock, not format B: B's byte layout is a reconstruction
+        # (not checked off air), and a wrong year would skew offset_s by whole years.
+        year = datetime.fromtimestamp(self._clock(), UTC).year
+        key = (year, day, hour * 60 + minute)
+        if key == self._last_minute:
+            return None
+        try:
+            utc_dt = datetime(year, 1, 1, tzinfo=UTC) + timedelta(
+                days=day - 1, hours=hour, minutes=minute, seconds=second
+            )
+        except (ValueError, OverflowError):
+            return None
+        self._last_minute = key
+        host_time = self._host_clock.host_time_at(self._burst_x, self.input_rate)
+        offset_s = host_time - utc_dt.timestamp()
+        return DecodeEvent(
+            ts=time.time(),
+            decoder="chu",
+            kind="time",
+            text=f"UTC {utc_dt:%H:%M:%S} · host {offset_s:+.2f} s",
+            fields={
+                "utc": utc_dt.isoformat(),
+                "offset_s": offset_s,
+                "dut1": self._b.get("dut1"),
+                "leap": None,
+                "tai_utc": self._b.get("tai_utc"),
+                "station": "CHU",
+                "quality": 1.0,
+            },
+            integrity="passed",
+            integrity_note="CHU format A: both 5-byte halves identical",
         )

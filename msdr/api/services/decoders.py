@@ -533,11 +533,17 @@ class DecoderServiceMixin:
         decoders: list[str],
         max_channels: int | None = None,
         threshold_db: float | None = None,
+        mode: str = "NFM",
+        bandwidth_hz: int | None = None,
     ) -> dict:
         self._require_band_scan_idle()
         self._require_decoder()
         return await self.decoder.start_band(
-            decoders, max_channels=max_channels, threshold_db=threshold_db
+            decoders,
+            max_channels=max_channels,
+            threshold_db=threshold_db,
+            mode=mode,
+            bandwidth_hz=bandwidth_hz,
         )
 
     async def decoder_band_stop(self) -> dict:

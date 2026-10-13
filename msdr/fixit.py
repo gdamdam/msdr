@@ -88,6 +88,12 @@ FIXITS: tuple[FixIt, ...] = (
     _decoder_missing("direwolf", "https://github.com/wb2osz/direwolf"),
     _decoder_missing("minimodem", "https://github.com/kamalmostafa/minimodem"),
     _decoder_missing("jt9", "https://wsjt.sourceforge.io/wsjtx.html"),
+    _decoder_missing("rtl_433", "https://github.com/merbanan/rtl_433"),
+    _decoder_missing("freedv_rx", "https://github.com/drowe67/codec2"),
+    *(
+        _decoder_missing(name, "https://github.com/projecthorus/radiosonde_auto_rx")
+        for name in ("dfm09mod", "m10mod", "m20mod", "rs92mod")
+    ),
     FixIt(
         id="sdrconnect-websocket-off",
         patterns=(r"preferences\s*\S*\s*websocket server",),

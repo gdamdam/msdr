@@ -84,10 +84,13 @@ class FakeDecoderManager:
         *,
         max_channels: int | None = None,
         threshold_db: float | None = None,
+        mode: str = "NFM",
+        bandwidth_hz: int | None = None,
     ) -> dict:
         self.band_active = True
         self.band_decoders = decoders
         self.band_start_calls.append((decoders, max_channels, threshold_db))
+        self.band_mode_calls = [*getattr(self, "band_mode_calls", []), (mode, bandwidth_hz)]
         return self.status()
 
     async def stop_band(self, reason: str = "user") -> dict:
@@ -322,6 +325,17 @@ async def test_decoder_band_start_route_delegates_with_options():
         assert resp.status_code == 200
         assert resp.json()["band"]["active"] is True
         assert fake.band_start_calls == [(["pocsag", "flex"], 4, 12.0)]
+
+
+async def test_decoder_band_start_route_passes_am_mode():
+    fake = FakeDecoderManager()
+    async with running_app(fake) as (app, client, _adapter):
+        resp = await client.post(
+            "/api/decoder/band/start",
+            json={"decoders": ["acars"], "mode": "AM", "bandwidth_hz": 6000},
+        )
+        assert resp.status_code == 200
+        assert fake.band_mode_calls == [("AM", 6000)]
 
 
 async def test_decoder_band_stop_route_delegates_with_user_reason():

@@ -59,6 +59,7 @@ export class SkyView extends LitElement {
     this.started = true;
     this.hasLocation = true;
     this.trackingFeature = true;
+    this._decode = false;
     this._sky = null;
     this._unavailable = false;
     this._tleStatus = null;
@@ -277,7 +278,7 @@ export class SkyView extends LitElement {
    * same as drawer.js's own TRACK button -- keeps the "will this interrupt
    * the current owner" gate (confirmInterrupt) in one place. */
   _toggleTrack(bound, active) {
-    this.dispatchEvent(new CustomEvent("track-toggle", { detail: { active, id: bound?.id ?? null } }));
+    this.dispatchEvent(new CustomEvent("track-toggle", { detail: { active, id: bound?.id ?? null, decode: this._decode } }));
   }
 
   render() {
@@ -440,6 +441,12 @@ export class SkyView extends LitElement {
         <div class="readout"><span class="label">Doppler</span><span class="value mono">${doppler}</span></div>
         <span class="dim mono" style="font-size:0.8em">${tleAge}</span>
         <span class="spacer"></span>
+        ${this.trackingFeature && !trackActive
+          ? html`<label class="dim mono" style="font-size:0.8em" title="Also start the matching AX.25 decoder (ISS APRS, GRBAlpha 9600) and tag frames with this pass">
+              <input type="checkbox" .checked=${this._decode}
+                @change=${(e) => { this._decode = e.target.checked; this.requestUpdate(); }} /> decode
+            </label>`
+          : ""}
         ${this.trackingFeature
           ? html`<button
               title="Track (Doppler-follow)"

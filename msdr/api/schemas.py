@@ -449,6 +449,10 @@ class BandStartIn(BaseModel):
     decoders: list[str] = Field(min_length=1)
     max_channels: int | None = None
     threshold_db: float | None = None
+    # "AM" for airband (118-137 MHz); bandwidth_hz is the AM channel filter's
+    # full width: 8000 (+-4 kHz, 25 kHz spacing, default) or 6000 (8.33 kHz).
+    mode: Literal["NFM", "AM"] = "NFM"
+    bandwidth_hz: int | None = Field(default=None, ge=2000, le=12000)
 
 
 class BandSaveIn(BaseModel):
