@@ -34,6 +34,11 @@ class SpectrumCapture:
         self.sums = [0.0] * self.width
         self.maxima = [None] * self.width
         self.counts = [0] * self.width
+        # Distance of each bin from the centre of the slice its average came
+        # from, as a fraction of the half-span. Overlapping slices hand a bin to
+        # the one that saw it nearer its centre: a slice's edges sit on the
+        # receiver filter's roll-off and would drag the stitched level down.
+        self._owner_distance = [math.inf] * self.width
         self.first_at = [None] * self.width
         self.last_at = [None] * self.width
         self.slices = []
@@ -79,8 +84,17 @@ class SpectrumCapture:
             # A coarse overview bin may contain several source bins; preserve
             # their max and average, never fabricate extra native resolution.
             position = min(self.width - 1, int((low - self.start_hz) / self.bin_width_hz))
-            self.sums[position] += float(value)
-            self.counts[position] += 1
+            middle = self.start_hz + (position + 0.5) * self.bin_width_hz
+            distance = abs(middle - center) / (span / 2)
+            owner = self._owner_distance[position]
+            if distance < owner - 1e-9:
+                self._owner_distance[position] = distance
+                self.sums[position], self.counts[position] = 0.0, 0
+                owner = distance
+            if distance <= owner + 1e-9:
+                self.sums[position] += float(value)
+                self.counts[position] += 1
+            # The maximum stays a peak hold across every slice, edges included.
             previous = self.maxima[position]
             self.maxima[position] = (
                 float(value) if previous is None else max(float(value), previous)
