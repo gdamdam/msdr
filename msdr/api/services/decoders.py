@@ -151,6 +151,7 @@ class DecoderServiceMixin:
         if msg.get("type") == "decoder_event":
             self._navaid_ident_check(msg)
         spawn(self.broadcaster.publish(msg))
+        self.feeds.on_message(msg)  # never raises; no-op while both feeds are off
         # Bearing/DDM and other instrument reports are useful output, not
         # decoded identity evidence. Keep them visible without confirming a
         # station, beacon or observation claim from receiver measurements.

@@ -190,6 +190,19 @@ class FreeDATAIntegrationSettings(BaseModel):
         return normalize_base_url(value)
 
 
+class FeedsSettings(BaseModel):
+    """Outbound feeds of decoded data to other apps; everything off by default."""
+
+    # SBS-1 BaseStation lines for ADS-B, served on a local TCP port (dump1090's 30003).
+    sbs_enabled: bool = False
+    sbs_host: str = "127.0.0.1"
+    sbs_port: int = Field(default=30003, ge=1, le=65535)
+    # AIS as !AIVDM NMEA sentences over UDP (OpenCPN's usual 10110).
+    nmea_enabled: bool = False
+    nmea_host: str = "127.0.0.1"
+    nmea_port: int = Field(default=10110, ge=1, le=65535)
+
+
 class IntegrationsSettings(BaseModel):
     """Optional links to separately-running digital-mode applications."""
 
@@ -681,6 +694,7 @@ class Settings(BaseModel):
     history: HistorySettings = Field(default_factory=HistorySettings)
     native_audio: NativeAudioSettings = Field(default_factory=NativeAudioSettings)
     integrations: IntegrationsSettings = Field(default_factory=IntegrationsSettings)
+    feeds: FeedsSettings = Field(default_factory=FeedsSettings)
     survey: SurveySettings = Field(default_factory=SurveySettings)
     lna_auto: LnaAutoSettings = Field(default_factory=LnaAutoSettings)
     beacons: BeaconSettings = Field(default_factory=BeaconSettings)

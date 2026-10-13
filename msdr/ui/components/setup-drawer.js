@@ -565,7 +565,8 @@ export class SetupDrawer extends LitElement {
 
   async _saveIntegration(ev) {
     const { source, config } = ev.detail;
-    const patch = { integrations: { [source]: config } };
+    // Outbound feeds are a top-level settings group, not an external-app integration.
+    const patch = source === "feeds" ? { feeds: config } : { integrations: { [source]: config } };
     const previous = JSON.parse(JSON.stringify(this._orig ?? {}));
     try {
       const at = Date.now();
@@ -1776,6 +1777,7 @@ export class SetupDrawer extends LitElement {
       ${this._sectionSummary("setup-integrations", "Integrations")}
       <integration-panel
         .settings=${this._orig?.integrations ?? {}}
+        .feeds=${this._orig?.feeds ?? {}}
         @save-integration=${(ev) => this._saveIntegration(ev)}
       ></integration-panel>
       </details>
