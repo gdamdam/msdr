@@ -10,6 +10,10 @@ The validation gate passed on 2026-10-03:
 - AWGN: SF7 100 % to −7 dB; SF11 LongFast 100 % to −15 dB.
 - Real-time factor is 0.10 at 2.4 MS/s.
 
+## LoRaWAN headers
+
+CRC-valid raw LoRa frames that parse as LoRaWAN 1.0 (sync word 0x34, or a structurally valid MHDR) get `lorawan_*` fields: message type, DevAddr and network operator, FCtrl flags, FCnt, MAC command names, FPort, payload length, MIC as hex, and join-request EUIs. Payloads are never decrypted and the MIC is never verified. See `pydecoders/lorawan.py`.
+
 ## MeshCore US narrow preset
 
 Parameters: 910.525 MHz, SF7, 62.5 kHz bandwidth, 4/5 coding rate, MeshCore payload parsing (sync word 0x12).
