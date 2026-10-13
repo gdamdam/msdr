@@ -99,3 +99,10 @@ def test_registry_profiles_apply_and_clean_is_identity():
     for name in imp.PROFILES:
         out = imp.apply_profile(name, x, RATE, seed=1)
         assert out.shape == x.shape
+
+
+def test_lost_frame_zeroes_one_block_and_keeps_length():
+    x = np.ones(10_000, np.complex64)
+    y = imp.lost_frame(x, block=1024, at=0.5)
+    assert len(y) == len(x)
+    assert np.count_nonzero(y == 0) == 1024 and y[5000] == 0

@@ -17,6 +17,17 @@ async def test_stream_queue_is_bounded_and_keeps_latest_frames():
 
 
 @pytest.mark.asyncio
+async def test_stream_offset_counts_dropped_frames_so_gaps_are_visible():
+    stream = IQStream("127.0.0.1", 5454)
+    for _ in range(41):  # one more than the queue holds: the first is dropped
+        stream._on_message(b"\x02\x00" + bytes(8))  # two IQ samples each
+    first = await stream._queue.get()
+    assert first.stream_offset == 2  # the dropped frame's samples still count
+    second = await stream._queue.get()
+    assert second.stream_offset == 4
+
+
+@pytest.mark.asyncio
 async def test_start_clears_old_frames_and_tags_new_session_generation(monkeypatch):
     stream = IQStream("127.0.0.1", 5454)
 

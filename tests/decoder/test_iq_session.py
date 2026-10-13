@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from msdr.decoder.backends import DecodeEvent, DecoderError, LoopEventQueue
-from msdr.decoder.iq_session import IQDecoderSession
+from msdr.decoder.iq_session import IQDecoderSession, gap_fill
 
 
 class Stream:
@@ -160,5 +160,54 @@ async def test_slow_decoder_feed_does_not_block_event_loop():
                 break
             await asyncio.sleep(0.01)
         assert [e.text for e in events] == ["radial"]
+    finally:
+        await session.stop()
+
+
+def _frame(data, offset, generation=1):
+    return SimpleNamespace(data=data, stream_offset=offset, session_generation=generation)
+
+
+def test_gap_fill_zeroes_exactly_the_samples_dropped_before_a_frame():
+    assert gap_fill((1, 100), _frame(b"", 103)) == bytes(12)
+    assert gap_fill((1, 100), _frame(b"", 100)) == b""  # contiguous
+    assert gap_fill(None, _frame(b"", 100)) == b""  # first frame
+    assert gap_fill((1, 100), _frame(b"", 103, generation=2)) == b""  # new session
+    assert gap_fill((1, 100), SimpleNamespace(data=b"")) == b""  # replay/fake frame
+    assert gap_fill((1, 0), _frame(b"", (1 << 20) + 1)) == b""  # too long to fill
+
+
+@pytest.mark.asyncio
+async def test_rs41_frame_survives_a_dropped_stream_frame():
+    # A frame lost on queue overflow used to shift every later bit; zero-filling
+    # the gap keeps timing so Reed-Solomon repairs the hole.
+    from msdr.decoder.pydecoders.rs41 import RS41Backend
+    from tests.decoder.rs41_fixtures import rs41_iq, rs41_test_frame
+
+    raw = rs41_iq(rs41_test_frame(), leading_samples=5)
+    chunk = 1024 * 4
+    stream, events = Stream(), []
+    backend = RS41Backend(
+        None, sample_rate_hz=57_600, center_hz=403_000_000, frequency_hz=403_000_000
+    )
+    session = IQDecoderSession(
+        stream=stream,
+        backends={"rs41": backend},
+        frequency_hz=403_000_000,
+        signal_id="signal",
+        on_event=events.append,
+        on_status=lambda: None,
+    )
+    await session.start()
+    try:
+        chunks = [raw[i : i + chunk] for i in range(0, len(raw), chunk)]
+        for n, data in enumerate(chunks):
+            if n != len(chunks) // 2:  # this frame is dropped
+                stream.queue.put_nowait(_frame(data, n * 1024))
+        for _ in range(400):
+            if events:
+                break
+            await asyncio.sleep(0.005)
+        assert events and events[0].integrity == "passed"
     finally:
         await session.stop()
