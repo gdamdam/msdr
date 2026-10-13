@@ -202,3 +202,5 @@ Impact: blocks listening / wrong evidence / lost data / cosmetic / other
 ```
 
 Triage crashes, lost recordings, wrong tuning and confidently wrong evidence first. Keep a separate list of unavailable signals and dependencies, so “not tested” never disappears into the pass count.
+
+When writing or changing a decoder, also run the [real-world checklist](real-world-checklist.md) (radio faults, propagation, transmitter variations, program behaviour).
