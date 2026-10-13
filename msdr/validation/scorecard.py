@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 import numpy as np
 
 from msdr.validation import fixtures as fx
+from msdr.validation import impairments as imp
 
 _DEFAULT_DURATION_S = 1.0
 _DECODE_COLLECT_S = 2.5
@@ -67,9 +68,22 @@ class CaseResult:
 
 
 @dataclass
+class ImpairmentResult:
+    """One decoder x impairment-profile cell (msdr.validation.impairments).
+    passed=None means the profile cannot be expressed for that decoder's
+    input (e.g. NaN in int16 IQ) and was not run."""
+
+    decoder: str
+    profile: str
+    passed: bool | None
+    detail: str = ""
+
+
+@dataclass
 class ScorecardReport:
     generated_at: str
     cases: list[CaseResult]
+    impairments: list[ImpairmentResult] = field(default_factory=list)
 
 
 # --- shared: real classify_modulation/family_for/voice_score/keying_timing,
@@ -524,6 +538,122 @@ async def _case_dropped_blocks(binaries: dict) -> CaseResult:
     )
 
 
+# --- impairment profiles: decoders with a synthetic IQ generator ----------
+# A decoder fed only by the app's own clean generator proves the receiver
+# agrees with the generator. Each runner builds the same clean burst the
+# decoder's own tests use, degrades it with msdr.validation.impairments and
+# records whether the decoder still recovers the known payload. A failing
+# profile is a real (synthetic) result, not something to tune away.
+
+_ADSB_HEX = "8D485020994409940838175B284F"  # published velocity frame (tests/decoder)
+_ADSB_RATE = 4_000_000  # 2 samples/chip, integer path of NativeADSBBackend
+
+
+def _sc16_to_iq(data: bytes) -> np.ndarray:
+    raw = np.frombuffer(data, dtype="<i2").astype(np.float32).reshape(-1, 2)
+    return ((raw[:, 0] + 1j * raw[:, 1]) / 32768.0).astype(np.complex64)
+
+
+def _iq_to_sc16(iq: np.ndarray) -> bytes:
+    packed = np.empty((len(iq), 2), dtype="<i2")
+    packed[:, 0] = np.clip(np.rint(iq.real * 32768.0), -32768, 32767).astype("<i2")
+    packed[:, 1] = np.clip(np.rint(iq.imag * 32768.0), -32768, 32767).astype("<i2")
+    return packed.tobytes()
+
+
+def _adsb_burst_iq(rate: int = _ADSB_RATE, amplitude: float = 0.5) -> np.ndarray:
+    bits = np.unpackbits(np.frombuffer(bytes.fromhex(_ADSB_HEX), dtype=np.uint8)).astype(np.float32)
+    preamble = np.zeros(16, dtype=np.float32)
+    preamble[[0, 2, 7, 9]] = 1.0
+    chips = np.empty(len(bits) * 2, dtype=np.float32)
+    chips[0::2], chips[1::2] = bits, 1.0 - bits
+    chips = np.concatenate([preamble, chips])
+    spc = rate // 2_000_000
+    burst = np.repeat(chips, spc) * amplitude
+    pad = np.zeros(rate // 500, dtype=np.float32)  # 2 ms of silence each side
+    return np.concatenate([pad, burst, pad]).astype(np.complex64)
+
+
+def _drain(backend) -> list:
+    out = []
+    while not backend._events.empty():
+        event = backend._events.get_nowait()
+        if event is not None:
+            out.append(event)
+    return out
+
+
+def _impair_ais(profile: str) -> tuple[bool, str]:
+    from msdr.decoder.pydecoders.ais import AisDecoder
+    from tests.helpers.gmsk import ais_type1, iq_to_flat, make_burst
+
+    mmsi = 366123456
+    payload = ais_type1(mmsi=mmsi, nav_status=0, sog_tenths=123, lon_deg=-122.4194, lat_deg=37.8081)
+    iq = make_burst(payload, 48_000.0, np.random.default_rng(0))
+    # Silence either side so the decoder sees a burst, not a continuous signal.
+    iq = np.concatenate([np.zeros(2400, np.complex64), iq, np.zeros(2400, np.complex64)])
+    iq = imp.apply_profile(profile, iq.astype(np.complex64), 48_000.0, 0, 162e6)
+    flat = iq_to_flat(iq, fs=48_000.0)
+    decoder = AisDecoder()
+    events = list(decoder.feed(flat)) + list(decoder.flush())
+    ok = any(e.integrity == "passed" and e.fields.get("mmsi") == mmsi for e in events)
+    return ok, f"{len(events)} event(s), stats={decoder.stats()}"
+
+
+async def _impair_adsb(profile: str) -> tuple[bool, str]:
+    from msdr.decoder.pydecoders.adsb import NativeADSBBackend
+
+    iq = imp.apply_profile(profile, _adsb_burst_iq(), float(_ADSB_RATE), 0, 1090e6)
+    backend = NativeADSBBackend(None, sample_rate_hz=_ADSB_RATE, center_hz=0.0, frequency_hz=0.0)
+    await backend.start()
+    backend.feed(_iq_to_sc16(iq))
+    events = _drain(backend)
+    icao = _ADSB_HEX[2:8]
+    ok = any(e.integrity == "passed" and e.fields.get("icao") == icao for e in events)
+    return ok, f"{len(events)} event(s), error={backend.error!r}"
+
+
+async def _impair_rs41(profile: str) -> tuple[bool, str]:
+    from msdr.decoder.pydecoders.rs41 import RS41Backend
+    from tests.decoder.rs41_fixtures import rs41_iq, rs41_test_frame
+
+    iq = _sc16_to_iq(rs41_iq(rs41_test_frame(), leading_samples=5))
+    iq = imp.apply_profile(profile, iq, 57_600.0, 0, 403e6)
+    backend = RS41Backend(None, sample_rate_hz=57_600, center_hz=403e6, frequency_hz=403e6)
+    await backend.start()
+    backend.feed(_iq_to_sc16(iq))
+    events = _drain(backend)
+    ok = any(e.integrity == "passed" and e.fields.get("serial") == "K1234567" for e in events)
+    return ok, f"{len(events)} event(s)"
+
+
+_IMPAIRMENT_DECODERS = {"ais": _impair_ais, "adsb": _impair_adsb, "rs41": _impair_rs41}
+# AIS is fed float flat audio, so NaN can occur; the sc16 IQ decoders only see int16.
+_SC16_DECODERS = {"adsb", "rs41"}
+
+
+async def run_impairments() -> list[ImpairmentResult]:
+    results = []
+    for decoder, runner in _IMPAIRMENT_DECODERS.items():
+        for name, profile in imp.PROFILES.items():
+            if profile.finite_only and decoder in _SC16_DECODERS:
+                results.append(
+                    ImpairmentResult(decoder, name, None, "int16 IQ cannot carry NaN/inf")
+                )
+                continue
+            try:
+                out = runner(name)
+                ok, detail = await out if asyncio.iscoroutine(out) else out
+                results.append(ImpairmentResult(decoder, name, ok, detail))
+            except ImportError as exc:
+                results.append(ImpairmentResult(decoder, name, None, f"unavailable: {exc}"))
+            except Exception as exc:  # noqa: BLE001 -- a crash is a failing cell, not a scorecard abort
+                results.append(
+                    ImpairmentResult(decoder, name, False, f"raised {type(exc).__name__}: {exc}")
+                )
+    return results
+
+
 async def run_scorecard() -> ScorecardReport:
     from msdr.decoder.registry import resolve_binaries
 
@@ -547,7 +677,11 @@ async def run_scorecard() -> ScorecardReport:
         await _case_adjacent_strong_channel(binaries),
         await _case_dropped_blocks(binaries),
     ]
-    return ScorecardReport(generated_at=datetime.now(UTC).isoformat(), cases=cases)
+    return ScorecardReport(
+        generated_at=datetime.now(UTC).isoformat(),
+        cases=cases,
+        impairments=await run_impairments(),
+    )
 
 
 # --- Markdown rendering -------------------------------------------------------
@@ -595,4 +729,33 @@ def render_markdown(report: ScorecardReport) -> str:
         lines.append(
             f"| {case.label} | {case.decoder_events_total()} | {case.has_protocol_claim()} |"
         )
+    if report.impairments:
+        lines.extend(_render_impairments(report.impairments))
     return "\n".join(lines) + "\n"
+
+
+def _render_impairments(results: list[ImpairmentResult]) -> list[str]:
+    profiles = list(dict.fromkeys(r.profile for r in results))
+    decoders = list(dict.fromkeys(r.decoder for r in results))
+    by_key = {(r.decoder, r.profile): r for r in results}
+    lines = [
+        "\n## Impairment profiles (synthetic)\n",
+        "Each decoder's known synthetic burst is degraded by "
+        "`msdr.validation.impairments` and decoded; pass = the expected payload "
+        "is recovered with a passed integrity check. `n/a` = profile not "
+        "expressible for that decoder's input. Failures are reported as found, "
+        "not tuned away. Synthetic only -- not off-air validation.\n",
+        "| decoder | " + " | ".join(profiles) + " |",
+        "|---|" + "---|" * len(profiles),
+    ]
+    for decoder in decoders:
+        cells = []
+        for profile in profiles:
+            r = by_key.get((decoder, profile))
+            cells.append("n/a" if r is None or r.passed is None else "pass" if r.passed else "FAIL")
+        lines.append(f"| {decoder} | " + " | ".join(cells) + " |")
+    failures = [r for r in results if r.passed is False]
+    if failures:
+        lines.append("\nFailing cells:\n")
+        lines.extend(f"- {r.decoder} / {r.profile}: {r.detail}" for r in failures)
+    return lines

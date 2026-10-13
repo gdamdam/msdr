@@ -7,7 +7,7 @@ analyzer/decoder code paths behave correctly on a *known* synthetic signal.
 Field validation (a real off-air capture) is tracked separately --
 see `docs/validation/corpus.md` and `tests/corpus/manifest.json`.
 
-Generated: 2026-09-27T19:26:35.842349+00:00
+Generated: 2026-10-13T14:36:11.112644+00:00
 
 ## Detectors
 
@@ -58,3 +58,20 @@ Generated: 2026-09-27T19:26:35.842349+00:00
 | clipped IQ / hard-limited (negative control) | 0 | False |
 | adjacent strong channel (negative control, detector-only) | 0 | False |
 | dropped blocks (negative control) | 0 | False |
+
+## Impairment profiles (synthetic)
+
+Each decoder's known synthetic burst is degraded by `msdr.validation.impairments` and decoded; pass = the expected payload is recovered with a passed integrity check. `n/a` = profile not expressible for that decoder's input. Failures are reported as found, not tuned away. Synthetic only -- not off-air validation.
+
+| decoder | clean | ppm_20 | off_centre | dc_spike | iq_swap | iq_imbalance | drops | 8bit | low_snr | nonfinite |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ais | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
+| adsb | pass | pass | pass | pass | pass | pass | FAIL | pass | pass | n/a |
+| rs41 | pass | FAIL | FAIL | pass | pass | pass | FAIL | pass | pass | n/a |
+
+Failing cells:
+
+- adsb / drops: 0 event(s), error=None
+- rs41 / ppm_20: 0 event(s)
+- rs41 / off_centre: 0 event(s)
+- rs41 / drops: 0 event(s)
