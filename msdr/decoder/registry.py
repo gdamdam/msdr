@@ -20,6 +20,15 @@ _DSDFME_INSTALL_HINT = (
     "copy dsd-fme to ~/.local/bin"
 )
 
+_RTL433_INSTALL_HINT = "brew install rtl_433"
+# freedv_rx ships in codec2's bin/ on Homebrew (not verified on this machine).
+_FREEDV_INSTALL_HINT = "brew install codec2 (provides freedv_rx; check it is on PATH)"
+_SONDE_INSTALL_HINT = (
+    "Build radiosonde_auto_rx's demodulators: git clone "
+    "https://github.com/projecthorus/radiosonde_auto_rx, cd demod/mod && make; "
+    "copy {binary} to ~/.local/bin"
+)
+
 # All P1 decoders run multimon-ng/minimodem on mono s16 audio at this rate
 # (spec "Measured facts": multimon raw input is 22,050 Hz).
 _P1_INPUT_RATE = 22050
@@ -54,6 +63,8 @@ class DecoderSpec:
         "standalone_dsc",
         "standalone_navigation",
         "standalone_protocol",
+        "external_iq",
+        "freedv",
     ]
     binaries: tuple[str, ...]  # ("multimon-ng",) or ("minimodem",) or ("direwolf",)
     args: tuple[str, ...]  # backend-specific extra args
@@ -374,6 +385,20 @@ DECODERS: dict[str, DecoderSpec] = {
             binaries=(),
             args=("msdr.decoder.pydecoders.navtex:NavtexDecoder",),
         ),
+        DecoderSpec(
+            id="acars",
+            label="ACARS (VHF 2400 bd MSK)",
+            kind="text",
+            demodulators=("AM",),
+            # 131.550 / 131.725 / 131.825 MHz etc.; the 1200/2400 Hz MSK tones need
+            # ~3 kHz of audio, and 2400 bd wants >=9 samples/bit, hence 22,050 Hz
+            # rather than the 11,025 Hz of the HF text decoders.
+            default_bandwidth_hz=8000,
+            input_rate=_P1_INPUT_RATE,
+            backend="python",
+            binaries=(),
+            args=("msdr.decoder.pydecoders.acars:AcarsDecoder",),
+        ),
         # wwv/dcf77/msf: round 2 (time signals), pydecoders/timecode.py.
         DecoderSpec(
             id="wwv",
@@ -411,6 +436,70 @@ DECODERS: dict[str, DecoderSpec] = {
             backend="python",
             binaries=(),
             args=("msdr.decoder.pydecoders.timecode:MsfDecoder",),
+            phase=1,
+        ),
+        # jjy/wwvb/chu: same module. LF time signals need HDR (Ant B) like
+        # DCF77/MSF; CHU is a USB-audio FSK burst, not an AM pulse.
+        DecoderSpec(
+            id="jjy",
+            label="JJY time code",
+            kind="time",
+            demodulators=("AM",),
+            default_bandwidth_hz=1000,  # 40 / 60 kHz
+            input_rate=_PYTHON_INPUT_RATE,
+            backend="python",
+            binaries=(),
+            args=("msdr.decoder.pydecoders.timecode:JjyDecoder",),
+            phase=1,
+        ),
+        DecoderSpec(
+            id="wwvb",
+            label="WWVB time code",
+            kind="time",
+            demodulators=("AM",),
+            default_bandwidth_hz=1000,  # 60 kHz
+            input_rate=_PYTHON_INPUT_RATE,
+            backend="python",
+            binaries=(),
+            args=("msdr.decoder.pydecoders.timecode:WwvbDecoder",),
+            phase=1,
+        ),
+        DecoderSpec(
+            id="chu",
+            label="CHU time code",
+            kind="time",
+            demodulators=("USB",),
+            default_bandwidth_hz=3000,  # 3330 / 7850 / 14670 kHz; tones at 2025/2225 Hz
+            input_rate=_PYTHON_INPUT_RATE,
+            backend="python",
+            binaries=(),
+            args=("msdr.decoder.pydecoders.timecode:ChuDecoder",),
+            phase=1,
+        ),
+        # psk31/ale: 8 kHz so a 31.25 baud / 125 baud symbol is a whole number
+        # of samples (256 / 64).
+        DecoderSpec(
+            id="psk31",
+            label="PSK31",
+            kind="text",
+            demodulators=("USB",),
+            default_bandwidth_hz=3000,  # finds the strongest carrier in the passband
+            input_rate=8000,
+            backend="python",
+            binaries=(),
+            args=("msdr.decoder.pydecoders.psk31:Psk31Decoder",),
+            phase=1,
+        ),
+        DecoderSpec(
+            id="ale",
+            label="HF ALE (2G)",
+            kind="text",
+            demodulators=("USB",),
+            default_bandwidth_hz=3000,  # 8-FSK tones 750-2500 Hz
+            input_rate=8000,
+            backend="python",
+            binaries=(),
+            args=("msdr.decoder.pydecoders.ale:AleDecoder",),
             phase=1,
         ),
         # AIS on the flat NFM discriminator (48 kHz = 5 samples/symbol),
@@ -475,6 +564,19 @@ for _spec in (
         backend="standalone_protocol",
         binaries=(),
         args=("msdr.decoder.pydecoders.rs41:RS41Backend",),
+        normalize=False,
+        iq_only=True,
+    ),
+    DecoderSpec(
+        id="orbcomm",
+        label="Orbcomm satellite downlink",
+        kind="text",
+        demodulators=("IQ",),
+        default_bandwidth_hz=25_000,
+        input_rate=57_600,
+        backend="standalone_protocol",
+        binaries=(),
+        args=("msdr.decoder.pydecoders.orbcomm:OrbcommBackend",),
         normalize=False,
         iq_only=True,
     ),
@@ -572,6 +674,83 @@ for _spec in (
         iq_only=True,
     ),
 ):
+    DECODERS[_spec.id] = _spec
+
+
+# Decoders backed by external programs (backends in external_decoders.py).
+_EXTERNAL_SPECS: list[DecoderSpec] = [
+    # 250 kS/s is rtl_433's default and what most 433/868/915 MHz protocols are tuned for.
+    DecoderSpec(
+        id="rtl433",
+        label="ISM sensors (rtl_433)",
+        kind="text",
+        demodulators=("IQ",),
+        default_bandwidth_hz=200_000,
+        input_rate=250_000,
+        backend="external_iq",
+        binaries=("rtl_433",),
+        args=(),
+        normalize=False,
+        iq_only=True,
+        install_hint=_RTL433_INSTALL_HINT,
+    ),
+    # Wireless M-Bus modes S/T/C&T need 1-1.2 MS/s in rtl_433 (protocols 105, 238, 104).
+    DecoderSpec(
+        id="rtl433_wmbus",
+        label="Wireless M-Bus (rtl_433)",
+        kind="text",
+        demodulators=("IQ",),
+        default_bandwidth_hz=200_000,
+        input_rate=1_000_000,
+        backend="external_iq",
+        binaries=("rtl_433",),
+        args=("-R", "105", "-R", "238"),
+        normalize=False,
+        iq_only=True,
+        install_hint=_RTL433_INSTALL_HINT,
+    ),
+    *(
+        DecoderSpec(
+            id=f"freedv{mode.lower()}",
+            label=f"FreeDV {mode}",
+            kind="text",
+            demodulators=("USB",),
+            default_bandwidth_hz=2_500,
+            input_rate=8_000,
+            backend="freedv",
+            binaries=("freedv_rx",),
+            args=(mode,),
+            install_hint=_FREEDV_INSTALL_HINT,
+        )
+        for mode in ("700D", "700E", "1600")
+    ),
+    # Flags per each demodulator's own option parser: --iq0 reads IQ WAV (FM demod inside);
+    # rs92mod positions need an ephemeris/almanac file we do not supply, so RS92 usually
+    # reports telemetry without a map position.
+    *(
+        DecoderSpec(
+            id=f"sonde_{name}",
+            label=f"{label} radiosonde",
+            kind="text",
+            demodulators=("IQ",),
+            default_bandwidth_hz=20_000,
+            input_rate=48_000,
+            backend="external_iq",
+            binaries=(binary,),
+            args=args,
+            normalize=False,
+            iq_only=True,
+            install_hint=_SONDE_INSTALL_HINT.format(binary=binary),
+        )
+        for name, label, binary, args in (
+            ("dfm", "DFM-06/09/17", "dfm09mod", ("--json", "--ecc", "--iq0")),
+            ("m10", "Meteomodem M10", "m10mod", ("--json", "--ptu", "--iq0")),
+            ("m20", "Meteomodem M20", "m20mod", ("--json", "--ptu", "--iq0")),
+            ("rs92", "Vaisala RS92", "rs92mod", ("--json", "--crc", "--ecc", "--vel", "--iq0")),
+        )
+    ),
+]
+for _spec in _EXTERNAL_SPECS:
     DECODERS[_spec.id] = _spec
 
 

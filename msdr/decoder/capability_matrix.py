@@ -631,6 +631,35 @@ MATRIX: dict[str, CapabilityEntry] = {
         ),
         field_notes="README: NAVTEX not verified off-air (no HF antenna connected).",
     ),
+    "acars": CapabilityEntry(
+        input_path="audio",
+        demodulators=("AM",),
+        single_channel=True,
+        band_path=False,
+        replay_supported="planned_s3",
+        integrity_policy="crc",
+        integrity_notes=(
+            "msdr.decoder.pydecoders.acars checks every character's odd parity and the block's "
+            "CRC-16 (Kermit). Parity-clean frames with a bad CRC are emitted with crc_ok=false "
+            "and integrity 'failed'; frames with a parity error are dropped."
+        ),
+        validation=Validation(
+            state="fixture_tested",
+            backend_version=_MSDR_VERSION,
+            validated_on=date(2026, 10, 13),
+            tests=[
+                "tests/decoder/test_acars.py::test_clean_round_trip_downlink_with_flight_id",
+                "tests/decoder/test_acars.py::test_round_trip_moderate_snr",
+                "tests/decoder/test_acars.py::test_bad_crc_is_flagged_not_passed",
+                "tests/decoder/test_acars.py::test_noise_only_emits_nothing",
+            ],
+            notes=(
+                "Synthesised-signal round trip only (own MSK generator -> own decoder); "
+                "NRZI polarity and tone assignment are unconfirmed against real traffic."
+            ),
+        ),
+        field_notes="Not verified off-air (VHF airband); synthetic tests only.",
+    ),
     "wwv": CapabilityEntry(
         input_path="audio",
         demodulators=("AM",),
@@ -711,6 +740,147 @@ MATRIX: dict[str, CapabilityEntry] = {
             ),
         ),
         field_notes="README: time-signal decoders not verified off-air (no HF antenna connected).",
+    ),
+    "jjy": CapabilityEntry(
+        input_path="audio",
+        demodulators=("AM",),
+        single_channel=True,
+        band_path=False,
+        replay_supported="planned_s3",
+        integrity_policy="parity",
+        integrity_notes=(
+            "JJY's PA1 (hour) and PA2 (minute) even-parity bits are checked in "
+            "JjyDecoder._decode_frame() (timecode.py); a mismatch sets integrity 'failed' and "
+            "scales 'quality' by 0.6, and fields['parity_ok'] reports it. The marker framing "
+            "and field range check gate every frame."
+        ),
+        validation=Validation(
+            state="fixture_tested",
+            backend_version=_MSDR_VERSION,
+            validated_on=_SHIPPED_ON,
+            tests=[
+                "tests/decoder/test_timecode_jjy_wwvb_chu.py::"
+                "test_jjy_decodes_one_minute_frame_jst_to_utc",
+                "tests/decoder/test_timecode_jjy_wwvb_chu.py::"
+                "test_jjy_parity_error_is_flagged_but_still_decodes",
+                "tests/decoder/test_timecode_jjy_wwvb_chu.py::test_jjy_no_event_on_noise",
+            ],
+            notes="Synthesised-signal round trip only; not verified against an off-air recording.",
+        ),
+        field_notes="Not verified off-air (synthetic tests only); 40/60 kHz needs HDR (Ant B).",
+    ),
+    "wwvb": CapabilityEntry(
+        input_path="audio",
+        demodulators=("AM",),
+        single_channel=True,
+        band_path=False,
+        replay_supported="planned_s3",
+        integrity_policy="builtin_check",
+        integrity_notes=(
+            "Real WWVB carries no parity bits; WwvbDecoder._decode_frame() (timecode.py) "
+            "only runs on a frame whose seven marker positions all read 'M' and rejects "
+            "out-of-range minute/hour/day -- a plausibility gate msdr added, not a "
+            "protocol-level check."
+        ),
+        validation=Validation(
+            state="fixture_tested",
+            backend_version=_MSDR_VERSION,
+            validated_on=_SHIPPED_ON,
+            tests=[
+                "tests/decoder/test_timecode_jjy_wwvb_chu.py::"
+                "test_wwvb_decodes_one_minute_frame_with_dut1",
+                "tests/decoder/test_timecode_jjy_wwvb_chu.py::"
+                "test_wwvb_rejects_out_of_range_fields",
+                "tests/decoder/test_timecode_jjy_wwvb_chu.py::test_wwvb_no_event_on_noise",
+            ],
+            notes="Synthesised-signal round trip only; not verified against an off-air recording.",
+        ),
+        field_notes="Not verified off-air (synthetic tests only); 60 kHz needs HDR (Ant B).",
+    ),
+    "chu": CapabilityEntry(
+        input_path="audio",
+        demodulators=("USB",),
+        single_channel=True,
+        band_path=False,
+        replay_supported="planned_s3",
+        integrity_policy="repeat_fields",
+        integrity_notes=(
+            "Format A bursts (seconds 32-39) repeat their five time bytes; "
+            "ChuDecoder._decode_burst() (timecode.py) drops a burst unless the halves are "
+            "identical and the first nibble is 6, then range-checks the BCD fields. Format B "
+            "(second 31, complement halves) supplies year/DUT1/TAI-UTC."
+        ),
+        validation=Validation(
+            state="fixture_tested",
+            backend_version=_MSDR_VERSION,
+            validated_on=_SHIPPED_ON,
+            tests=[
+                "tests/decoder/test_timecode_jjy_wwvb_chu.py::"
+                "test_chu_decodes_a_burst_and_reports_once_per_minute",
+                "tests/decoder/test_timecode_jjy_wwvb_chu.py::"
+                "test_chu_rejects_a_burst_whose_halves_differ",
+                "tests/decoder/test_timecode_jjy_wwvb_chu.py::test_chu_no_event_on_noise",
+            ],
+            notes="Synthesised-signal round trip only; not verified against an off-air recording.",
+        ),
+        field_notes="Not verified off-air (synthetic tests only); year comes from the host clock.",
+    ),
+    "psk31": CapabilityEntry(
+        input_path="audio",
+        demodulators=("USB",),
+        single_channel=True,
+        band_path=False,
+        replay_supported="planned_s3",
+        integrity_policy="none_exposed",
+        integrity_notes=(
+            "BPSK31 has no FEC or checksum; Psk31Decoder only gates output on its own "
+            "symbol-decision quality, so no per-message validity flag is exposed."
+        ),
+        validation=Validation(
+            state="fixture_tested",
+            backend_version=_MSDR_VERSION,
+            validated_on=_SHIPPED_ON,
+            tests=[
+                "tests/decoder/test_psk31.py::test_psk31_round_trip_with_offset_carrier_and_noise",
+                "tests/decoder/test_psk31.py::test_psk31_idle_pause_emits_partial_line",
+                "tests/decoder/test_psk31.py::test_psk31_no_event_on_noise",
+            ],
+            notes=(
+                "Synthesised-signal round trip only (own modulator -> own decoder); the varicode "
+                "table is not checked against an off-air recording."
+            ),
+        ),
+        field_notes="Not verified off-air (synthetic tests only).",
+    ),
+    "ale": CapabilityEntry(
+        input_path="audio",
+        demodulators=("USB",),
+        single_channel=True,
+        band_path=False,
+        replay_supported="planned_s3",
+        integrity_policy="fec",
+        integrity_notes=(
+            "Every word is Golay(24,12) decoded after a bitwise vote over its three "
+            "interleaved copies; AleDecoder drops a word whose Golay decode fails, and "
+            "fields['errors'] counts the bits Golay corrected (integrity 'passed' only when "
+            "zero)."
+        ),
+        validation=Validation(
+            state="fixture_tested",
+            backend_version=_MSDR_VERSION,
+            validated_on=_SHIPPED_ON,
+            tests=[
+                "tests/decoder/test_ale.py::test_ale_sounding_round_trip_with_noise",
+                "tests/decoder/test_ale.py::test_ale_call_round_trip_reports_both_addresses",
+                "tests/decoder/test_ale.py::test_ale_no_event_on_noise",
+            ],
+            notes=(
+                "Synthesised-signal round trip only (own modulator -> own decoder); the word "
+                "bit layout and 3-copy interleave are msdr's reconstruction, not checked "
+                "against an off-air recording."
+            ),
+        ),
+        field_notes="Not verified off-air (synthetic tests only).",
     ),
     "ais": CapabilityEntry(
         input_path="iq",
@@ -1008,5 +1178,124 @@ MATRIX["vor"] = replace(
             "480 Hz). This check exposed and verified the fix for a sign error "
             "(previously 360 deg minus the radial). ILS remains fixture-tested only."
         ),
+    ),
+)
+
+
+# -- External-program decoders (msdr/decoder/external_decoders.py) -- parsers and argv are
+# covered by tests/decoder/test_external_decoders.py; none has been run against a live signal
+# or the real binary in CI, so every one stays "untested" on RF.
+_EXTERNAL_TESTS = ["tests/decoder/test_external_decoders.py"]
+_RTL433_NOTE = (
+    "rtl_433's protocol decoders check their own CRC/checksum/parity where the protocol has "
+    "one, but it prints no pass/fail flag, so msdr cannot report per-message validity."
+)
+for _decoder, _field_notes in (
+    (
+        "rtl433",
+        "IQ is shifted to the tuned frequency and resampled to 250 kS/s cs16 for rtl_433's "
+        "stdin. Sensor readings pass through unchanged (temperature_C, humidity, ...). "
+        "Parser and argv fixtures only; no live 433/868/915 MHz reception recorded.",
+    ),
+    (
+        "rtl433_wmbus",
+        "As rtl433 but at 1 MS/s with only wM-Bus modes S and T enabled (rtl_433 protocols "
+        "105, 238); Mode C (protocol 104) needs 1.2 MS/s and is not enabled. Unvalidated.",
+    ),
+):
+    MATRIX[_decoder] = CapabilityEntry(
+        input_path="iq",
+        demodulators=("IQ",),
+        single_channel=True,
+        band_path=False,
+        replay_supported="raw_iq",
+        integrity_policy="none_exposed",
+        integrity_notes=_RTL433_NOTE,
+        validation=Validation(
+            state="untested",
+            tests=_EXTERNAL_TESTS,
+            notes="Parser and argv fixtures only; not run against the real binary or off-air.",
+        ),
+        field_notes=_field_notes,
+    )
+
+for _decoder in ("freedv700d", "freedv700e", "freedv1600"):
+    MATRIX[_decoder] = CapabilityEntry(
+        input_path="audio",
+        demodulators=("USB",),
+        single_channel=True,
+        band_path=False,
+        replay_supported="planned_s3",
+        integrity_policy="none_exposed",
+        integrity_notes=(
+            "freedv_rx reports modem sync and SNR but no per-message validity flag; received "
+            "text is shown as printed."
+        ),
+        validation=Validation(
+            state="untested",
+            tests=_EXTERNAL_TESTS,
+            notes="Parser and argv fixtures only; freedv_rx not run in CI or off-air.",
+        ),
+        field_notes=(
+            "Shows sync state, SNR and received text only; decoded speech is discarded. "
+            "freedv_rx buffers its --txtrx file, so text can appear late (at the latest when "
+            "the decoder stops). Verbose stderr format taken from codec2 src/freedv_rx.c."
+        ),
+    )
+
+for _decoder in ("sonde_dfm", "sonde_m10", "sonde_m20", "sonde_rs92"):
+    MATRIX[_decoder] = CapabilityEntry(
+        input_path="iq",
+        demodulators=("IQ",),
+        single_channel=True,
+        band_path=False,
+        replay_supported="raw_iq",
+        integrity_policy="none_exposed",
+        integrity_notes=(
+            "radiosonde_auto_rx's demodulators print --json only for frames they accepted, "
+            "but expose no validity flag msdr can report."
+        ),
+        validation=Validation(
+            state="untested",
+            tests=_EXTERNAL_TESTS,
+            notes="JSON parser and argv fixtures only; the demodulator was not run here.",
+        ),
+        field_notes=(
+            "Emits serial, lat, lon, altitude_m, heading_deg and telemetry like RS41, so the "
+            "Map shows it on the sondes layer. 48 kS/s IQ WAV goes to the demodulator "
+            "(--iq0)."
+            + (
+                " rs92mod needs an ephemeris file for position, which msdr does not supply."
+                if _decoder == "sonde_rs92"
+                else ""
+            )
+        ),
+    )
+
+MATRIX["orbcomm"] = CapabilityEntry(
+    input_path="iq",
+    demodulators=("IQ",),
+    single_channel=True,
+    band_path=False,
+    replay_supported="raw_iq",
+    integrity_policy="crc",
+    integrity_notes=(
+        "msdr's native receiver emits a packet only when its 16-bit Fletcher checksum and "
+        "packet type are valid. The packet layout (type codes, field offsets, ephemeris "
+        "scaling) is reconstructed without a reference capture; synthetic only."
+    ),
+    validation=Validation(
+        state="fixture_tested",
+        tests=["tests/decoder/test_orbcomm.py"],
+        notes=(
+            "Synthetic SDPSK round trips with carrier offset and noise, bad-checksum "
+            "rejection and noise-only silence; no reference IQ and no off-air validation."
+        ),
+    ),
+    field_notes=(
+        "Native numpy receiver, builtin (4800 bps, ~25 kHz channel at 137-138 MHz, Doppler "
+        "tracked by the decoder's own carrier recovery). Ephemeris packets add lat/lon/alt "
+        "so the Map can show the satellite. RF validation is pending; not supported by the "
+        "NFM band channelizer."
     ),
 )

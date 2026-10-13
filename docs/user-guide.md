@@ -110,8 +110,9 @@ Open **Decode setup (⚙)** to choose decoders; **Search decoders** filters the 
 
 Decoder types:
 
-- **Raw-IQ decoders** (ADS-B / Mode S, RS41, FT8, DSC, End-of-Train, VOR, ILS, LoRa) work on the live receiver and on recordings in Review. They analyse one channel at a time. Recordings need enough sample rate, and FT8 also needs the capture time.
-- **Audio decoders** include pagers, APRS, CW, RTTY, NAVTEX, WEFAX, SSTV and digital voice (DMR, P25, NXDN via `dsd-fme`). Digital voice calls can be played back from Messages.
+- **Raw-IQ decoders** (ADS-B / Mode S, RS41, Orbcomm, FT8, DSC, End-of-Train, VOR, ILS, LoRa) work on the live receiver and on recordings in Review. They analyse one channel at a time. Recordings need enough sample rate, and FT8 also needs the capture time.
+- **Audio decoders** include pagers, APRS, CW, RTTY, PSK31, HF ALE, time-signal codes (WWV, WWVB, DCF77, MSF, JJY, CHU), NAVTEX, VHF ACARS (AM, 131.550 MHz and neighbours), WEFAX, SSTV and digital voice (DMR, P25, NXDN via `dsd-fme`). Digital voice calls can be played back from Messages.
+- **External-program decoders**: ISM sensors and wireless M-Bus (`rtl_433`, raw IQ), DFM/M10/M20/RS92 radiosondes (radiosonde_auto_rx demodulators, raw IQ, shown on the Map) and FreeDV 700D/700E/1600 (`freedv_rx`, USB audio; shows sync, SNR and text but does not play speech). Each is *missing* until its program is installed.
 - **CW** decodes into one continuous transcript you can select and copy.
 
 A decoder shows *Ready* when its code or tool is installed. That doesn't mean it has been tested on real signals; see [Decoder scope](decoder-expansion.md).
@@ -138,7 +139,7 @@ Other decoder notes: [FT8](ft8.md) · [RS41](rs41.md) · [DSC](dsc.md) · [SSTV]
 
 ## Satellites
 
-Set your location in Setup and press **↻ TLE** to fetch orbital elements. In **Satellites**, choose the days and satellites to list passes. Click a pass for its sky path and elevation chart; **Tune** tunes its saved memory or catalog downlink, and **Track** follows its Doppler shift. **Optically visible only** is for visual observing; leave it off for radio.
+Set your location in Setup and press **↻ TLE** to fetch orbital elements. In **Satellites**, choose the days and satellites to list passes. Click a pass for its sky path and elevation chart; **Tune** tunes its saved memory or catalog downlink, and **Track** follows its Doppler shift. Tick **decode** before Track on the ISS (APRS 145.825 MHz) to tune with Doppler and run the matching packet decoder for the pass; frames are tagged with the satellite and a pass id, and the decoder stops at loss of signal. The built-in table is short and frequencies change, so check SatNOGS first. Validated with synthetic tests only. **Optically visible only** is for visual observing; leave it off for radio.
 
 ## Wi-Fi and BLE
 

@@ -176,3 +176,22 @@ def test_jt9_bundle_fallback_preserves_explicit_and_path_priority(tmp_path, monk
     explicit.write_text("#!/bin/sh\nexit 0\n")
     explicit.chmod(0o755)
     assert registry.resolve_binaries([str(tmp_path)])["jt9"] == str(explicit)
+
+
+def test_acars_spec():
+    spec = DECODERS["acars"]
+    assert spec.demodulators == ("AM",)
+    assert spec.backend == "python"
+    assert spec.input_rate == 22050
+    assert spec.args == ("msdr.decoder.pydecoders.acars:AcarsDecoder",)
+
+
+def test_jjy_wwvb_chu_psk31_ale_are_builtin_python_decoders():
+    import importlib
+
+    for decoder_id in ("jjy", "wwvb", "chu", "psk31", "ale"):
+        spec = DECODERS[decoder_id]
+        assert spec.backend == "python" and spec.binaries == ()
+        module, cls = spec.args[0].split(":")
+        decoder = getattr(importlib.import_module(module), cls)()
+        assert decoder.input_rate == spec.input_rate

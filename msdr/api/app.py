@@ -622,8 +622,10 @@ def create_app(
         return result.model_dump(mode="json")
 
     @app.post("/api/track/{signal_id}")
-    async def start_track(signal_id: str, service: AppService = Depends(get_service)):
-        return await service.start_tracking(signal_id)
+    async def start_track(
+        signal_id: str, decode: bool = False, service: AppService = Depends(get_service)
+    ):
+        return await service.start_tracking(signal_id, decode=decode)
 
     @app.delete("/api/track")
     async def stop_track(service: AppService = Depends(get_service)):
@@ -1207,7 +1209,11 @@ def create_app(
     @app.post("/api/decoder/band/start")
     async def decoder_band_start(body: BandStartIn, service: AppService = Depends(get_service)):
         return await service.decoder_band_start(
-            body.decoders, max_channels=body.max_channels, threshold_db=body.threshold_db
+            body.decoders,
+            max_channels=body.max_channels,
+            threshold_db=body.threshold_db,
+            mode=body.mode,
+            bandwidth_hz=body.bandwidth_hz,
         )
 
     @app.post("/api/decoder/band/stop")

@@ -90,6 +90,14 @@ def _probe_version(backend: str, binary: str) -> str | None:
         # measured: direwolf -h exits 1; "Dire Wolf Release 1.8.1, ..." on stdout.
         match = _DIREWOLF_VERSION_RE.search(proc.stdout)
         return match.group(1) if match else None
+    if backend == "external_iq":
+        # rtl_433 prints "rtl_433 version 25.12 (...)" for -V; the sonde demodulators
+        # have no version flag, so they stay unknown.
+        if Path(binary).name != "rtl_433":
+            return None
+        proc = _run(binary, ["-V"])
+        match = re.search(r"version\s+(\S+)", (proc.stderr + proc.stdout) if proc else "")
+        return match.group(1) if match else None
     if backend == "dsdfme":
         # measured: dsd-fme -h prints a "Build Version: AW -128-NOTFOUND"
         # banner on stderr -- not a real version string (build metadata that
