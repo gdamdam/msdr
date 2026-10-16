@@ -781,6 +781,10 @@ def create_app(
     async def wifi_status(service: AppService = Depends(get_service)):
         return service.wifi_status()
 
+    @app.get("/api/wifi/sensing")
+    async def wifi_sensing(service: AppService = Depends(get_service)):
+        return service.wifi_sensing()
+
     @app.get("/api/wifi/summary")
     async def wifi_summary(
         window_s: float = Query(default=60.0, ge=10, le=3600),

@@ -503,6 +503,22 @@ class WifiSettings(BaseModel):
     record_max_mb: int = Field(default=200, ge=1)
     record_max_minutes: int = Field(default=60, ge=1)
     retention_days: int = Field(default=14, ge=1)
+    # Transmitter address whose per-frame power code feeds presence, crossing and
+    # breathing sensing (msdr.wifi.sensing, docs/wifi.md). None = off. Frames from
+    # every other address are dropped before anything is stored or counted.
+    sensing_source: str | None = None
+
+    @field_validator("sensing_source")
+    @classmethod
+    def validate_sensing_source(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        value = value.strip().lower()
+        parts = value.split(":")
+        if len(parts) != 6 or not all(len(p) == 2 and all(c in "0123456789abcdef" for c in p)
+                                      for p in parts):
+            raise ValueError(f"invalid MAC address: {value!r}")
+        return value
 
     @field_validator("channel")
     @classmethod

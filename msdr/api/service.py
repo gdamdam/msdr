@@ -1569,6 +1569,7 @@ class AppService(
             tuple(self.settings.ble.helper_command or []),
         )
         self.settings = updated
+        self.wifi.sensing = self._wifi_sensing_for(updated)
         if recorder_root_changed:
             self.wifi_sessions = WifiSessionStore(self._wifi_sessions_root())
         if wifi_helper_changed:
