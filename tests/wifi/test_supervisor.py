@@ -347,3 +347,48 @@ async def test_stop_cancelled_mid_termination_still_reaps_the_helper():
     assert sup._zombies == [proc] and proc.returncode is not None  # killed, not reaped yet
     await sup.stop()  # reaps it
     assert sup._zombies == []
+
+
+async def test_aggregate_feeds_sensing_only_the_source_with_power_code():
+    """The supervisor hands every good-FCS frame's transmitter to the sensing sink, which
+    keeps only the configured source; bad-FCS frames never reach it."""
+    import struct
+
+    from msdr.wifi.sensing import SensingAccumulator
+    from tests.wifi.fixtures import append_bad_fcs, append_fcs, build_beacon_frame, build_radiotap
+
+    sup = WifiSupervisor(helper_command=HELPER_COMMAND)
+    sup.sensing = SensingAccumulator("22:eb:62:9f:8f:85")
+    sup._queue = asyncio.Queue()
+    task = asyncio.create_task(sup._aggregate())
+
+    def rec(ts, bssid, power, bad=False):
+        payload = struct.pack("<bB9b", 1, power, *[-128] * 9)
+        rt = build_radiotap(flags=0x10 | (0x40 if bad else 0), vendor=(b"\x00\x00\x00", 0, payload))
+        body = build_beacon_frame(bssid=bssid, ssid=b"x")
+        return Record(ts=ts, linktype=127, data=rt + (append_bad_fcs if bad else append_fcs)(body),
+                      orig_len=0)
+
+    for i in range(40):
+        t = 1000.0 + i * 0.1
+        sup._queue.put_nowait(rec(t, "22:eb:62:9f:8f:85", 120))
+        sup._queue.put_nowait(rec(t, "aa:bb:cc:dd:ee:ff", 50))
+        sup._queue.put_nowait(rec(t, "22:eb:62:9f:8f:85", 10, bad=True))
+    while not sup._queue.empty():
+        await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+    rows = sup.sensing.rows()
+    assert rows and all(mean == 120 for _, _, mean, _ in rows)
+    assert sum(n for _, n, _, _ in rows) <= 40
+
+
+async def test_sensing_only_supervisor_keeps_no_network_table():
+    sup = WifiSupervisor(helper_command=HELPER_COMMAND)
+    sup.observe_networks = False
+    await sup.start(6)
+    await _wait_for(lambda: sup.health_state() == "receiving")
+    assert sup.frames > 0 and sup.table is None
+    await sup.stop()

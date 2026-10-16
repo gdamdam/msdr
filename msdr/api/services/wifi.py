@@ -24,6 +24,7 @@ from msdr.remoteid.tracker import AddressTrack, UasGroup
 from msdr.settings import Settings
 from msdr.tasks import spawn
 from msdr.wifi.observations import NetworkTable
+from msdr.wifi.sensing import SensingAccumulator
 from msdr.wifi.supervisor import WifiSupervisor
 from msdr.wifi.survey import ChannelSurvey
 
@@ -234,11 +235,33 @@ class WifiServiceMixin:
             oui.load(path)
         else:
             oui.set_names(None)
-        return WifiSupervisor(
+        sup = WifiSupervisor(
             helper_path=settings.wifi.helper_path,
             helper_command=settings.wifi.helper_command,
             on_status=self._on_wifi_status,
         )
+        sup.sensing = self._wifi_sensing_for(settings)
+        return sup
+
+    def _wifi_sensing_for(self, settings: Settings) -> SensingAccumulator | None:
+        """The sensing accumulator for wifi.sensing_source, kept across supervisor
+        rebuilds while the source is unchanged; None when sensing is off."""
+        src = settings.wifi.sensing_source
+        acc = getattr(self, "_wifi_sensing_acc", None)
+        if not src:
+            acc = None
+        elif acc is None or acc.source != src:
+            acc = SensingAccumulator(src)
+        self._wifi_sensing_acc = acc
+        return acc
+
+    def wifi_sensing(self) -> dict:
+        """GET /api/wifi/sensing: latest row, presence, crossing and breathing for the
+        configured source, or `enabled: false` when no source is set."""
+        acc = self.wifi.sensing
+        if acc is None:
+            return {"enabled": False}
+        return {"enabled": True, **acc.snapshot(time.time())}
 
     # --- IEEE vendor names (msdr/oui.py) ------------------------------------
 

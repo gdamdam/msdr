@@ -391,7 +391,11 @@ class NetworkTable:
 
         raw_code: int | None = None
         source: str | None = None
-        if rt.vendor:
+        raw = radiotap.msdr_raw(rt)
+        if raw is not None and raw.packet_power_code is not None:
+            # The msdr-raw payload's first byte is its version, not a signal code.
+            raw_code, source = raw.packet_power_code, "vendor"
+        elif rt.vendor:
             payload = rt.vendor[min(rt.vendor.keys())]
             if payload:
                 raw_code, source = payload[0], "vendor"

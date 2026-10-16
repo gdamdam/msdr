@@ -129,14 +129,32 @@ class HelperReady:
     reg_cr_after: str | None = None
 
 
+def _transmitter(rt, data: bytes) -> str | None:
+    """Transmitter address (addr2) of a good-FCS management or data frame, else
+    None. Control frames are skipped (ACK and CTS carry no addr2), and a bad
+    FCS means the address itself may be corrupt. The address is only compared
+    against the sensing source, never stored here."""
+    if rt is None or isinstance(rt, radiotap.ParseError):
+        return None
+    if rt.flags is not None and rt.flags.bad_fcs:
+        return None
+    body = data[rt.header_length:]
+    if len(body) < 16 or (body[0] >> 2) & 0x3 == 1:
+        return None
+    return body[10:16].hex(":")
+
+
 def _raw_signal(rt) -> int | None:
     """Per-packet signal code for the activity heatmap, same vendor-first
-    priority `NetworkTable._ingest` uses for `signal_history`: the raw vendor
-    byte when present (this adapter never emits it; see docs/wifi.md
-    "Verified setup"), else radiotap's dBm antenna signal field. Never
+    priority `NetworkTable._ingest` uses for `signal_history`: the msdr-raw
+    `packet_power_code` when the helper wrote one, else the first vendor byte
+    (older helpers), else radiotap's dBm antenna signal field. Never
     raises -- a ParseError or missing field both just mean no signal."""
     if rt is None or isinstance(rt, radiotap.ParseError):
         return None
+    raw = radiotap.msdr_raw(rt)
+    if raw is not None and raw.packet_power_code is not None:
+        return raw.packet_power_code
     if rt.vendor:
         payload = rt.vendor[min(rt.vendor.keys())]
         if payload:
@@ -175,6 +193,12 @@ class WifiSupervisor:
         # credited as listened time.
         self.activity = None
         self._activity_tick_ref: float | None = None
+        # SensingAccumulator (docs/wifi.md "Sensing"), set by the service from
+        # wifi.sensing_source; None = off. It drops every other address itself.
+        self.sensing = None
+        # False for a sensing-only embedder (motionscope): no NetworkTable is built, so no
+        # other address's BSSID or SSID is ever held. msdr's own service leaves it True.
+        self.observe_networks = True
 
         self.channel: int | None = None
         self.table: NetworkTable | None = None
@@ -340,7 +364,9 @@ class WifiSupervisor:
         self.retry_at = None
         self.channel = channel
         self._activity_tick_ref = None
-        if keep_table and self.table is not None:
+        if not self.observe_networks:
+            self.table = None
+        elif keep_table and self.table is not None:
             self.table.configured_channel = configured_channel or channel
         else:
             self.table = NetworkTable(configured_channel=configured_channel or channel)
@@ -547,7 +573,8 @@ class WifiSupervisor:
                 self.last_frame_at = record.ts
                 try:
                     rt = None
-                    if self.table is not None or self.activity is not None:
+                    if (self.table is not None or self.activity is not None
+                            or self.sensing is not None):
                         rt = radiotap.parse(record.data)
                     if self.table is not None:
                         if isinstance(rt, radiotap.ParseError):
@@ -564,6 +591,10 @@ class WifiSupervisor:
                         # the receiver was actually tuned to, never a frame's own
                         # DS Parameter Set channel.
                         self.activity.add_packet(record.ts, self.channel, _raw_signal(rt))
+                    if self.sensing is not None:
+                        tx = _transmitter(rt, record.data)
+                        if tx is not None:
+                            self.sensing.add(record.ts, tx, _raw_signal(rt))
                 except Exception:
                     # One bad frame must not end ingestion while health still
                     # says "receiving"; count it and log only the first.

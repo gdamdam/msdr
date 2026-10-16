@@ -59,6 +59,14 @@ _FIELD_TABLE: dict[int, tuple[int, int]] = {
     26: (2, 4),  # L-SIG
 }
 
+# The helper's "msdr-raw" vendor namespace (docs/wifi.md): version 1 is eleven bytes, an
+# unsigned packet power code (upstream reads it unsigned, 0..255) and signed bytes for the
+# rest, -128 meaning absent. Older helpers wrote raw descriptor bytes there instead; the exact
+# length and version tell the two apart.
+MSDR_RAW_KEY = (b"\x00\x00\x00", 0)
+MSDR_RAW_V1_LEN = 11
+MSDR_RAW_ABSENT = -128
+
 
 @dataclass(frozen=True)
 class ParseError:
@@ -85,6 +93,38 @@ class Radiotap:
     channel_flags: int | None = None
     dbm_antsignal: int | None = None
     vendor: dict[tuple[bytes, int], bytes] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class MsdrRawChain:
+    gain_code: int | None
+    snr_code: int | None
+    evm_code: int | None
+
+
+@dataclass(frozen=True)
+class MsdrRaw:
+    """Raw, uncalibrated PHY codes the helper writes per frame. Never dBm."""
+
+    version: int
+    packet_power_code: int | None
+    signal_evm_code: int | None
+    antenna_a: int | None
+    antenna_b: int | None
+    chains: tuple[MsdrRawChain, ...]
+
+
+def msdr_raw(rt: Radiotap | ParseError | None) -> MsdrRaw | None:
+    """Decode the msdr-raw vendor payload, or None when absent or not version 1."""
+    if rt is None or isinstance(rt, ParseError):
+        return None
+    payload = rt.vendor.get(MSDR_RAW_KEY)
+    if payload is None or len(payload) != MSDR_RAW_V1_LEN or payload[0] != 1:
+        return None
+    v = [None if x == MSDR_RAW_ABSENT else x for x in struct.unpack("<bB9b", payload)]
+    chains = tuple(MsdrRawChain(*v[i:i + 3]) for i in (5, 8)
+                   if any(x is not None for x in v[i:i + 3]))
+    return MsdrRaw(1, v[1], v[2], v[3], v[4], chains)
 
 
 def _align(offset: int, alignment: int) -> int:

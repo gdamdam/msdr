@@ -121,3 +121,28 @@ def test_chained_presence_words_keep_first_chain_antsignal():
     rt = radiotap.parse(hdr)
     assert not isinstance(rt, radiotap.ParseError)
     assert rt.dbm_antsignal == -40
+
+
+def _msdr_raw_header(payload: bytes) -> bytes:
+    return build_radiotap(vendor=(OUI_MSDR_RAW, 0, payload))
+
+
+def test_msdr_raw_decodes_v1_and_absent_fields():
+    # version, power 200 (unsigned), evm -47, ant a 0, ant b absent, chain 0 (56, 34,
+    # absent), chain 1 absent
+    payload = struct.pack("<bB9b", 1, 200, -47, 0, -128, 56, 34, -128, -128, -128, -128)
+    raw = radiotap.msdr_raw(radiotap.parse(_msdr_raw_header(payload)))
+    assert (raw.packet_power_code, raw.signal_evm_code, raw.antenna_a, raw.antenna_b) == (
+        200, -47, 0, None)
+    assert raw.chains == (radiotap.MsdrRawChain(56, 34, None),)
+
+
+def test_msdr_raw_ignores_old_descriptor_payload_and_raw_signal_falls_back():
+    from msdr.wifi.supervisor import _raw_signal
+
+    old = bytes([1]) + bytes(range(2, 33))          # 32 raw drvinfo bytes, first byte 1
+    rt = radiotap.parse(_msdr_raw_header(old))
+    assert radiotap.msdr_raw(rt) is None
+    assert _raw_signal(rt) == 1                     # today's first-vendor-byte fallback
+    new = struct.pack("<bB9b", 1, 123, *([-128] * 9))
+    assert _raw_signal(radiotap.parse(_msdr_raw_header(new))) == 123

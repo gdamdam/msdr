@@ -42,6 +42,7 @@ A helper whose venv was moved is reported as "venv is broken", with the rebuild 
 | `wifi.record_max_mb` | int | `200` |
 | `wifi.record_max_minutes` | int | `60` |
 | `wifi.retention_days` | int | `14` |
+| `wifi.sensing_source` | `str \| None` (MAC address) | none, sensing off |
 
 ## What you see in the UI
 
@@ -91,7 +92,18 @@ msdr-wifi-capture --channel <n> [--no-reset] [--max-seconds <s>] [--keep-tx-dma 
 | Flags | FCS present, bad-FCS from descriptor CRC flag | FCS is always appended |
 | Rate | descriptor rate index | only legacy rates were seen |
 | Channel | **configured** channel | not measured (see [Limitations](#limitations)) |
-| Vendor namespace, OUI `00:00:00` sub-ns 0 "msdr-raw" | raw PHY status bytes | uncalibrated, never shown as dBm |
+| Vendor namespace, OUI `00:00:00` sub-ns 0 "msdr-raw" | upstream's decoded PHY status, per frame | uncalibrated codes, never shown as dBm; layout below |
+
+The msdr-raw payload, version 1, is eleven bytes. `packet_power_code` is unsigned, 0 to 255; every other field is a signed byte where `-128` means absent. A frame without a power code carries no payload. `radiotap.msdr_raw()` decodes it, and the activity heatmap and signal history use its `packet_power_code`. Payloads of any other length (older helpers wrote raw descriptor bytes) fall back to the first vendor byte.
+
+| Byte | Field |
+|---|---|
+| 0 | version, `1` |
+| 1 | `packet_power_code`, unsigned |
+| 2 | `signal_evm_code` |
+| 3, 4 | `antenna_a`, `antenna_b` |
+| 5, 6, 7 | chain 0 `gain_code`, `snr_code`, `evm_code` |
+| 8, 9, 10 | chain 1 `gain_code`, `snr_code`, `evm_code` |
 
 pcap record timestamps are host wall clock at USB read time.
 
@@ -126,6 +138,7 @@ Remote ID plugs in at the parser stage (beacon vendor IE, OUI `FA:0B:BC`, type `
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/api/wifi/sensing` | sensing for `wifi.sensing_source`: latest per-second row, presence, crossing, breathing; `enabled: false` when no source is set (see [Sensing](#sensing)) |
 | GET | `/api/wifi/status` | health, channel, frames, rate, drops, last frame, error, helper info; works while `wifi.enabled` is false (`state: "stopped"`, `enabled: false`) |
 | GET | `/api/wifi/devices` | helper `--list` output; also works while disabled |
 | POST | `/api/wifi/start` `{channel}` | start capture; 409 `"Enable Wi-Fi in Setup first"` while disabled |
@@ -244,7 +257,7 @@ Discover → Wi-Fi → **Activity** is a heatmap of packets this adapter actuall
 - Columns are channels, 2.4 GHz then 5 GHz with a gap between, each headed by its number and 20 MHz centre frequency (e.g. "ch 6 / 2437 MHz").
 - Rows are time, newest at top.
 - Colour is packets received per *listened* second in that cell.
-- An optional second mode shows the mean raw PHY signal code, labelled "uncalibrated signal code (not dBm)". It is offered only when at least one returned cell carries one. This adapter has never been seen to report calibrated dBm (see [Verified setup](#verified-setup-2026-10-02)).
+- An optional second mode shows the mean raw PHY signal code, labelled "uncalibrated signal code (not dBm)". It is offered only when at least one returned cell carries one. The code is the helper's uncalibrated `packet_power_code`; this adapter does not report calibrated dBm.
 - A "?" help mark beside the controls states that the heatmap shows Wi-Fi packets this adapter received. It is not measured RF spectrum, continuous spectrum coverage, channel utilisation, or detection of non-Wi-Fi interference.
 
 ### Coverage rules
@@ -283,6 +296,16 @@ Per-second, per-channel rows are bulky (about 86,400 a day per channel), so rete
 
 The UI polls this at most every 5 s, only while the Activity tab is visible.
 
+## Sensing
+
+With `wifi.sensing_source` set to one transmitter's address (normally your own router), `msdr/wifi/sensing.py` turns that transmitter's per-frame `packet_power_code` into a motion and breathing sensor. A body in the path between the transmitter and the adapter changes the received power. Frames from every other address, and frames with a bad FCS, are dropped before anything is stored or counted. Only good-FCS management and data frames are used, since control frames carry no transmitter address.
+
+- **Presence:** the spread of the last 2 s against a baseline, the quietest 60 s seen so far. Movement in the path raises it.
+- **Crossing:** a dip in the mean of more than 6 codes lasting 0.3 to 3 s, as when someone walks through the line between the two radios.
+- **Breathing:** the dominant 0.1 to 0.7 Hz rhythm of the last 30 s, in breaths per minute with a quality ratio. It needs at least 30 frames/s from the source. A router's beacons (about 10/s) report "needs dense source"; a second device sending 100 to 200 small frames/s on the same channel is needed.
+
+All values are uncalibrated codes. No frame is ever transmitted to make sensing work.
+
 ## Verified setup (2026-10-02)
 
 Results from the feasibility run:
@@ -294,7 +317,7 @@ Results from the feasibility run:
 - Channel 149: 85 % bad FCS and only 10 beacons; poor.
 - 10 minutes on channel 6: 45,918 frames, 76.5 fps mean, no errors, flat process memory, CPU under 1 %.
 - Five start/stop cycles and reopen after SIGTERM and SIGKILL all worked. SDRconnect ran throughout and was unaffected.
-- No HT/VHT-rate frames were received, TSFT was not written by upstream's capture tool, and signal is available only as raw PHY codes.
+- No HT/VHT-rate frames were received, TSFT was not written by upstream's capture tool. Signal is available as raw PHY codes only; since 2026-10-16 the helper writes them per frame (msdr-raw, above).
 
 ## Limitations
 
@@ -302,5 +325,6 @@ Results from the feasibility run:
 - The radiotap channel is the configured channel, not a measured one: a strong 5 GHz access point was received while tuned to 2.4 GHz channel 6. The DS Parameter Set channel is authoritative and is what the table shows. Frames whose DS channel differs are labelled.
 - There is no calibrated signal strength. Trends use raw PHY codes, labelled as raw and relative, and are hidden when absent.
 - Observed networks are those heard on the monitored channel during the session, not an inventory.
+- Sensing watches every path between the source and the adapter, not one room: on 2026-10-16 people moving in the next room triggered presence and crossings as strongly as a walk across the line. Place the adapter so the line to the source crosses only the space you care about.
 
 See also: [User guide](user-guide.md) · [History](history.md) · [Remote ID](remote-id.md) · [BLE](ble.md)

@@ -687,3 +687,17 @@ async def test_plain_wifi_start_stops_a_running_survey(monkeypatch):
             await asyncio.sleep(0.02)
         assert wifi_status is not None and wifi_status["channel"] == 6
         await client.post("/api/wifi/stop")
+
+
+async def test_sensing_route_off_then_on_after_setting_source():
+    async with running_app(settings=Settings(db_path=":memory:")) as (app, client, adapter):
+        assert (await client.get("/api/wifi/sensing")).json() == {"enabled": False}
+        resp = await client.patch("/api/settings",
+                                  json={"wifi": {"sensing_source": "22:EB:62:9F:8F:85"}})
+        assert resp.status_code == 200
+        body = (await client.get("/api/wifi/sensing")).json()
+        assert body["enabled"] is True
+        assert body["source"] == "22:eb:62:9f:8f:85"
+        assert body["breathing_status"] == "needs dense source"
+        bad = await client.patch("/api/settings", json={"wifi": {"sensing_source": "nope"}})
+        assert bad.status_code in (400, 422)
