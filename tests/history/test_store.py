@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 
 from msdr.history.buckets import MinuteAccumulator, minute_of
@@ -157,3 +159,45 @@ def test_labels_repo_and_rules():
             repo.put("wifi", "aa:bb:cc:dd:ee:02", note="", **bad)
     assert repo.delete("wifi", "aa:bb:cc:dd:ee:01") and not repo.delete("wifi", "aa:bb:cc:dd:ee:01")
     db.close()
+
+
+class _FailingSecondWrite:
+    """Connection proxy whose second executemany raises, as a locked database would."""
+
+    def __init__(self, conn):
+        self._conn, self.calls = conn, 0
+
+    def executemany(self, *args):
+        self.calls += 1
+        if self.calls == 2:
+            raise sqlite3.OperationalError("database is locked")
+        return self._conn.executemany(*args)
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
+def test_failed_write_rolls_back_and_flush_retries(store, monkeypatch):
+    from types import SimpleNamespace
+
+    from msdr.api.services.history import HistoryServiceMixin
+    from msdr.wifi.activity import ActivityAccumulator
+
+    acc = MinuteAccumulator()
+    _fill(acc)
+    real = store.db.conn
+    proxy = _FailingSecondWrite(real)
+    monkeypatch.setattr(type(store), "conn", property(lambda self: proxy))
+    service = SimpleNamespace(
+        history_store=store, history_acc=acc, activity_acc=ActivityAccumulator()
+    )
+    with pytest.raises(sqlite3.OperationalError):
+        HistoryServiceMixin._history_flush(service)
+    # Nothing half-written, no transaction left open, and the drain is kept.
+    assert not real.in_transaction
+    assert real.execute("SELECT COUNT(*) FROM buckets").fetchone()[0] == 0
+    assert len(acc) == 0 and len(service._history_unwritten) == 1
+
+    HistoryServiceMixin._history_flush(service)
+    assert real.execute("SELECT COUNT(*) FROM buckets").fetchone()[0] > 0
+    assert service._history_unwritten == []

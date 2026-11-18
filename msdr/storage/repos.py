@@ -742,6 +742,10 @@ class LibraryUndoRepo:
             )
         self._redo.clear()
 
+    def clear_redo(self) -> None:
+        """Forget the in-memory redo stack (its rows no longer exist after a restore)."""
+        self._redo.clear()
+
     def latest(self) -> dict | None:
         row = self.db.conn.execute(
             "SELECT id, label, created_at FROM library_undo "

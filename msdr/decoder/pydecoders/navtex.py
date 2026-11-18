@@ -13,8 +13,11 @@ own encoder in tests, not interoperate with real NAVTEX gear):
  - Bit-clock timing is locked to the start of the stream (no self-clocking
    bit/character sync recovery, no phasing-pattern detection) -- fine for a
    fixed 100 Bd source with no drift, not for a real noisy HF receiver.
- - Only A-Z, 0-9 and space are in the constant-weight code table (enough for
+ - Only A-Z, 0-9 and space are decoded from the CCIR 476 table (enough for
    NAVTEX headers + plain-text bulletins); anything else decodes as "?".
+ - With no phasing detection, an off-air transmission decodes only if the
+   stream happens to start on a character boundary; treat live output as
+   unverified.
 """
 
 import re
@@ -29,21 +32,25 @@ _SPACE_HZ = 1785.0
 _BAUD = 100.0
 _FEC_DELAY = 4
 
-# All 7-bit values with exactly four 1-bits (constant weight 4-of-7, CCIR
-# 476) -- 35 of them. First five are fixed-meaning control codes; the next
-# 26 carry a letter under LTRS and (the first 10 of them) a digit under FIGS.
-_CODES = [c for c in range(128) if bin(c).count("1") == 4]
-assert len(_CODES) == 35
-_LTRS_CODE, _FIGS_CODE, _SPACE_CODE, _CR_CODE, _LF_CODE = _CODES[:5]
-_LETTER_CODES = _CODES[5:31]
-_FILLER_CODE = _CODES[31]  # unused pattern, sent where FEC has no real symbol yet
-_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-_DIGITS = "0123456789"
-
-_CODE_TO_LETTER = dict(zip(_LETTER_CODES, _LETTERS, strict=True))
+# CCIR 476 (ITU-R M.476) 7-bit code: every signal has exactly four 1-bits, which
+# is what lets a receiver reject a damaged character. Letters and figures share a
+# code under the LTRS/FIGS shift, paired as in ITA2 (Q/1, W/2, ... P/0). The
+# table was entered from the published assignment and is checked below for
+# weight and uniqueness, but has not been checked against an off-air signal.
+_LTRS_CODE, _FIGS_CODE, _SPACE_CODE, _CR_CODE, _LF_CODE = 0x5A, 0x36, 0x5C, 0x78, 0x6C
+_FILLER_CODE = 0x0F  # idle signal alpha, sent where FEC has no real symbol yet
+_CODE_TO_LETTER = {
+    0x47: "A", 0x72: "B", 0x1D: "C", 0x53: "D", 0x56: "E", 0x1B: "F", 0x35: "G",
+    0x69: "H", 0x4D: "I", 0x17: "J", 0x1E: "K", 0x65: "L", 0x39: "M", 0x59: "N",
+    0x71: "O", 0x2D: "P", 0x2E: "Q", 0x55: "R", 0x4B: "S", 0x74: "T", 0x4E: "U",
+    0x3C: "V", 0x27: "W", 0x3A: "X", 0x2B: "Y", 0x63: "Z",
+}
 _LETTER_TO_CODE = {v: k for k, v in _CODE_TO_LETTER.items()}
-_CODE_TO_FIGURE = dict(zip(_LETTER_CODES[:10], _DIGITS, strict=True))
-_FIGURE_TO_CODE = {v: k for k, v in _CODE_TO_FIGURE.items()}
+_FIGURE_TO_CODE = {d: _LETTER_TO_CODE[c] for d, c in zip("1234567890", "QWERTYUIOP", strict=True)}
+_CODE_TO_FIGURE = {v: k for k, v in _FIGURE_TO_CODE.items()}
+_ALL_CODES = [_LTRS_CODE, _FIGS_CODE, _SPACE_CODE, _CR_CODE, _LF_CODE, _FILLER_CODE,
+              *_CODE_TO_LETTER]
+assert len(set(_ALL_CODES)) == 32 and all(bin(c).count("1") == 4 for c in _ALL_CODES)
 
 
 def _popcount4(word: int) -> bool:

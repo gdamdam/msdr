@@ -562,6 +562,7 @@ class AppService(
         self._recorder_rearm_pending = settings.recorder_armed and self.recorder is not None
         self._recorder_running = False
         self._recorder_runtime_lock = asyncio.Lock()
+        self._settings_lock = asyncio.Lock()
 
         self.decoder = decoder if decoder is not None else self._build_decoder(settings)
         self._decoder_running = False
@@ -673,6 +674,29 @@ class AppService(
         # needs an equivalent here.
         self._tracking_since: float | None = None
 
+    def _load_history_stack(self) -> None:
+        state_ids, cursor = self.history_repo.load()
+        loaded = self.states.get_many(state_ids)
+        by_id = {state.id: state for state in loaded}
+        # get_many() silently drops ids it can't find; a missing id at or
+        # before the cursor shifts every later index left by one, so the
+        # cursor has to move with it or back()/forward() land on the wrong
+        # entry after restart.
+        dropped_before_cursor = sum(
+            1 for i, sid in enumerate(state_ids) if sid not in by_id and i <= cursor
+        )
+        states = [by_id[sid] for sid in state_ids if sid in by_id]
+        self.history = HistoryStack.load(states, cursor - dropped_before_cursor)
+
+    def reload_after_restore(self) -> None:
+        """Drop in-memory copies of rows a backup restore just replaced, so the
+        next write does not put pre-restore state back over the restored tables."""
+        self._load_history_stack()
+        self.library_undo.clear_redo()
+        self._refresh_ignored_finds()
+        self._rules_reload_state()
+        self.band_scan.current = None
+
     async def start(self) -> None:
         self.db.connect()
         self.band_scan.recover()
@@ -693,18 +717,7 @@ class AppService(
         await self._start_remoteid_runtime()
         await self._start_rules_runtime()
 
-        state_ids, cursor = self.history_repo.load()
-        loaded = self.states.get_many(state_ids)
-        by_id = {state.id: state for state in loaded}
-        # get_many() silently drops ids it can't find; a missing id at or
-        # before the cursor shifts every later index left by one, so the
-        # cursor has to move with it or back()/forward() land on the wrong
-        # entry after restart.
-        dropped_before_cursor = sum(
-            1 for i, sid in enumerate(state_ids) if sid not in by_id and i <= cursor
-        )
-        states = [by_id[sid] for sid in state_ids if sid in by_id]
-        self.history = HistoryStack.load(states, cursor - dropped_before_cursor)
+        self._load_history_stack()
 
         start = getattr(self.adapter, "start", None)
         if start is not None:
@@ -1394,6 +1407,13 @@ class AppService(
         return report
 
     async def apply_settings(self, patch: dict) -> Settings:
+        # Serialised: the body snapshots self.settings, awaits, then assigns, so
+        # two overlapping calls would each build on the same stale snapshot and
+        # the later one would drop the earlier one's change.
+        async with self._settings_lock:
+            return await self._apply_settings_locked(patch)
+
+    async def _apply_settings_locked(self, patch: dict) -> Settings:
         prior_recorder_root = self.settings.recorder_root
         prior_region = self.settings.region
         prior_allocation_data_dir = self.settings.allocation_data_dir
@@ -1569,6 +1589,10 @@ class AppService(
             tuple(self.settings.ble.helper_command or []),
         )
         self.settings = updated
+        # Persist before the awaits below: if one of them raises, memory and
+        # disk still agree on the settings now in effect.
+        if not recorder_root_changed and str(self.settings.db_path) != ":memory:":
+            self.settings.save(self.settings_path)
         self.wifi.sensing = self._wifi_sensing_for(updated)
         if recorder_root_changed:
             self.wifi_sessions = WifiSessionStore(self._wifi_sessions_root())
@@ -1584,8 +1608,6 @@ class AppService(
                 await self._apply_pending_ble_settings()
         await self.integrations.configure(self.settings.integrations)
         await self.feeds.configure(self.settings.feeds)
-        if not recorder_root_changed and str(self.settings.db_path) != ":memory:":
-            self.settings.save(self.settings_path)
         self.dwell.dwell_seconds = self.settings.dwell_seconds
         self.journal.nearby_hz = self.settings.nearby_hz
         if self.settings.features.journal_passive != prior_features.journal_passive:

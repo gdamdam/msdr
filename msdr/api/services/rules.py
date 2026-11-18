@@ -83,6 +83,12 @@ class RulesServiceMixin:
         self._rules_state = EngineState()
         self._rules_task: asyncio.Task | None = None
 
+    def _rules_reload_state(self) -> None:
+        """Rebuild engine state from the database (after a backup restore): the
+        old presence edges and cooldowns were keyed by rule ids that are gone."""
+        if self.rules is not None:
+            self._rules_state = EngineState(last_fired=self.rules.last_fired_by_target())
+
     async def _start_rules_runtime(self) -> None:
         self.rules = RulesRepo(self.db)
         # Seed cooldowns already in progress so a restart right after a fire

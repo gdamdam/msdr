@@ -176,10 +176,10 @@ def test_navtex_fec_delay_is_four_characters():
 def test_navtex_repairs_one_corrupted_character_via_rx_repetition():
     words = encode_message(_MESSAGE)
     corrupted = list(words)
-    # Flip low bits of one DX codeword (even index = DX slot) so its 4-of-7
-    # weight check fails; its RX repeat 5 characters later is untouched.
+    # Flip one bit of a DX codeword (even index = DX slot): a single flip always
+    # breaks the 4-of-7 weight, whatever the code. Its RX repeat is untouched.
     beat = 6
-    corrupted[beat * 2] ^= 0b0000011
+    corrupted[beat * 2] ^= 0b0000001
     assert bin(corrupted[beat * 2]).count("1") != 4
 
     audio = _synth_navtex_audio(words_to_bits(corrupted))
@@ -201,3 +201,14 @@ def test_rs41_resampler_does_not_mutate_callers_iq():
     before = iq.copy()
     resampler.process(iq)
     assert np.array_equal(iq, before)
+
+
+def test_navtex_uses_the_ccir_476_code_table():
+    from msdr.decoder.pydecoders import navtex
+
+    # Spot values from ITU-R M.476: A, Z, letter shift, figure shift, space.
+    assert navtex._LETTER_TO_CODE["A"] == 0x47 and navtex._LETTER_TO_CODE["Z"] == 0x63
+    assert (navtex._LTRS_CODE, navtex._FIGS_CODE, navtex._SPACE_CODE) == (0x5A, 0x36, 0x5C)
+    # Figures share the ITA2 letter pairing (Q/1 ... P/0).
+    assert navtex._FIGURE_TO_CODE["1"] == navtex._LETTER_TO_CODE["Q"]
+    assert navtex._FIGURE_TO_CODE["0"] == navtex._LETTER_TO_CODE["P"]

@@ -184,6 +184,15 @@ def test_backup_media_is_limited_to_explicit_roots(tmp_path, dbs):
     assert (restored_dir / inside.name).read_bytes() == b"inside"
     assert (restored_dir / "run-00.sigmf-meta").is_file()
 
+    # A second restore replaces the first one's staged media instead of piling up.
+    restore_backup(target, path, media_root=tmp_path / "restored")
+    staged = list((tmp_path / "restored" / "media").glob("restore-*"))
+    assert len(staged) == 1
+    second_dir = Path(
+        target.conn.execute("SELECT path FROM recording_refs WHERE name='inside'").fetchone()[0]
+    )
+    assert staged[0] in second_dir.parents and (second_dir / inside.name).is_file()
+
 
 def test_evidence_bundle_contains_notes_decoder_version_and_bounded_iq(tmp_path, dbs):
     db = dbs()

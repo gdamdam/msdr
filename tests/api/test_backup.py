@@ -18,9 +18,15 @@ async def test_backup_restore_and_evidence_download(tmp_path):
         assert backup.status_code == 200
         assert zipfile.is_zipfile(io.BytesIO(backup.content))
         await client.delete(f"/api/signals/{signal_id}")
+        service = app.state.service
+        # In-memory copies of pre-restore rows must not survive the restore.
+        service._ignored_find_freqs = {123_456}
+        service.library_undo._redo.append({"row": {"id": "gone"}})
         restored = await client.post("/api/backup/restore", content=backup.content)
         assert restored.status_code == 200, restored.text
         assert restored.json()["verified"] is True
+        assert service._ignored_find_freqs == set()
+        assert service.library_undo.latest_redo() is None
         assert app.state.service.db.conn.execute(
             "SELECT name FROM signals WHERE id=?", (signal_id,)
         ).fetchone()[0] == "Saved"

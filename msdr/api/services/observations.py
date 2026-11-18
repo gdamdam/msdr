@@ -41,6 +41,10 @@ class ObservationServiceMixin:
         session_id: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
+        # SQLite reads LIMIT -1 as "no limit", and every row costs extra claim
+        # queries on the event loop; same clamp as observations_export.
+        limit = max(1, min(int(limit), 5000))
+        tolerance_hz = max(0, int(tolerance_hz))
         obs = self.observations.list(
             frequency_hz=frequency_hz,
             tolerance_hz=tolerance_hz,

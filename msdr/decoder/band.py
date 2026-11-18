@@ -9,6 +9,7 @@ channelizer's bin index `k` instead of "the one active frequency".
 
 import asyncio
 import contextlib
+import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
@@ -28,6 +29,8 @@ from msdr.decoder.channelizer import AMChannel, NFMChannel, PolyphaseChannelizer
 from msdr.decoder.peaks import Peak, PeakDetector
 from msdr.decoder.readiness import decoder_facts
 from msdr.decoder.registry import DECODERS
+
+logger = logging.getLogger(__name__)
 
 # A detected channel needs to be this much stronger than the weakest one
 # already running before it's allowed to bump it (spec P2 "Rules").
@@ -186,6 +189,7 @@ class BandDecoder:
         self.last_stop_reason: str | None = None
         self._frames = 0
         self._dropped = 0
+        self._pump_error_logged = False
         # Live IQFrame objects have no sample index, so a bounded-queue drop
         # needs an explicit discontinuity marker for the decoder pump.
         self._pending_frame_gap = False
@@ -377,15 +381,19 @@ class BandDecoder:
         """Runtime add of a memory-style channel that's never idle-retired
         (`_retire_idle` only ever touches `source == "detected"`) -- used to
         start decoding a peak the operator picked from the survey view."""
-        await self._pin_channel(frequency_hz, signal_id, decoders)
+        # Under the lock: _process_block iterates _channels in a worker thread
+        # while _pump_frame holds it, and a resize mid-iteration kills the pump.
+        async with self._lock:
+            await self._pin_channel(frequency_hz, signal_id, decoders)
         self._on_status()
 
     async def unpin(self, frequency_hz: float) -> None:
-        k, _residual = self._channelizer.channel_for(frequency_hz, self._center_hz)
-        channel = self._channels.get(k)
-        if channel is not None and channel.source == "pinned":
-            await self._stop_channel(channel)
-            del self._channels[k]
+        async with self._lock:
+            k, _residual = self._channelizer.channel_for(frequency_hz, self._center_hz)
+            channel = self._channels.get(k)
+            if channel is not None and channel.source == "pinned":
+                await self._stop_channel(channel)
+                del self._channels[k]
         self._on_status()
 
     async def _pin_channel(
@@ -634,7 +642,18 @@ class BandDecoder:
     async def _pump(self) -> None:
         try:
             while True:
-                await self._pump_queued_frame(await self._queue.get())
+                queued = await self._queue.get()
+                try:
+                    await self._pump_queued_frame(queued)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    # One bad frame (a backend feed error, say) must not end the
+                    # pump while status still says active; drop it and log once.
+                    self._dropped += 1
+                    if not self._pump_error_logged:
+                        self._pump_error_logged = True
+                        logger.exception("band decoder: frame failed (further errors counted)")
         except asyncio.CancelledError:
             raise
 

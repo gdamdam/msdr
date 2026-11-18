@@ -368,7 +368,9 @@ class ScanSkipIn(BaseModel):
 
 
 class FindPatchIn(BaseModel):
-    status: str | None = None
+    # The scanner skips a channel only on an exact "ignored" match, so a
+    # free-form status could look handled in the UI and still be scanned.
+    status: Literal["new", "reviewed", "saved", "ignored"] | None = None
     note: str | None = None
 
 

@@ -283,9 +283,21 @@ class ProcessBackend:
     async def _read_stdout(self) -> None:
         assert self._proc is not None and self._proc.stdout is not None
         try:
-            async for raw in self._proc.stdout:
+            # The reader must outlive a bad line: once it stops, nothing drains
+            # stdout and the child blocks on a full pipe while still looking healthy.
+            while True:
+                try:
+                    raw = await self._proc.stdout.readline()
+                except ValueError:
+                    continue  # line over the stream limit; asyncio already discarded it
+                if not raw:
+                    return
                 line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
-                event = self._parser(line)
+                try:
+                    event = self._parser(line)
+                except Exception:
+                    logger.debug("decoder output line not parsed: %r", line[:200], exc_info=True)
+                    continue
                 if event is not None:
                     self._events.put_nowait(event)
         except asyncio.CancelledError:
@@ -517,6 +529,8 @@ def parse_multimon_json(line: str, decoder_id: str) -> DecodeEvent | None:
         obj = json.loads(line)
     except json.JSONDecodeError:
         return None
+    if not isinstance(obj, dict):
+        return None  # a bare number or array is valid JSON but not a message
     text_key = next((k for k in ("alpha", "numeric", "message") if k in obj), None)
     text = obj.get(text_key, "") if text_key else ""
     fields = {k: v for k, v in obj.items() if k not in (text_key, "demod_name")}

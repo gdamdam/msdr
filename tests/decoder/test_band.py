@@ -713,3 +713,50 @@ async def test_am_mode_builds_am_channels_and_reports_mode(monkeypatch):
 async def test_default_mode_is_nfm(monkeypatch):
     band, *_ = _make_band(monkeypatch, memories=[])
     assert band.status()["mode"] == "NFM"
+
+
+@pytest.mark.asyncio
+async def test_pin_and_unpin_wait_for_the_frame_lock(monkeypatch):
+    # _process_block iterates the channel table in a worker thread while the
+    # pump holds the lock, so pin/unpin must not change it in between.
+    band, stream, backends, events, statuses = _make_band(monkeypatch, memories=[])
+    await band.start()
+    try:
+        pin_freq = CENTER_HZ + 5 * SPACING_HZ
+        async with band._lock:
+            task = asyncio.create_task(band.pin(pin_freq, "sig-pin", ["pocsag"]))
+            await asyncio.sleep(0.05)
+            assert not task.done() and band.status()["channels"] == []
+        await task
+        assert len(band.status()["channels"]) == 1
+        async with band._lock:
+            task = asyncio.create_task(band.unpin(pin_freq))
+            await asyncio.sleep(0.05)
+            assert not task.done() and len(band.status()["channels"]) == 1
+        await task
+        assert band.status()["channels"] == []
+    finally:
+        await band.stop()
+
+
+@pytest.mark.asyncio
+async def test_pump_survives_a_frame_that_raises(monkeypatch):
+    band, stream, backends, events, statuses = _make_band(monkeypatch, memories=[])
+    await band.start()
+    try:
+        calls = {"n": 0}
+        original = band._pump_frame
+
+        async def flaky(frame):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("backend feed failed")
+            return await original(frame)
+
+        monkeypatch.setattr(band, "_pump_frame", flaky)
+        stream.push(_iq_frame_bytes([], FS, FRAME_SAMPLES))
+        stream.push(_iq_frame_bytes([], FS, FRAME_SAMPLES))
+        assert await _wait_until(lambda: calls["n"] >= 2)
+        assert not band._pump_task.done()
+    finally:
+        await band.stop()

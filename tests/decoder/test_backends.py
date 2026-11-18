@@ -1166,3 +1166,8 @@ async def _make_loop_queue():
     from msdr.decoder.backends import LoopEventQueue
 
     return LoopEventQueue()
+
+
+def test_parse_multimon_json_ignores_non_object_json():
+    assert parse_multimon_json("42", "pocsag") is None
+    assert parse_multimon_json('["a"]', "pocsag") is None

@@ -1251,3 +1251,41 @@ async def test_concurrent_band_pins_share_one_session(
         assert sorted(c["frequency_hz"] for c in channels) == [152_840_000, 152_860_000]
     finally:
         await manager.stop()
+
+
+@pytest.mark.asyncio
+async def test_failed_stream_start_restores_squelch_and_agc_and_stops_backends(
+    monkeypatch, adapter, stream, repo, confirmed, published, settings
+):
+    adapter.props["squelch_enable"] = True
+    adapter.props["agc_enable"] = True
+    manager, backends = _make_manager(
+        monkeypatch,
+        adapter=adapter,
+        stream=stream,
+        repo=repo,
+        confirmed=confirmed,
+        published=published,
+        settings=settings,
+    )
+    stopped: list[str] = []
+
+    async def refuse() -> None:
+        raise OSError("websocket refused")
+
+    monkeypatch.setattr(stream, "start", refuse)
+    await manager.start()
+    try:
+        async def record_stop(self) -> None:
+            stopped.append(self.decoder_id)
+
+        monkeypatch.setattr(FakeBackend, "stop", record_stop)
+        with pytest.raises(OSError):
+            await manager.start_decoding(["pocsag"], 152_840_000, "manual")
+        assert adapter.props["squelch_enable"] is True
+        assert adapter.props["agc_enable"] is True
+        assert stopped == ["pocsag"]
+        assert manager.status()["active"] is False
+        assert backends
+    finally:
+        await manager.stop()

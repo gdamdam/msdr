@@ -101,3 +101,36 @@ def test_breathing_none_across_a_gap_and_clock_step_back_is_dropped():
     n = len(acc._samples)
     acc.add(1000.0, src, 110)                   # clock stepped back: dropped
     assert len(acc._samples) == n
+
+
+def test_sparse_seconds_do_not_set_the_baseline():
+    # One frame per second has std 0; taken as the baseline it flagged ordinary
+    # jitter as motion for good once the source turned dense.
+    rng = np.random.default_rng(7)
+    acc = SensingAccumulator(SRC)
+    sparse = T0 + np.arange(12.0)
+    _feed(acc, sparse, np.full(12, 100))
+    dense = sparse[-1] + 1 + np.arange(50 * 60) / 50
+    _feed(acc, dense, 100 + rng.integers(-1, 2, len(dense)))
+    assert acc.presence(dense[-1])["motion"] is False
+
+
+def test_baseline_forgets_a_quiet_spell_older_than_the_kept_hour():
+    acc = SensingAccumulator(SRC)
+    acc._medians.extend([0.1] + [0.8] * (acc._medians.maxlen - 1))
+    acc._baseline = 0.1
+    ts = T0 + np.arange(50 * 12) / 50
+    _feed(acc, ts, 100 + np.tile([-1, 1], len(ts) // 2))
+    assert acc._baseline > 0.5
+
+
+def test_breathing_ignores_noise_and_slow_drift():
+    hits = 0
+    for seed in range(40):
+        rng = np.random.default_rng(seed)
+        acc = SensingAccumulator(SRC)
+        ts = T0 + np.arange(50 * 40) / 50
+        drift = np.cumsum(rng.normal(0, 0.05, len(ts))) if seed % 2 else 0
+        _feed(acc, ts, 100 + drift + rng.normal(0, 1.5, len(ts)))
+        hits += acc.breathing(ts[-1]) is not None
+    assert hits <= 1

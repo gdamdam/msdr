@@ -300,7 +300,7 @@ The UI polls this at most every 5 s, only while the Activity tab is visible.
 
 With `wifi.sensing_source` set to one transmitter's address (normally your own router), `msdr/wifi/sensing.py` turns that transmitter's per-frame `packet_power_code` into a motion and breathing sensor. A body in the path between the transmitter and the adapter changes the received power. Frames from every other address, and frames with a bad FCS, are dropped before anything is stored or counted. Only good-FCS management and data frames are used, since control frames carry no transmitter address.
 
-- **Presence:** the spread of the last 2 s against a baseline, the quietest 60 s seen so far. Movement in the path raises it.
+- **Presence:** the spread of the last 2 s against a baseline, the quietest 60 s of the last hour (seconds with fewer than 5 frames are left out). Movement in the path raises it.
 - **Crossing:** a dip in the mean of more than 6 codes lasting 0.3 to 3 s, as when someone walks through the line between the two radios.
 - **Breathing:** the dominant 0.1 to 0.7 Hz rhythm of the last 30 s, in breaths per minute with a quality ratio. It needs at least 30 frames/s from the source. A router's beacons (about 10/s) report "needs dense source"; a second device sending 100 to 200 small frames/s on the same channel is needed.
 

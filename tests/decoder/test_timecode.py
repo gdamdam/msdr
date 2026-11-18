@@ -165,6 +165,18 @@ def test_dcf77_decodes_one_minute_frame_cest_to_utc():
     expected_utc = datetime(2026, 9, 25, 20, 31, 0, tzinfo=UTC)
     assert event.fields["utc"] == expected_utc.isoformat()
     assert event.fields["station"] == "DCF77"
+    # The frame announces the minute after the one it is sent in. Checked with
+    # a clock that advances with the audio: the decode fires before the end of
+    # the run, which the fixed end-of-run clock above cannot place.
+    fed = [0]
+    timed = Dcf77Decoder(clock=lambda: host_epoch + fed[0] / _FS)
+    timed_events = []
+    for i in range(0, len(audio), 1102):
+        chunk = audio[i : i + 1102]
+        fed[0] += len(chunk)
+        timed_events.extend(timed.feed(chunk))
+    expected_offset = host_epoch + _LEAD_IN_S + 60.0 - expected_utc.timestamp()
+    assert abs(timed_events[0].fields["offset_s"] - expected_offset) < 0.2
     assert event.fields["dut1"] is None
     assert event.fields["leap"] is False
     assert event.fields["quality"] == 1.0
@@ -206,6 +218,18 @@ def test_msf_decodes_one_minute_frame_bst_to_utc():
     expected_utc = datetime(2026, 9, 25, 20, 31, 0, tzinfo=UTC)
     assert event.fields["utc"] == expected_utc.isoformat()
     assert event.fields["station"] == "MSF"
+    # The frame announces the minute after the one it is sent in. Checked with
+    # a clock that advances with the audio: the decode fires before the end of
+    # the run, which the fixed end-of-run clock above cannot place.
+    fed = [0]
+    timed = MsfDecoder(clock=lambda: host_epoch + fed[0] / _FS)
+    timed_events = []
+    for i in range(0, len(audio), 1102):
+        chunk = audio[i : i + 1102]
+        fed[0] += len(chunk)
+        timed_events.extend(timed.feed(chunk))
+    expected_offset = host_epoch + _LEAD_IN_S + 60.0 - expected_utc.timestamp()
+    assert abs(timed_events[0].fields["offset_s"] - expected_offset) < 0.2
     assert event.fields["dut1"] is None
     assert event.fields["leap"] is None
     assert event.fields["quality"] == 1.0

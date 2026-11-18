@@ -23,6 +23,9 @@ SAMPLES_MAX = 50_000
 
 #: Completed seconds needed before a presence baseline exists.
 BASELINE_MIN_ROWS = 10
+#: A second with fewer frames than this says nothing about spread (one frame
+#: has std 0) and is left out of the baseline.
+BASELINE_MIN_FRAMES = 5
 #: Baseline = quietest rolling median of per-second std over this many seconds.
 BASELINE_SPAN_S = 60
 #: Floor on the baseline std (power codes are integers, so a dead-still link
@@ -59,8 +62,9 @@ BREATH_MIN_FPS = 30.0
 #: Resampling rate for the spectrum (Hz) and the breathing band (Hz).
 BREATH_FS = 10.0
 BREATH_BAND = (0.1, 0.7)
-#: Peak over median in-band magnitude below this is "no clear rhythm".
-BREATH_MIN_QUALITY = 3.0
+#: Peak over median in-band magnitude below this is "no clear rhythm". Noise alone
+#: reaches about 3.7 at the 99th percentile over 30 s, so 3.0 reported a rate on it.
+BREATH_MIN_QUALITY = 4.5
 #: Zero-pad to at least this many points so the peak resolves finer than 1 bpm.
 BREATH_MIN_FFT = 4096
 #: Need at least this many seconds of samples to say anything.
@@ -84,6 +88,9 @@ class SensingAccumulator:
         self._sum = 0.0
         self._sumsq = 0.0
         self._baseline: float | None = None
+        # Rolling baseline medians, one per finished second, over the kept hour:
+        # the baseline is their minimum, so a quiet spell ages out with its rows.
+        self._medians: deque[float] = deque(maxlen=ROWS_KEPT)
         self._ref: float | None = None
         # Crossing state.
         self._dip_start: float | None = None
@@ -121,10 +128,10 @@ class SensingAccumulator:
         std = max(self._sumsq / n - mean * mean, 0.0) ** 0.5
         self._rows.append((self._sec, n, mean, std))
         self._n, self._sum, self._sumsq = 0, 0.0, 0.0
-        if len(self._rows) >= BASELINE_MIN_ROWS:
-            med = statistics.median(r[3] for r in list(self._rows)[-BASELINE_SPAN_S:])
-            if self._baseline is None or med < self._baseline:
-                self._baseline = med
+        dense = [r[3] for r in list(self._rows)[-BASELINE_SPAN_S:] if r[1] >= BASELINE_MIN_FRAMES]
+        if len(dense) >= BASELINE_MIN_ROWS:
+            self._medians.append(statistics.median(dense))
+            self._baseline = min(self._medians)
         if len(self._rows) >= CROSSING_REF_MIN_ROWS:
             self._ref = statistics.median(r[2] for r in list(self._rows)[-CROSSING_REF_ROWS:])
 
@@ -224,6 +231,10 @@ class SensingAccumulator:
         k = int(band[np.argmax(bm)])
         quality = float(mag[k] / med)
         if quality < BREATH_MIN_QUALITY:
+            return None
+        # Slow drift is strongest below the band, so its in-band maximum sits on
+        # the band edge of a falling slope. A rhythm is a peak of its own.
+        if k == 0 or k >= len(mag) - 1 or mag[k] <= mag[k - 1] or mag[k] < mag[k + 1]:
             return None
         delta = 0.0
         if 0 < k < len(mag) - 1:

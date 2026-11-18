@@ -75,38 +75,46 @@ class HistoryStore:
         if not drained:
             return
         conn = self.conn
-        conn.executemany(
-            "INSERT INTO buckets"
-            " (receiver, ident, minute, reports, sig_min, sig_max, sig_sum, sig_n)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-            " ON CONFLICT (receiver, ident, minute) DO UPDATE SET"
-            " reports = reports + excluded.reports,"
-            " sig_min = CASE WHEN sig_min IS NULL THEN excluded.sig_min"
-            "   WHEN excluded.sig_min IS NULL THEN sig_min ELSE MIN(sig_min, excluded.sig_min) END,"
-            " sig_max = CASE WHEN sig_max IS NULL THEN excluded.sig_max"
-            "   WHEN excluded.sig_max IS NULL THEN sig_max ELSE MAX(sig_max, excluded.sig_max) END,"
-            " sig_sum = sig_sum + excluded.sig_sum,"
-            " sig_n = sig_n + excluded.sig_n",
-            [
-                (r, i, m, b.reports, b.sig_min, b.sig_max, b.sig_sum, b.sig_n)
-                for (r, i, m), b in drained.buckets.items()
-            ],
-        )
-        conn.executemany(
-            "INSERT INTO devices (receiver, ident, name, kind, signal_kind, first_seen, last_seen)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)"
-            " ON CONFLICT (receiver, ident) DO UPDATE SET"
-            " name = COALESCE(excluded.name, name),"
-            " kind = COALESCE(excluded.kind, kind),"
-            " signal_kind = COALESCE(excluded.signal_kind, signal_kind),"
-            " first_seen = MIN(first_seen, excluded.first_seen),"
-            " last_seen = MAX(last_seen, excluded.last_seen)",
-            [
-                (r, i, m.name, m.kind, m.signal_kind, m.first_seen, m.last_seen)
-                for (r, i), m in drained.devices.items()
-            ],
-        )
-        conn.commit()
+        try:
+            conn.executemany(
+                "INSERT INTO buckets"
+                " (receiver, ident, minute, reports, sig_min, sig_max, sig_sum, sig_n)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                " ON CONFLICT (receiver, ident, minute) DO UPDATE SET"
+                " reports = reports + excluded.reports,"
+                " sig_min = CASE WHEN sig_min IS NULL THEN excluded.sig_min"
+                "   WHEN excluded.sig_min IS NULL THEN sig_min"
+                "   ELSE MIN(sig_min, excluded.sig_min) END,"
+                " sig_max = CASE WHEN sig_max IS NULL THEN excluded.sig_max"
+                "   WHEN excluded.sig_max IS NULL THEN sig_max"
+                "   ELSE MAX(sig_max, excluded.sig_max) END,"
+                " sig_sum = sig_sum + excluded.sig_sum,"
+                " sig_n = sig_n + excluded.sig_n",
+                [
+                    (r, i, m, b.reports, b.sig_min, b.sig_max, b.sig_sum, b.sig_n)
+                    for (r, i, m), b in drained.buckets.items()
+                ],
+            )
+            conn.executemany(
+                "INSERT INTO devices"
+                " (receiver, ident, name, kind, signal_kind, first_seen, last_seen)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)"
+                " ON CONFLICT (receiver, ident) DO UPDATE SET"
+                " name = COALESCE(excluded.name, name),"
+                " kind = COALESCE(excluded.kind, kind),"
+                " signal_kind = COALESCE(excluded.signal_kind, signal_kind),"
+                " first_seen = MIN(first_seen, excluded.first_seen),"
+                " last_seen = MAX(last_seen, excluded.last_seen)",
+                [
+                    (r, i, m.name, m.kind, m.signal_kind, m.first_seen, m.last_seen)
+                    for (r, i), m in drained.devices.items()
+                ],
+            )
+            conn.commit()
+        except Exception:
+            # No half-written flush left open for a later commit to finish.
+            conn.rollback()
+            raise
 
     def add_coverage(self, receiver: str, ts: float, channel: int, seconds: float) -> None:
         """Seconds of listening ending at `ts`, split across minute
@@ -139,20 +147,24 @@ class HistoryStore:
         if not cells:
             return
         conn = self.conn
-        conn.executemany(
-            "INSERT INTO wifi_activity (second, channel, packets, listened_s, sig_sum, sig_n)"
-            " VALUES (?, ?, ?, ?, ?, ?)"
-            " ON CONFLICT (second, channel) DO UPDATE SET"
-            " packets = packets + excluded.packets,"
-            f" listened_s = MIN({_ACTIVITY_SECOND_CAP_S}, listened_s + excluded.listened_s),"
-            " sig_sum = sig_sum + excluded.sig_sum,"
-            " sig_n = sig_n + excluded.sig_n",
-            [
-                (second, channel, c.packets, c.listened_s, c.sig_sum, c.sig_n)
-                for (second, channel), c in cells.items()
-            ],
-        )
-        conn.commit()
+        try:
+            conn.executemany(
+                "INSERT INTO wifi_activity (second, channel, packets, listened_s, sig_sum, sig_n)"
+                " VALUES (?, ?, ?, ?, ?, ?)"
+                " ON CONFLICT (second, channel) DO UPDATE SET"
+                " packets = packets + excluded.packets,"
+                f" listened_s = MIN({_ACTIVITY_SECOND_CAP_S}, listened_s + excluded.listened_s),"
+                " sig_sum = sig_sum + excluded.sig_sum,"
+                " sig_n = sig_n + excluded.sig_n",
+                [
+                    (second, channel, c.packets, c.listened_s, c.sig_sum, c.sig_n)
+                    for (second, channel), c in cells.items()
+                ],
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
     def prune_activity(self, retention_hours: int, *, now: float | None = None) -> int:
         cutoff = int((now or time.time()) - retention_hours * 3600)

@@ -6,6 +6,7 @@ import base64
 import copy
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
 import uuid
@@ -227,8 +228,20 @@ def create_backup(
     return manifest
 
 
+# Decompressed-size ceilings for the two JSON members restore loads whole into
+# memory: a small upload must not be able to expand without bound.
+_MAX_MANIFEST_BYTES = 64 * 1024 * 1024
+_MAX_DATABASE_JSON_BYTES = 2 * 1024 * 1024 * 1024
+
+
 def _validate_archive(archive: zipfile.ZipFile) -> tuple[dict, dict[str, list[dict]]]:
+    for member, ceiling in ((_MANIFEST, _MAX_MANIFEST_BYTES),
+                            ("database.json", _MAX_DATABASE_JSON_BYTES)):
+        if archive.getinfo(member).file_size > ceiling:
+            raise ValueError(f"backup member too large: {member}")
     manifest = json.loads(archive.read(_MANIFEST))
+    if not isinstance(manifest, dict):
+        raise ValueError("backup manifest is not an object")
     if manifest.get("format") != BACKUP_FORMAT:
         raise ValueError(f"unsupported backup format: {manifest.get('format')!r}")
     rows = json.loads(archive.read("database.json"))
@@ -241,6 +254,29 @@ def _validate_archive(archive: zipfile.ZipFile) -> tuple[dict, dict[str, list[di
         if _digest(_canonical(values)) != expected.get("sha256"):
             raise ValueError(f"backup checksum mismatch for {table}")
     return manifest, _from_json_safe(rows)
+
+
+def _remove_stale_restores(staging: Path, rows: dict[str, list[dict]]) -> None:
+    """Delete earlier `restore-*` staging directories next to `staging`.
+
+    The database that pointed at them has just been replaced. One is kept when
+    a restored row still references it: a backup taken without media on this
+    machine carries the previous restore's paths unchanged.
+    """
+    referenced = [
+        str(row[column])
+        for table_rows in rows.values()
+        for row in table_rows
+        for column in ("path", "image_path")
+        if row.get(column)
+    ]
+    for old in staging.parent.glob("restore-*"):
+        if old == staging or not old.is_dir():
+            continue
+        prefix = str(old) + os.sep
+        if any(ref.startswith(prefix) for ref in referenced):
+            continue
+        shutil.rmtree(old, ignore_errors=True)
 
 
 def restore_backup(
@@ -360,6 +396,8 @@ def restore_backup(
                 if _canonical(restored) != _canonical(expected_rows):
                     raise ValueError("restored media path verification failed")
             conn.commit()
+            if staging is not None:
+                _remove_stale_restores(staging, restored)
         except Exception:
             conn.rollback()
             if staging:

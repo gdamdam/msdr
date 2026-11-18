@@ -427,47 +427,55 @@ class DecoderManager:
             await self._adapter.set("agc_enable", False)
 
         channels: dict[str, DecodeChannel] = {}
-        for spec in specs:
-            try:
-                backend = build_backend(spec, binaries, fax_dir=self._fax_dir)
-                await backend.start()
-            except DecoderError as exc:
-                warnings.append(str(exc))
-                continue
-            channel = DecodeChannel(
-                spec, backend, settings.audio_sample_rate, settings.audio_channels
-            )
-            channel.state = "running"
-            channels[spec.id] = channel
+        try:
+            for spec in specs:
+                try:
+                    backend = build_backend(spec, binaries, fax_dir=self._fax_dir)
+                    try:
+                        await backend.start()
+                    except DecoderError:
+                        raise
+                    except BaseException:
+                        # e.g. OSError from exec: the backend may be half started.
+                        with contextlib.suppress(Exception):
+                            await backend.stop()
+                        raise
+                except DecoderError as exc:
+                    warnings.append(str(exc))
+                    continue
+                channel = DecodeChannel(
+                    spec, backend, settings.audio_sample_rate, settings.audio_channels
+                )
+                channel.state = "running"
+                channels[spec.id] = channel
 
-        if not channels:
-            if self._squelch_was_enabled:
-                await self._adapter.set("squelch_enable", True)
-            self._squelch_was_enabled = None
-            if self._agc_was_enabled:
-                await self._adapter.set("agc_enable", True)
-            self._agc_was_enabled = None
-            raise DecoderError("no requested decoders could be started")
+            if not channels:
+                raise DecoderError("no requested decoders could be started")
 
-        self._channels = channels
-        self._decoder_counts = {decoder_id: _empty_counts() for decoder_id in channels}
-        self._unsupported = unsupported
-        self._warnings = warnings
-        self._source = source
-        self._source_kind = "audio"
-        self._signal_id = signal_id
-        self._frequency_hz = frequency_hz
-        self._since = time.time()
-        self._rate_estimator = RateEstimator()
-        self._rate_configured = settings.audio_sample_rate
-        self._rate_observed = None
-        self._silent = False
-        self._silence_since = None
-        self._image_event_ids = {}
+            self._channels = channels
+            self._decoder_counts = {decoder_id: _empty_counts() for decoder_id in channels}
+            self._unsupported = unsupported
+            self._warnings = warnings
+            self._source = source
+            self._source_kind = "audio"
+            self._signal_id = signal_id
+            self._frequency_hz = frequency_hz
+            self._since = time.time()
+            self._rate_estimator = RateEstimator()
+            self._rate_configured = settings.audio_sample_rate
+            self._rate_observed = None
+            self._silent = False
+            self._silence_since = None
+            self._image_event_ids = {}
 
-        self._stream = self._stream_factory()
-        await self._stream.start()
-        await self._stream.enable(True)
+            self._stream = self._stream_factory()
+            await self._stream.start()
+            await self._stream.enable(True)
+        except BaseException:
+            # _active is still False, so stop_decoding() would return early and
+            # leave squelch/AGC off and the started backends running.
+            await self._abort_audio_start(channels)
+            raise
         self._active = True
 
         self._pump_task = asyncio.create_task(self._pump())
@@ -477,6 +485,28 @@ class DecoderManager:
 
         self._publish_status()
         return self.status()
+
+    async def _abort_audio_start(self, channels: dict[str, DecodeChannel]) -> None:
+        """Undo a failed audio-path start: stop what was started and restore the
+        radio's squelch and AGC. Best effort -- the original error is re-raised."""
+        for channel in channels.values():
+            with contextlib.suppress(Exception):
+                await channel.stop()
+        self._channels = {}
+        if self._stream is not None:
+            with contextlib.suppress(Exception):
+                await self._stream.stop()
+            self._stream = None
+        with contextlib.suppress(Exception):
+            if self._squelch_was_enabled:
+                await self._adapter.set("squelch_enable", True)
+        self._squelch_was_enabled = None
+        with contextlib.suppress(Exception):
+            if self._agc_was_enabled:
+                await self._adapter.set("agc_enable", True)
+        self._agc_was_enabled = None
+        self._source = self._source_kind = self._signal_id = None
+        self._frequency_hz = self._since = self._rate_estimator = None
 
     async def _start_decoding_iq(
         self,
@@ -865,8 +895,13 @@ class DecoderManager:
                     self._publish_status()
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as exc:
             logger.exception("decoder pump crashed")
+            # Nothing feeds the backends any more: say so instead of "running".
+            for channel in self._channels.values():
+                channel.state = "error"
+                channel.error = f"decoder pump crashed: {exc}"
+            self._publish_status()
 
     def _check_rate(self, frame: AudioFrame) -> None:
         if self._rate_estimator is None:
@@ -944,6 +979,11 @@ class DecoderManager:
                 self._publish({"type": "decoder_event", "event": stored})
         except asyncio.CancelledError:
             raise
+        except Exception as exc:
+            logger.exception("decoder event drain crashed: %s", channel.spec.id)
+            channel.state = "error"
+            channel.error = f"event handling failed: {exc}"
+            self._publish_status()
 
     # -- internals: follow the operator's own tuning -------------------------
 

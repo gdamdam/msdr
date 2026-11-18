@@ -33,9 +33,11 @@ Known limitations, all three decoders:
  - `offset_s` carries a small fixed bias from the envelope filter's group
    delay (a few ms to ~12 ms for WWV's band-pass) -- not compensated.
  - DCF77's frame boundary is a *missing* pulse (real spec), so a decode only
-   fires once the following minute's first pulse arrives (~1-2s after the
-   minute it describes) -- WWV/MSF, which frame on a present marker pulse,
-   decode immediately.
+   fires once the following minute's first pulse arrives -- WWV/MSF, which
+   frame on a present marker pulse, decode immediately.
+ - DCF77 and MSF frames announce the minute that starts at the next minute
+   marker; `offset_s` accounts for it (frame start + 60 s). WWV, WWVB and JJY
+   describe the minute in progress.
  - WWV/WWVH station identification (500/600 Hz tone schedule) is not
    implemented; `station` always reports the "WWV/WWVH" fallback the plan
    allows for "if detectable, else -- ".
@@ -462,7 +464,9 @@ class Dcf77Decoder:
             return None
         utc_dt = (local_dt - timedelta(hours=utc_offset_h)).replace(tzinfo=UTC)
 
-        host_time = self._host_clock.host_time_at(pulses[0][0], self.input_rate)
+        # A DCF77 frame announces the minute that begins at the NEXT minute
+        # marker, so the decoded time is due 60 s after this frame's second 0.
+        host_time = self._host_clock.host_time_at(pulses[0][0], self.input_rate) + 60.0
         offset_s = host_time - utc_dt.timestamp()
 
         dcf_parity_ok = minute_ok and hour_ok and date_ok and start_ok
@@ -631,7 +635,8 @@ class MsfDecoder:
         utc_offset_h = 1 if dst else 0
         utc_dt = (local_dt - timedelta(hours=utc_offset_h)).replace(tzinfo=UTC)
 
-        host_time = self._host_clock.host_time_at(window[0][0], self.input_rate)
+        # Like DCF77, an MSF frame carries the time of the following minute.
+        host_time = self._host_clock.host_time_at(window[0][0], self.input_rate) + 60.0
         offset_s = host_time - utc_dt.timestamp()
 
         quality = sum(confs) / len(confs)

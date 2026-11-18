@@ -432,3 +432,19 @@ def test_legacy_export_without_labels_imports(make_db):
     del doc["device_labels"]
     report = import_all(make_db(), doc)
     assert "device_labels" not in report.added
+
+
+def test_export_import_preserves_decoder_preset(make_db):
+    source = make_db()
+    signal = Signal(name="Mesh", frequency_hz=906_875_000, decoder_preset="meshcore_us")
+    SignalRepo(source).add(signal)
+    target = make_db()
+    import_all(target, export_all(source))
+    assert SignalRepo(target).get(signal.id).decoder_preset == "meshcore_us"
+
+    # "Newer wins" replaces an existing row: the preset must follow.
+    doc = export_all(source)
+    doc["signals"][0]["decoder_preset"] = "meshtastic_us_longfast"
+    doc["signals"][0]["updated_at"] = "2999-01-01T00:00:00+00:00"
+    import_all(target, doc)
+    assert SignalRepo(target).get(signal.id).decoder_preset == "meshtastic_us_longfast"

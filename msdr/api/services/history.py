@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 SAMPLE_EVERY_S = 2.0
 FLUSH_EVERY_S = 30.0
 PRUNE_EVERY_S = 3600.0
+# Failed flushes kept for retry (30 s each); beyond this the oldest is dropped.
+_HISTORY_UNWRITTEN_MAX = 20
 #: States in which a receiver is actually listening (docs/history.md coverage).
 _LISTENING = frozenset({"receiving", "stale"})
 
@@ -128,8 +130,21 @@ class HistoryServiceMixin:
                 self._history_last_sample.pop(receiver, None)
 
     def _history_flush(self) -> None:
-        self.history_store.write(self.history_acc.drain())
-        self.history_store.write_activity(self.activity_acc.drain().cells)
+        # Draining empties the accumulators, so a drain is kept here until its
+        # write commits: a locked database or full disk then costs a retry on
+        # the next flush, not the data. Bounded, oldest dropped first.
+        pending = self.__dict__.setdefault("_history_unwritten", [])
+        buckets = self.history_acc.drain()
+        if buckets:
+            pending.append((self.history_store.write, buckets))
+        cells = self.activity_acc.drain().cells
+        if cells:
+            pending.append((self.history_store.write_activity, cells))
+        del pending[:-_HISTORY_UNWRITTEN_MAX]
+        while pending:
+            write, drained = pending[0]
+            write(drained)
+            pending.pop(0)
 
     def _history_ready(self) -> HistoryStore:
         if self.history_store.db._conn is None:

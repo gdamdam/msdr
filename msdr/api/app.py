@@ -118,6 +118,9 @@ from msdr.storage.transfer import export_all, import_all
 
 #: POST /api/wifi/import body cap (docs/wifi.md).
 WIFI_IMPORT_MAX_BYTES = 200 * 1024 * 1024
+# A backup with media carries IQ recordings, so the cap is generous; it only
+# stops an endless upload from filling the temp volume.
+RESTORE_MAX_UPLOAD_BYTES = 32 * 1024 * 1024 * 1024
 
 # The four pcap global-header magic numbers (msdr.wifi.pcap._MAGICS, kept
 # private there -- duplicated here rather than widening that module's API
@@ -567,10 +570,12 @@ def create_app(
 
     @app.get("/api/passes")
     async def get_passes(
-        days: int | None = None,
-        min_elevation: float | None = None,
-        horizon: float | None = None,
-        top: int | None = None,
+        # Same bounds as the settings these override (msdr.settings): prediction
+        # runs synchronously, so an unbounded span would stall the whole API.
+        days: int | None = Query(None, ge=1, le=14),
+        min_elevation: float | None = Query(None, ge=0, le=90),
+        horizon: float | None = Query(None, ge=0, le=45),
+        top: int | None = Query(None, ge=1, le=200),
         service: AppService = Depends(get_service),
     ):
         result = await service.passes(
@@ -579,7 +584,10 @@ def create_app(
         return result.model_dump(mode="json")
 
     @app.post("/api/passes/refresh")
-    async def refresh_passes(days: int | None = None, service: AppService = Depends(get_service)):
+    async def refresh_passes(
+        days: int | None = Query(None, ge=1, le=14),
+        service: AppService = Depends(get_service),
+    ):
         result = await service.passes(days=days, refresh=True)
         return result.model_dump(mode="json")
 
@@ -2040,8 +2048,12 @@ def create_app(
         require_idle()
         with tempfile.TemporaryDirectory(prefix="msdr-restore-") as temp:
             source = Path(temp) / "backup.zip"
+            received = 0
             with source.open("wb") as dest:
                 async for chunk in request.stream():
+                    received += len(chunk)
+                    if received > RESTORE_MAX_UPLOAD_BYTES:
+                        raise HTTPException(413, "backup upload too large")
                     dest.write(chunk)
             require_idle()
             try:
@@ -2049,9 +2061,10 @@ def create_app(
                     service.db, source,
                     media_root=Path(service.settings.recorder_root).expanduser() / "restored",
                 )
-                service.band_scan.current = None
+                service.reload_after_restore()
                 return report
-            except (ValueError, KeyError, sqlite3.Error, zipfile.BadZipFile) as exc:
+            except (ValueError, KeyError, TypeError, AttributeError, sqlite3.Error,
+                    zipfile.BadZipFile) as exc:
                 raise HTTPException(422, str(exc)) from exc
 
     @app.get("/api/signals/{signal_id}/evidence-bundle")
