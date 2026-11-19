@@ -2,7 +2,7 @@
 from the design doc/plan: known baud rates map to the protocols that use
 them (never the frequency/allocation); `suggested_decoders` are the
 decoder ids the "-> DECODE" handoff will start. 4800 baud 4-level FSK is
-DMR/P25/NXDN voice (the dsd-fme decoders).
+DMR/P25/NXDN96 voice (the dsd-fme decoders); NXDN48 and dPMR run at 2400.
 
 `family_for` itself carries no confidence: the plan puts that on the caller
 ("confidence from line strength x modulation confidence"), since neither
@@ -60,11 +60,17 @@ def _family_for(
         if _close(symbol_rate_hz, 1200.0):
             return _row("POCSAG1200 / AX.25 AFSK", ["pocsag", "aprs"], ["other 1200 Bd FSK"])
         if _close(symbol_rate_hz, 2400.0):
-            return _row("POCSAG2400", ["pocsag"], ["other 2400 Bd FSK"])
+            return _row(
+                "POCSAG2400", ["pocsag"], ["NXDN48 / dPMR (4-level)", "other 2400 Bd FSK"]
+            )
         if _close(symbol_rate_hz, 1600.0) or _close(symbol_rate_hz, 3200.0):
             return _row("FLEX", ["flex"], ["other 1600/3200 Bd FSK"])
         if _close(symbol_rate_hz, 4800.0):
-            return _row("DMR / P25 / NXDN", ["dmr", "p25", "nxdn"], ["other 4800 Bd (4-level) FSK"])
+            # nxdn96, not nxdn: the 12.5 kHz mode is the one at 4800
+            # symbols/s (NXDN48, the 6.25 kHz mode, is 2400).
+            return _row(
+                "DMR / P25 / NXDN96", ["dmr", "p25", "nxdn96"], ["other 4800 Bd (4-level) FSK"]
+            )
         if _close(symbol_rate_hz, 9600.0):
             # The rate + 2-level FSK shape fit AIS, G3RUH packet and a C4FM
             # symbol clock alike; only a CRC-valid AIS frame (with an MMSI)

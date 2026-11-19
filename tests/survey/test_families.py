@@ -12,7 +12,7 @@ from msdr.survey.families import family_for
         ("fm_fsk", 2400.0, "POCSAG2400", ["pocsag"]),
         ("fm_fsk", 1600.0, "FLEX", ["flex"]),
         ("fm_fsk", 3200.0, "FLEX", ["flex"]),
-        ("fm_fsk", 4800.0, "DMR / P25 / NXDN", ["dmr", "p25", "nxdn"]),
+        ("fm_fsk", 4800.0, "DMR / P25 / NXDN96", ["dmr", "p25", "nxdn96"]),
         ("fm_fsk", 9600.0, "GMSK/FSK 9600 (AIS or packet)", ["ais", "packet9600"]),
         ("fm_fsk", 45.45, "RTTY", ["rtty"]),
         ("fm_fsk", 50.0, "RTTY / NAVTEX", ["rtty"]),
@@ -86,8 +86,8 @@ def test_family_for_available_ids_filters_suggested_decoders():
     family = family_for("fm_fsk", 4800.0, "nfm", 5000.0, available_ids={"pocsag"})
     assert family["suggested_decoders"] == []
 
-    family = family_for("fm_fsk", 4800.0, "nfm", 5000.0, available_ids={"dmr", "nxdn"})
-    assert family["suggested_decoders"] == ["dmr", "nxdn"]
+    family = family_for("fm_fsk", 4800.0, "nfm", 5000.0, available_ids={"dmr", "nxdn96"})
+    assert family["suggested_decoders"] == ["dmr", "nxdn96"]
 
 
 def test_family_for_available_ids_default_is_unfiltered():

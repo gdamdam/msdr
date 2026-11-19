@@ -1018,7 +1018,7 @@ def test_four_level_fsk_clock_survives_false_speech_score(monkeypatch):
     assert fields["voice"]["kind"] == "data"
     assert fields["symbol_rate_hz"] == 4800.0
     assert fields["symbol_rate_method"] == "fsk_clock_line"
-    assert fields["family"]["name"] == "DMR / P25 / NXDN"
+    assert fields["family"]["name"] == "DMR / P25 / NXDN96"
 
 
 def test_noaa_like_analog_speech_keeps_voice_classification():
