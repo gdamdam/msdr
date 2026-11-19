@@ -43,6 +43,9 @@ include = ["msdr/**"]
 # bare `pytest` collects it and errors on its `test_signal(frequency_hz, ...)`.
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# Unset, pytest-asyncio emits a PytestDeprecationWarning at configure time,
+# which CI's `-W error` turns into an INTERNALERROR before any test runs.
+asyncio_default_fixture_loop_scope = "function"
 markers = ["e2e: browser test needing --e2e and a real Chromium (see tests/e2e/conftest.py)"]
 
 [tool.ruff]
