@@ -185,3 +185,19 @@ def test_decoder_is_input_scale_free():
     for gain in (0.05, 1.0, 20.0):
         events, _ = _decode(flat * gain, chunk=4800)
         assert sorted(e.fields["payload_hex"] for e in events) == sorted(sent), gain
+
+
+def test_synchronized_follows_the_preamble_counter():
+    # Decoder status reads this: a training sequence seen is "synchronized"
+    # even if the frame behind it then fails its check.
+    from msdr.validation.fixtures_ais import ais_type1, iq_to_flat, make_burst
+
+    decoder = AisDecoder()
+    assert decoder.synchronized is False
+    payload = ais_type1(mmsi=366123456, nav_status=0, sog_tenths=1, lon_deg=1.0, lat_deg=2.0)
+    iq = make_burst(payload, 48_000.0, np.random.default_rng(0))
+    pad = np.zeros(2400, np.complex64)
+    decoder.feed(iq_to_flat(np.concatenate([pad, iq, pad]).astype(np.complex64), fs=48_000.0))
+    decoder.flush()
+    assert decoder.stats()["preambles"] >= 1
+    assert decoder.synchronized is True

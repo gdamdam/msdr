@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 from msdr.decoder.band import BandDecoder
+from msdr.decoder.reception import SpanStats, reception_check
 from msdr.decoder.registry import DECODERS, effective_binaries, resolve_binaries
 
 _DEFAULT_VHF = ("dmr", "nxdn96", "pocsag")
@@ -150,6 +151,7 @@ async def test_signal(
     if not optimize and _SYNC_ID in DECODERS:
         decoders = [*decoders, _SYNC_ID]
     sync_events: list = []
+    span_stats = SpanStats()
     if not decoders:
         return {
             "frequency_hz": frequency_hz,
@@ -185,6 +187,7 @@ async def test_signal(
             source_tag="signal-test",
             calls_dir=Path(temp_dir),
             fax_dir=Path(temp_dir),
+            span_stats=span_stats,
         )
         trials = []
         recommendation = None
@@ -272,6 +275,7 @@ async def test_signal(
                     better = score(repeat_best) >= 2 and score(repeat_best) > score(repeat_base)
                 recommendation = frequency_hz + best["offset_hz"] if better else None
                 recommended_decoder = best_decoders[0] if better else None
+            dropped_gaps = int(band.status().get("iq", {}).get("dropped_frame_gaps") or 0)
         finally:
             # start() can fail after opening its socket or some child processes.
             await band.stop()
@@ -299,4 +303,11 @@ async def test_signal(
         "unavailable": unavailable,
         "observation_s": observe_s,
         "frame_sync": dict(sync_events[-1].fields) if sync_events else None,
+        # What the span itself shows, most useful when nothing synchronized.
+        "diagnosis": reception_check(
+            span_stats,
+            sample_rate_hz=sample_rate_hz,
+            offset_hz=frequency_hz - center_hz,
+            dropped_gaps=dropped_gaps,
+        ),
     }

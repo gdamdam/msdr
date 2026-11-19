@@ -120,7 +120,11 @@ class BandDecoder:
         mode: Literal["NFM", "AM"] = "NFM",
         am_bandwidth_hz: int = 8_000,
         am_squelch_db: float = 10.0,
+        span_stats=None,
     ):
+        # Optional msdr.decoder.reception.SpanStats fed every raw IQ block,
+        # for a reception check (the signal test); None costs nothing.
+        self._span_stats = span_stats
         # One demodulation mode per band session: the decoders in a session
         # share it, and it keeps the channel list and API unchanged for NFM.
         self._mode = mode
@@ -730,6 +734,8 @@ class BandDecoder:
 
     def _process_block(self, iq: np.ndarray) -> tuple[list[Peak], dict[int, dict[int, bytes]]]:
         """Runs off the event loop (asyncio.to_thread): pure numpy, no asyncio calls."""
+        if self._span_stats is not None:
+            self._span_stats.update(iq)
         if self._fixed_extractor is not None:
             extracted = self._fixed_extractor.process(iq)
             return [], {

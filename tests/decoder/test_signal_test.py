@@ -217,3 +217,45 @@ async def test_frame_sync_names_the_system_without_its_decoder(monkeypatch):
     assert band.retuned == []
     assert [row["id"] for row in result["results"]] == ["voicesync"]
     assert set(result["unavailable"]) == {"dmr", "ysf"}
+
+
+class SilentBand(FakeBand):
+    """Runs its decoder, never syncs, and feeds the span tap an empty span."""
+
+    async def start(self):
+        import numpy as np
+
+        rng = np.random.default_rng(0)
+        noise = (rng.standard_normal(65_536) + 1j * rng.standard_normal(65_536)) * 0.002
+        self.kwargs["span_stats"].update(noise.astype(np.complex64))
+
+    def status(self):
+        self.polls += 1
+        return {
+            "iq": {"frames": self.polls, "dropped_frame_gaps": 2},
+            "channels": [
+                {
+                    "decoder_status": [
+                        {"id": "dmr", "state": "running", "synchronized": False, "events": 0}
+                    ]
+                }
+            ],
+        }
+
+
+@pytest.mark.asyncio
+async def test_inconclusive_test_says_what_the_span_showed(monkeypatch):
+    monkeypatch.setattr(signal_test, "resolve_binaries", lambda _: {"dsd-fme": "/fake/dsd-fme"})
+    monkeypatch.setattr(signal_test, "_POLL_S", 0.005)
+    result = await signal_test.test_signal(
+        frequency_hz=451_100_000,
+        center_hz=451_000_000,
+        sample_rate_hz=2_000_000,
+        requested=["dmr"],
+        bin_dirs=[],
+        iq_stream_factory=lambda: None,
+        observe_s=0.03,
+        band_factory=SilentBand,
+    )
+    assert result["outcome"] == "inconclusive"
+    assert [d["code"] for d in result["diagnosis"]] == ["dropped_samples", "no_signal"]

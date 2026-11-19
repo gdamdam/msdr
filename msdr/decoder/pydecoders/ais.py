@@ -274,6 +274,13 @@ class AisDecoder:
     def stats(self) -> dict[str, int]:
         return dict(self._stats)
 
+    @property
+    def synchronized(self) -> bool:
+        """A training sequence was found, whether or not its frame then
+        passed: decoder status shows "synchronized" for a signal that is
+        there but arriving damaged, instead of "acquiring"."""
+        return self._stats["preambles"] > 0
+
     def feed(self, samples: np.ndarray) -> list[DecodeEvent]:
         if samples.size:
             self._buf = np.concatenate([self._buf, np.asarray(samples, dtype=np.float64)])

@@ -381,6 +381,11 @@ export class SignalPanel extends LitElement {
           r.state === "output" ? `${r.events} output event(s), unverified` :
           r.state === "error" ? `error: ${r.error ?? "decoder did not start"}` : "no sync observed"}</div>`)}
         ${result.unavailable?.length ? html`<div class="dim">Unavailable: ${result.unavailable.join(", ")}</div>` : ""}
+        ${result.diagnosis?.length ? html`<div class="signal-test-diagnosis">
+          <strong>Reception check</strong>
+          ${result.diagnosis.map(d => html`<div class=${d.level === "problem" ? "" : "dim"}>
+            ${d.text}${d.fix ? html` <span class="dim">${d.fix}</span>` : ""}</div>`)}
+        </div>` : ""}
       ` : ""}
     </div>`;
   }
