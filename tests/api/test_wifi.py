@@ -95,7 +95,9 @@ async def test_lifecycle_start_status_shape_and_stop():
         status = None
         while time.monotonic() < deadline:
             status = (await client.get("/api/wifi/status")).json()
-            if status["state"] == "receiving":
+            # "receiving" means the helper is up, not that a frame has been
+            # counted yet: wait for both, or a slow runner reads frames == 0.
+            if status["state"] == "receiving" and status["frames"] > 0:
                 break
             await asyncio.sleep(0.02)
         assert status is not None and status["state"] == "receiving"
