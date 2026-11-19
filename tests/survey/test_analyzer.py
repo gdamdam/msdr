@@ -1063,3 +1063,48 @@ def test_narrow_morse_timing_overrides_noisy_fm_but_not_wide_signal(monkeypatch)
         432304000, samples, 25000, 0.5, 1, env_cv=0.1, gaps=10, on_runs=runs
     )
     assert fields["modulation"]["kind"] != "ook"
+
+
+def _voice_dwell(decoder_id: str | None, seconds: float = 2.0) -> np.ndarray:
+    """A 4800 Bd four-level FSK dwell: with `decoder_id`'s frame sync at its
+    frame period, or (None) random symbols only."""
+    from msdr.survey import framesync
+    from msdr.validation.fixtures_framesync import framed_levels, fsk_iq, random_levels
+
+    count = int(seconds * 4800)
+    if decoder_id is None:
+        levels = random_levels(count, seed=9)
+    else:
+        pattern = next(p for p in framesync._BY_BAUD[4800] if p.decoder_id == decoder_id)
+        levels = framed_levels(pattern.levels, pattern.period, count // pattern.period)
+    return fsk_iq(levels, baud=4800)
+
+
+def _analyze_dwell(analyzer, dwell: np.ndarray) -> dict:
+    analyzer._current_freq = 12_500
+    # A span noise floor well under the signal, as a live survey measures it:
+    # a constant-envelope dwell has no quiet block of its own to set one.
+    analyzer._band_floor_db = -60.0
+    return analyzer._analyze_target(dwell, 48_000.0)[1]
+
+
+def test_frame_sync_narrows_the_family_to_one_system_and_sticks():
+    analyzer, _results, _statuses = _make_analyzer(lambda: FakeIQStream([], 0.01))
+    fields = _analyze_dwell(analyzer, _voice_dwell("ysf"))
+    assert fields["modulation"]["kind"] == "fm_fsk"
+    assert fields["frame_sync"]["decoder_id"] == "ysf"
+    family = fields["family"]
+    assert family["name"] == "System Fusion (frame sync seen)"
+    assert family["suggested_decoders"] == ["ysf"]
+    assert "nothing is decoded yet" in family["next_action"]
+    # A later dwell without a sync in view keeps the finding.
+    later = _analyze_dwell(analyzer, _voice_dwell(None))
+    assert later["family"]["suggested_decoders"] == ["ysf"]
+
+
+def test_four_level_fsk_without_a_sync_keeps_the_generic_family():
+    analyzer, _results, _statuses = _make_analyzer(lambda: FakeIQStream([], 0.01))
+    fields = _analyze_dwell(analyzer, _voice_dwell(None))
+    assert "frame_sync" not in fields
+    family = fields["family"]
+    assert family is None or "frame sync" not in family["name"]

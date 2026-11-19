@@ -39,6 +39,7 @@ from msdr.survey.features import (
     symbol_rate_hz,
     voice_score,
 )
+from msdr.survey.framesync import detect_frame_sync
 from msdr.survey.rds import RdsParser, RdsReceiver, _DecimFIR, _lowpass, fm_channel_hz
 
 # Backpressure, same as BandDecoder: more IQ frames queued than this and the
@@ -149,6 +150,7 @@ class _TargetState:
         "gaps",
         "on_runs",
         "tune_hz",
+        "frame_sync",
     )
 
     def __init__(self) -> None:
@@ -166,6 +168,30 @@ class _TargetState:
         self.on_runs: deque[float] = deque(maxlen=_MAX_ON_RUNS)
         # measured centre to mix at, once an analysis found the label off
         self.tune_hz: float | None = None
+        # last digital voice frame sync found on this target (FrameSync.to_dict)
+        self.frame_sync: dict | None = None
+
+
+def _with_frame_sync(fields: dict, sync: dict) -> dict:
+    """`fields` with the family narrowed to the system whose frame sync was
+    seen. Still an IQ estimate of the *protocol*: nothing is decoded, so the
+    next action stays "decode" and no identity is implied."""
+    decoder_id = sync["decoder_id"]
+    return {
+        **fields,
+        "family": {
+            "name": f"{sync['protocol']} (frame sync seen)",
+            "suggested_decoders": [decoder_id],
+            "alternatives": [],
+            "next_action": (
+                f"decode {decoder_id}; the sync names the system, nothing is decoded yet"
+            ),
+            # The sync search has its own repeat rule; what is left uncertain
+            # is whether this is an FSK signal at all.
+            "confidence": fields["modulation"]["confidence"],
+        },
+        "frame_sync": sync,
+    }
 
 
 # Target channel (see _NarrowChannel): complex baseband at ~this rate, flat
@@ -1119,6 +1145,16 @@ class Analyzer:
             state.gaps,
             list(state.on_runs),
         )
+        if fields["modulation"]["kind"] == "fm_fsk":
+            # On this dwell as received, not the active-only accumulator: the
+            # search needs the real time between syncs, which the joins lose.
+            found = detect_frame_sync(buf, out_rate)
+            if found:
+                state.frame_sync = found[0].to_dict()
+            # A dwell that misses the syncs (a pause, a fade) keeps the last
+            # finding rather than flipping the label back and forth.
+            if state.frame_sync is not None:
+                fields = _with_frame_sync(fields, state.frame_sync)
         if abs(refined_hz - mix_hz) > _RETUNE_HZ:
             # The label (a 512-bin spectrum centroid) was off by more than
             # the channel can tolerate -- AIS B labelled 10.8 kHz away sat on
