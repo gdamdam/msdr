@@ -8,12 +8,14 @@ and no protocol/station claim, AIS burst decodes (or is honestly recorded as
 
 from __future__ import annotations
 
-import pytest
+import pytest_asyncio
 
 from msdr.validation.scorecard import render_markdown, run_scorecard
 
 
-@pytest.fixture(scope="module")
+# The default fixture loop scope is "function"; a module-scoped async fixture
+# must ask for a module loop or pytest-asyncio raises ScopeMismatch.
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def report():
     return await run_scorecard()
 
