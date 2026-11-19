@@ -522,6 +522,23 @@ DECODERS: dict[str, DecoderSpec] = {
             iq_only=True,
             phase=1,
         ),
+        # Not a decoder of content: names the digital voice system on the
+        # channel from its frame sync, so the right dsd-fme mode can be
+        # chosen (and the system is known even without dsd-fme installed).
+        DecoderSpec(
+            id="voicesync",
+            label="Digital voice identify (frame sync)",
+            kind="text",
+            demodulators=("NFM",),
+            default_bandwidth_hz=12500,
+            input_rate=48_000,
+            backend="python",
+            binaries=(),
+            args=("msdr.decoder.pydecoders.voicesync:VoiceSyncDecoder",),
+            normalize=False,
+            iq_only=True,
+            phase=1,
+        ),
     )
 }
 

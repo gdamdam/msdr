@@ -924,6 +924,38 @@ MATRIX: dict[str, CapabilityEntry] = {
             "(tests/corpus/manifest.json ais-161975-162025)."
         ),
     ),
+    "voicesync": CapabilityEntry(
+        input_path="iq",
+        demodulators=("NFM",),
+        single_channel=True,
+        band_path=True,
+        replay_supported="planned_s3",
+        integrity_policy="none_exposed",
+        integrity_notes=(
+            "Not a content decoder: msdr.survey.framesync reports a digital voice system only "
+            "when its published frame-sync pattern repeats at that system's frame period. No "
+            "frame is decoded or checked, so every event carries integrity 'unknown' and none "
+            "counts as a valid frame."
+        ),
+        validation=Validation(
+            state="fixture_tested",
+            backend_version=_MSDR_VERSION,
+            validated_on=date(2026, 11, 19),
+            tests=[
+                "tests/survey/test_framesync.py::test_each_system_is_found_from_its_repeating_sync",
+                "tests/survey/test_framesync.py::test_random_two_level_data_claims_nothing",
+                "tests/survey/test_framesync.py::test_random_four_level_data_claims_nothing",
+                "tests/decoder/test_voicesync.py::test_names_the_system_once_and_sets_sync",
+            ],
+            notes=(
+                "Synthetic only: the test signals carry the sync pattern at the frame period "
+                "with random symbols in between, not real frames of any system. Sync constants "
+                "are the published ones, signs cross-checked against dsd-fme's; the M17 packet "
+                "sync and the D-STAR pattern have a single source."
+            ),
+        ),
+        field_notes="Not verified off-air (synthetic tests only).",
+    ),
 }
 
 for _decoder in ("adsb", "rs41", "ft8", "dsc", "endoftrain", "vor", "ils", "lora"):

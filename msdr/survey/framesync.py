@@ -245,6 +245,24 @@ def detect_frame_sync_disc(disc: np.ndarray, rate: float) -> list[FrameSync]:
     return [item for _, item in sorted(best.values(), key=lambda entry: entry[0], reverse=True)]
 
 
+def quiet_only(disc: np.ndarray, rate: float) -> np.ndarray:
+    """Discriminator audio with the no-carrier stretches set to NaN, for
+    callers that have no envelope to go by. Without a carrier a discriminator
+    puts out noise several times a real signal's deviation; left in, it would
+    set the level scale. Blocks much louder than the capture's quiet quarter
+    are dropped -- so a capture that is carrier for under a quarter of its
+    length is left alone (and then finds nothing)."""
+    out = np.array(disc, dtype=np.float64)
+    block = max(1, int(rate * 0.005))
+    count = len(out) // block
+    if count < 4:
+        return out
+    rms = np.sqrt(np.mean(out[: count * block].reshape(count, block) ** 2, axis=1))
+    loud = np.repeat(rms > 2.5 * np.percentile(rms, 25.0), block)
+    out[: count * block][loud] = np.nan
+    return out
+
+
 def detect_frame_sync(iq: np.ndarray, rate: float) -> list[FrameSync]:
     """As `detect_frame_sync_disc`, from the channel's complex baseband IQ
     (the signal near 0 Hz, a channel filter already applied)."""

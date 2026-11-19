@@ -496,7 +496,9 @@ class BandDecoder:
             events=channel.events_by_decoder.get(decoder_id, 0),
             valid_frames=channel.valid_by_decoder.get(decoder_id, 0),
             last_event_ts=channel.last_event_ts_by_decoder.get(decoder_id),
-            synchronized=getattr(dsd_state, "synchronized", None),
+            synchronized=getattr(
+                dsd_state, "synchronized", getattr(backend, "synchronized", None)
+            ),
         )
 
     # -- channel management -------------------------------------------------

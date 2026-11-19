@@ -428,6 +428,12 @@ class PythonBackend:
         self._queued_bytes = 0
         self.dropped_frames = 0
 
+    @property
+    def synchronized(self) -> bool | None:
+        """The decoder's own sync flag, for decoder status; None when it has
+        no such notion (most PyDecoders emit frames or nothing)."""
+        return getattr(self._decoder, "synchronized", None)
+
     async def start(self) -> None:
         self._worker_task = asyncio.create_task(self._worker())
 

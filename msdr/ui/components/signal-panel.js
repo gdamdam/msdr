@@ -377,7 +377,7 @@ export class SignalPanel extends LitElement {
           "Inconclusive: no protocol sync during this short test"}</strong>
         <div class="dim">Tested at ${(result.frequency_hz / 1e6).toFixed(6)} MHz · ${result.frames} IQ frames · no receiver retune</div>
         ${result.results.map(r => html`<div>${r.label}: ${r.state === "validated" ? `${r.valid_frames} checked frame(s)` :
-          r.state === "synchronized" ? "protocol sync" :
+          r.state === "synchronized" ? (r.detail ?? "protocol sync") :
           r.state === "output" ? `${r.events} output event(s), unverified` :
           r.state === "error" ? `error: ${r.error ?? "decoder did not start"}` : "no sync observed"}</div>`)}
         ${result.unavailable?.length ? html`<div class="dim">Unavailable: ${result.unavailable.join(", ")}</div>` : ""}

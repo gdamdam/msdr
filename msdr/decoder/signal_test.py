@@ -15,6 +15,9 @@ _OPTIMIZE_OFFSETS_HZ = (0, -2000, 2000, -4000, 4000)
 _OPTIMIZE_OBSERVE_S = 2.5
 _POLL_S = 0.25
 _IQ_STARTUP_S = 8.0
+# Runs beside the chosen decoders: names the digital voice system from its
+# frame sync, so a system outside the first few tried still gets its decoder.
+_SYNC_ID = "voicesync"
 
 
 def probe_decoders(
@@ -35,6 +38,17 @@ def probe_decoders(
         if len(selected) == _MAX_DECODERS:
             break
     return selected, unavailable
+
+
+def _follow_up(
+    frame_sync: dict | None, tried: list[str], binaries: dict
+) -> tuple[str | None, bool]:
+    """(decoder the frame sync points at that was not tried, whether it can run)."""
+    wanted = (frame_sync or {}).get("decoder_id")
+    spec = DECODERS.get(wanted) if wanted else None
+    if spec is None or wanted in tried:
+        return None, False
+    return wanted, all(binaries.get(name) for name in effective_binaries(spec, binaries))
 
 
 async def _observe(band, decoders: list[str], observe_s: float) -> dict:
@@ -131,6 +145,11 @@ async def test_signal(
         raise ValueError("signal is outside the current IQ span")
     binaries = resolve_binaries(bin_dirs)
     decoders, unavailable = probe_decoders(frequency_hz, requested, binaries)
+    # Not while optimising: a frame sync at several offsets would outvote the
+    # real decoders the offset search ranks.
+    if not optimize and _SYNC_ID in DECODERS:
+        decoders = [*decoders, _SYNC_ID]
+    sync_events: list = []
     if not decoders:
         return {
             "frequency_hz": frequency_hz,
@@ -144,7 +163,12 @@ async def test_signal(
     with tempfile.TemporaryDirectory(prefix="msdr-signal-test-") as temp_dir:
         band = band_factory(
             iq_stream_factory=iq_stream_factory,
-            decoders=decoders,
+            # Every digital voice decoder too: the band only starts what a
+            # channel's memory lists, and a follow-up may need any of them.
+            decoders=[
+                *decoders,
+                *(d for d, s in DECODERS.items() if s.backend == "dsdfme" and d not in decoders),
+            ],
             binaries=binaries,
             center_hz=center_hz,
             sample_rate_hz=sample_rate_hz,
@@ -153,7 +177,9 @@ async def test_signal(
             threshold_db=10.0,
             idle_s=observe_s,
             spacing_hz=12500,
-            on_event=lambda _event: None,
+            on_event=lambda event: (
+                sync_events.append(event) if getattr(event, "decoder", None) == _SYNC_ID else None
+            ),
             on_status=lambda: None,
             detect=False,
             source_tag="signal-test",
@@ -190,6 +216,21 @@ async def test_signal(
                 duration = _OPTIMIZE_OBSERVE_S if optimize else observe_s
                 trial = await _observe(band, decoders, duration)
                 trials.append({"offset_hz": offset, **trial})
+            frame_sync = dict(sync_events[-1].fields) if sync_events else None
+            if frame_sync:
+                for row in trials[0]["results"]:
+                    if row["id"] == _SYNC_ID:
+                        row["detail"] = sync_events[-1].text
+                wanted, runnable = _follow_up(frame_sync, decoders, binaries)
+                if wanted and runnable:
+                    await band.retune(
+                        center_hz, sample_rate_hz, [(frequency_hz, "signal-test", [wanted])]
+                    )
+                    follow = await _observe(band, [wanted], observe_s)
+                    trials[0]["results"].extend(follow["results"])
+                    trials[0]["frames"] += follow["frames"]
+                elif wanted and wanted not in unavailable:
+                    unavailable.append(wanted)
             if optimize:
                 rank = {
                     "validated": 3,
@@ -257,4 +298,5 @@ async def test_signal(
         **baseline,
         "unavailable": unavailable,
         "observation_s": observe_s,
+        "frame_sync": dict(sync_events[-1].fields) if sync_events else None,
     }
