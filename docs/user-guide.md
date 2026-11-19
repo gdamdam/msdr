@@ -42,6 +42,16 @@ Click the allocation pill to open the band's details in a popover; the ✎ butto
 
 The survey lists signals found in the current span. New signals are added as they appear, signals that go away are marked **quiet**, and the rows keep their order until you press **Re-sort rows**. While your pointer is over the table it stops updating, so you can read and click. Changing the span or pressing **Clear** starts a new list.
 
+For an FSK signal the survey also looks for the frame sync of a digital voice system. When one repeats at that system's frame period, the label narrows from the generic "DMR / P25 / NXDN96" to that system, for example "System Fusion (frame sync seen)". This names the protocol only: nothing is decoded until you start the decoder.
+
+### Testing a signal
+
+**TEST SIGNAL** in a signal's panel runs a short probe on the current IQ span without retuning the receiver or saving messages. It reports three things:
+
+- **Decoders.** Up to three candidate decoders run for a few seconds; each shows checked frames, protocol sync, unverified output or no sync.
+- **Digital voice identify.** The frame-sync search runs beside them and names the system if it finds one (DMR, P25 Phase 1, NXDN48/96, System Fusion, M17, dPMR, D-STAR). If that system's decoder was not among those tried, it is run as a follow-up; if `dsd-fme` is not installed, the system is still named and its decoder listed as unavailable. It needs about a second of signal.
+- **Reception check.** What the span itself showed: the receiver overloading, gaps in the IQ stream, the frequency on the edge of the span, the receiver's centre spike inside the channel, no or weak signal, a signal centred off the tested frequency, or a much stronger signal close by. Each comes with a suggested fix where there is an obvious one. The thresholds are rules of thumb and levels are relative; a clean check does not mean a decoder must work.
+
 ### Band scanning
 
 Sweep a frequency range span by span and keep everything found.
@@ -114,6 +124,7 @@ Decoder types:
 - **Audio decoders** include pagers, APRS, CW, RTTY, PSK31, HF ALE, time-signal codes (WWV, WWVB, DCF77, MSF, JJY, CHU), NAVTEX, VHF ACARS (AM, 131.550 MHz and neighbours), WEFAX, SSTV and digital voice (DMR, P25, NXDN via `dsd-fme`). Digital voice calls can be played back from Messages.
 - **External-program decoders**: ISM sensors and wireless M-Bus (`rtl_433`, raw IQ), DFM/M10/M20/RS92 radiosondes (radiosonde_auto_rx demodulators, raw IQ, shown on the Map) and FreeDV 700D/700E/1600 (`freedv_rx`, USB audio; shows sync, SNR and text but does not play speech). Each is *missing* until its program is installed.
 - **CW** decodes into one continuous transcript you can select and copy.
+- **Digital voice identify** is not a content decoder: it reports which digital voice system is on an NFM channel from its frame sync, once per system every 30 seconds, and decodes no call, identity or audio. Use it to choose the `dsd-fme` mode.
 
 A decoder shows *Ready* when its code or tool is installed. That doesn't mean it has been tested on real signals; see [Decoder scope](decoder-expansion.md).
 

@@ -112,7 +112,7 @@ A missing binary makes that decoder unavailable without breaking startup. Per-de
 
 ### Survey and scanning: `msdr/survey`
 
-Spectrum, waterfall and occupancy for the current span (`survey.py`), band scans that stitch several spans together (`bandscan.py`), signal classification on IQ (`analyzer.py`, `classify.py`), RDS and CW, and beacon monitoring (`beacons.py`).
+Spectrum, waterfall and occupancy for the current span (`survey.py`), band scans that stitch several spans together (`bandscan.py`), signal classification on IQ (`analyzer.py`, `classify.py`), the digital voice frame-sync search (`framesync.py`), RDS and CW, and beacon monitoring (`beacons.py`).
 
 ### Recording and replay: `msdr/recorder`, `msdr/source`
 
@@ -137,6 +137,7 @@ Status and received traffic from JS8Call, Pat (Winlink) and FreeDATA running alo
 
 - `validation/`: a synthetic signal corpus run through the real decoders to produce a scorecard (`scripts/scorecard.py` regenerates [validation/scorecard-synthetic.md](validation/scorecard-synthetic.md)).
 - `decoder/capability_matrix.py`: per-decoder validation status, including off-air results.
+- `decoder/signal_test.py`: the short probe behind TEST SIGNAL; `decoder/reception.py` is its reception check on the IQ span.
 - `contracts/`: small shared types for sources, evidence and readiness.
 
 ## Storage

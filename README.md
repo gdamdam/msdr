@@ -63,7 +63,7 @@ msdr runs with SDRconnect alone. Each item below only switches on the feature na
 | IQ recording analysis | [iqscan](https://github.com/gdamdam/iqscan): `pip install git+https://github.com/gdamdam/iqscan` |
 | JS8Call, Winlink, FreeDATA messages | The JS8Call, Pat or FreeDATA application, running (Setup → Integrations) |
 
-Built in, nothing to install: LoRa (Meshtastic and MeshCore headers), ADS-B / Mode S, ACARS, AIS, RS41 radiosondes, Orbcomm satellite downlinks (synthetic-validated only), DSC, WEFAX, SSTV, NAVTEX, RTTY, PSK31, HF ALE, WWV/WWVB/DCF77/MSF/JJY/CHU time codes, End-of-Train, VOR and ILS.
+Built in, nothing to install: LoRa (Meshtastic and MeshCore headers), ADS-B / Mode S, ACARS, AIS, RS41 radiosondes, digital voice system identification (frame sync only, synthetic-validated), Orbcomm satellite downlinks (synthetic-validated only), DSC, WEFAX, SSTV, NAVTEX, RTTY, PSK31, HF ALE, WWV/WWVB/DCF77/MSF/JJY/CHU time codes, End-of-Train, VOR and ILS.
 
 ## Features
 
@@ -86,6 +86,7 @@ A few things that are less common elsewhere:
 - Channel watch follows a list of frequencies and captures activity with a pre-roll IQ recorder, so the start of a burst is on disk before you press record.
 - Band scans keep a report of what was found and what was actually covered, so a quiet frequency and an unscanned one are not confused.
 - Any saved signal can be exported as an evidence ZIP: observations, claims, decoder versions, notes and a short IQ clip when one exists.
+- Testing a signal names the digital voice system from its frame sync, even without `dsd-fme`, and reports what the span itself showed: overload, lost samples, a weak or off-frequency signal, a strong neighbour.
 
 The [user guide](docs/user-guide.md) covers every workspace in detail.
 

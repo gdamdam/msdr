@@ -33,6 +33,8 @@ Availability and parsing are separate from RF validation.
 - **End-of-Train:** received and decoded live off-air (CRC-18-valid packets) on 2026-10-11.
 - **VOR:** validated off-air on 2026-10-11. Radials from OAK VOR at a known location agree with the computed bearing within about ±2°, after fixing a sign error this check exposed.
 - **ILS:** not confirmed off-air.
+- **Digital voice identify (frame sync):** synthetic only. The test signals carry each system's sync pattern at its frame period with random symbols in between; no off-air capture has been checked.
+- **Sensitivity:** the [synthetic scorecard](validation/scorecard-synthetic.md) lists, for AIS, ADS-B and RS41, the lowest noise level at which the known test burst still decodes. Compare a decoder with its own earlier runs only.
 - **Other newly added paths** and live field performance still need validation.
 
 See [FT8](ft8.md) and [DSC](dsc.md) for the exact evidence and limits.

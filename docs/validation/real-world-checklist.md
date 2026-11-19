@@ -20,7 +20,7 @@ Covered synthetically by `msdr/validation/impairments.py` and the
 - [ ] Dropped sample blocks (USB loss): `drops` (heavy: a quarter of the signal)
 - [ ] One IQ frame lost on queue overflow, zero-filled by the IQ session: `lost_frame`
 - [ ] 8-bit ADC: `8bit`
-- [ ] Low SNR: `low_snr`
+- [ ] Low SNR: `low_snr`, and the "Sensitivity" sweep in the same scorecard
 - [ ] NaN/inf or huge values from upstream: `nonfinite`, and
       `tests/decoder/test_fuzz_native.py` (no exception, no hang)
 - [ ] Gain extremes: clipped (too hot) and near the noise floor (too cold)
