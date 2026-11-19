@@ -10,13 +10,18 @@
 
 ![msdr Listen workspace: live FM-band survey, AIS decode and favourites](docs/img/msdr.png)
 
-msdr runs alongside SDRconnect and connects through its WebSocket API. No build step.
+msdr is a companion to SDRconnect: it connects over SDRconnect's WebSocket API and adds signal discovery, decoding and logging. It runs from source with no build step.
 
-- **Discover and decode** signals, track satellites
+- **Discover and decode** signals, match them against imported station catalogs, and track satellite passes
 - **Keep a journal** of what you hear, and save receiver setups to return to
-- **Passive Wi-Fi, BLE and drone Remote ID**, with separate hardware, not the SDR ([Optional software](#optional-software))
+- **Watch Wi-Fi, BLE and drone Remote ID** passively. This uses a separate adapter, not the SDR, and needs [optional software](#optional-software)
 
-Every label shows its source: DSP measurement, decoded payload, schedule, band allocation or your note. A schedule or band-plan match is a hint, not proof of reception. Levels are relative, not calibrated. msdr never transmits.
+What to expect:
+
+- Every label shows where it came from: a DSP measurement, a decoded payload, a schedule, a band allocation or your own note.
+- A schedule or band-plan match is a hint, not proof of reception.
+- Signal levels are relative, not calibrated.
+- msdr never transmits.
 
 Tested on macOS with SDRconnect 1.0.10 and an RSPdx-R2.
 
