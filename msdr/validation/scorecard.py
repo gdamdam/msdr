@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -82,10 +83,35 @@ class ImpairmentResult:
 
 
 @dataclass
+class SensitivityResult:
+    """One decoder's AWGN sweep: `passes[snr_db]` is how many of `trials`
+    noise seeds still recovered the known payload. An empty `passes` means
+    the decoder could not be run (`detail` says why)."""
+
+    decoder: str
+    trials: int
+    passes: dict[int, int] = field(default_factory=dict)
+    detail: str = ""
+
+    @property
+    def threshold_db(self) -> int | None:
+        """Lowest swept SNR at which every trial decoded *and* every higher
+        level did too -- a lone lucky pass below a failing level does not
+        count. None = not even the highest level was clean, or not run."""
+        threshold = None
+        for snr in sorted(self.passes, reverse=True):
+            if self.passes[snr] < self.trials:
+                break
+            threshold = snr
+        return threshold
+
+
+@dataclass
 class ScorecardReport:
     generated_at: str
     cases: list[CaseResult]
     impairments: list[ImpairmentResult] = field(default_factory=list)
+    sensitivity: list[SensitivityResult] = field(default_factory=list)
 
 
 # --- shared: real classify_modulation/family_for/voice_score/keying_timing,
@@ -573,7 +599,13 @@ def _drain(backend) -> list:
     return out
 
 
-def _impair_ais(profile: str) -> tuple[bool, str]:
+# (iq, sample rate, carrier Hz) -> degraded iq. The runners below take this
+# rather than a profile name so the same known burst serves both the named
+# impairment grid and the AWGN sensitivity sweep.
+_Degrade = Callable[[np.ndarray, float, float], np.ndarray]
+
+
+def _impair_ais(degrade: _Degrade) -> tuple[bool, str]:
     from msdr.decoder.pydecoders.ais import AisDecoder
     from msdr.validation.fixtures_ais import ais_type1, iq_to_flat, make_burst
 
@@ -582,7 +614,7 @@ def _impair_ais(profile: str) -> tuple[bool, str]:
     iq = make_burst(payload, 48_000.0, np.random.default_rng(0))
     # Silence either side so the decoder sees a burst, not a continuous signal.
     iq = np.concatenate([np.zeros(2400, np.complex64), iq, np.zeros(2400, np.complex64)])
-    iq = imp.apply_profile(profile, iq.astype(np.complex64), 48_000.0, 0, 162e6)
+    iq = degrade(iq.astype(np.complex64), 48_000.0, 162e6)
     flat = iq_to_flat(iq, fs=48_000.0)
     decoder = AisDecoder()
     events = list(decoder.feed(flat)) + list(decoder.flush())
@@ -590,10 +622,10 @@ def _impair_ais(profile: str) -> tuple[bool, str]:
     return ok, f"{len(events)} event(s), stats={decoder.stats()}"
 
 
-async def _impair_adsb(profile: str) -> tuple[bool, str]:
+async def _impair_adsb(degrade: _Degrade) -> tuple[bool, str]:
     from msdr.decoder.pydecoders.adsb import NativeADSBBackend
 
-    iq = imp.apply_profile(profile, _adsb_burst_iq(), float(_ADSB_RATE), 0, 1090e6)
+    iq = degrade(_adsb_burst_iq(), float(_ADSB_RATE), 1090e6)
     backend = NativeADSBBackend(None, sample_rate_hz=_ADSB_RATE, center_hz=0.0, frequency_hz=0.0)
     await backend.start()
     backend.feed(_iq_to_sc16(iq))
@@ -603,12 +635,12 @@ async def _impair_adsb(profile: str) -> tuple[bool, str]:
     return ok, f"{len(events)} event(s), error={backend.error!r}"
 
 
-async def _impair_rs41(profile: str) -> tuple[bool, str]:
+async def _impair_rs41(degrade: _Degrade) -> tuple[bool, str]:
     from msdr.decoder.pydecoders.rs41 import RS41Backend
     from msdr.validation.fixtures_rs41 import rs41_iq, rs41_test_frame
 
     iq = _sc16_to_iq(rs41_iq(rs41_test_frame(), leading_samples=5))
-    iq = imp.apply_profile(profile, iq, 57_600.0, 0, 403e6)
+    iq = degrade(iq, 57_600.0, 403e6)
     backend = RS41Backend(None, sample_rate_hz=57_600, center_hz=403e6, frequency_hz=403e6)
     await backend.start()
     backend.feed(_iq_to_sc16(iq))
@@ -632,7 +664,7 @@ async def run_impairments() -> list[ImpairmentResult]:
                 )
                 continue
             try:
-                out = runner(name)
+                out = runner(lambda iq, rate, fc, n=name: imp.apply_profile(n, iq, rate, 0, fc))
                 ok, detail = await out if asyncio.iscoroutine(out) else out
                 results.append(ImpairmentResult(decoder, name, ok, detail))
             except ImportError as exc:
@@ -641,6 +673,53 @@ async def run_impairments() -> list[ImpairmentResult]:
                 results.append(
                     ImpairmentResult(decoder, name, False, f"raised {type(exc).__name__}: {exc}")
                 )
+    return results
+
+
+# --- AWGN sensitivity sweep ---------------------------------------------------
+#
+# The same known bursts, with white noise added at stepped SNRs, several noise
+# seeds per step. SNR here is impairments.awgn's: active-sample signal power
+# over noise power across the decoder's *whole input sample rate* -- so the
+# figures are comparable run to run for one decoder, not between decoders
+# (different input bandwidths) and not to an on-air dB reading.
+
+_SENSITIVITY_SNRS_DB = tuple(range(20, -10, -2))  # 20 .. -8 dB
+_SENSITIVITY_TRIALS = 5
+
+
+def _noisy(iq: np.ndarray, snr_db: float, seed: int) -> np.ndarray:
+    """AWGN, then scaled back under full scale: at low SNR the noise peaks
+    exceed 1.0 and the int16 decoders would be measuring clipping, not noise
+    (a real receiver's gain control keeps signal+noise in range)."""
+    out = imp.awgn(iq, snr_db, seed)
+    peak = float(max(np.abs(out.real).max(), np.abs(out.imag).max())) if out.size else 0.0
+    return out * np.float32(0.9 / peak) if peak > 0.9 else out
+
+
+async def run_sensitivity(
+    snrs_db: tuple[int, ...] = _SENSITIVITY_SNRS_DB, trials: int = _SENSITIVITY_TRIALS
+) -> list[SensitivityResult]:
+    results = []
+    for decoder, runner in _IMPAIRMENT_DECODERS.items():
+        result = SensitivityResult(decoder, trials)
+        try:
+            for snr in snrs_db:
+                passed = 0
+                for seed in range(trials):
+                    try:
+                        out = runner(lambda iq, rate, fc, s=snr, k=seed: _noisy(iq, s, k))
+                        ok, _ = await out if asyncio.iscoroutine(out) else out
+                    except ImportError:
+                        raise
+                    except Exception:  # noqa: BLE001 -- a crash on noise is a failed trial
+                        ok = False
+                    passed += bool(ok)
+                result.passes[snr] = passed
+        except ImportError as exc:
+            result.passes.clear()
+            result.detail = f"unavailable: {exc}"
+        results.append(result)
     return results
 
 
@@ -671,6 +750,7 @@ async def run_scorecard() -> ScorecardReport:
         generated_at=datetime.now(UTC).isoformat(),
         cases=cases,
         impairments=await run_impairments(),
+        sensitivity=await run_sensitivity(),
     )
 
 
@@ -721,6 +801,8 @@ def render_markdown(report: ScorecardReport) -> str:
         )
     if report.impairments:
         lines.extend(_render_impairments(report.impairments))
+    if report.sensitivity:
+        lines.extend(_render_sensitivity(report.sensitivity))
     return "\n".join(lines) + "\n"
 
 
@@ -748,4 +830,34 @@ def _render_impairments(results: list[ImpairmentResult]) -> list[str]:
     if failures:
         lines.append("\nFailing cells:\n")
         lines.extend(f"- {r.decoder} / {r.profile}: {r.detail}" for r in failures)
+    return lines
+
+
+def _render_sensitivity(results: list[SensitivityResult]) -> list[str]:
+    snrs = sorted({snr for r in results for snr in r.passes}, reverse=True)
+    lines = [
+        "\n## Sensitivity (synthetic AWGN sweep)\n",
+        "Each decoder's known burst with white noise added, "
+        f"{results[0].trials} noise seeds per level; a cell is how many seeds still "
+        "recovered the expected payload with a passed integrity check. "
+        "`threshold` = lowest level at which every seed decoded and every "
+        "higher level did too. SNR is active-signal power over noise power "
+        "across the decoder's whole input sample rate, so compare a decoder "
+        "with its own earlier runs, not with another decoder or an on-air "
+        "reading. Synthetic only -- not off-air validation.\n",
+        "| decoder | threshold | " + " | ".join(f"{snr} dB" for snr in snrs) + " |",
+        "|---|---|" + "---|" * len(snrs),
+    ]
+    for r in results:
+        if not r.passes:
+            cells = " | ".join("n/a" for _ in snrs)
+            lines.append(f"| {r.decoder} | n/a ({r.detail}) | {cells} |")
+            continue
+        threshold = r.threshold_db
+        cells = [str(r.passes[snr]) if snr in r.passes else "n/a" for snr in snrs]
+        lines.append(
+            f"| {r.decoder} | {'none' if threshold is None else f'{threshold} dB'} | "
+            + " | ".join(cells)
+            + " |"
+        )
     return lines

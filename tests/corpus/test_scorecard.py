@@ -8,9 +8,15 @@ and no protocol/station claim, AIS burst decodes (or is honestly recorded as
 
 from __future__ import annotations
 
+import numpy as np
 import pytest_asyncio
 
-from msdr.validation.scorecard import render_markdown, run_scorecard
+from msdr.validation.scorecard import (
+    SensitivityResult,
+    _noisy,
+    render_markdown,
+    run_scorecard,
+)
 
 
 # The default fixture loop scope is "function"; a module-scoped async fixture
@@ -83,3 +89,28 @@ async def test_markdown_renders(report):
     assert "## Decoders" in md
     for case in report.cases:
         assert case.label in md
+
+
+def test_sensitivity_threshold_ignores_a_lucky_pass_below_a_failing_level():
+    r = SensitivityResult("x", trials=5, passes={10: 5, 8: 5, 6: 3, 4: 5, 2: 0})
+    assert r.threshold_db == 8  # 4 dB decoded every seed, but 6 dB above it did not
+    assert SensitivityResult("x", trials=5, passes={10: 4, 8: 5}).threshold_db is None
+    assert SensitivityResult("x", trials=5).threshold_db is None  # not run
+
+
+def test_noisy_stays_under_full_scale_at_low_snr():
+    # Otherwise the int16 decoders would be measuring clipping, not noise.
+    iq = (0.7 * np.exp(1j * np.linspace(0, 50, 4000))).astype(np.complex64)
+    out = _noisy(iq, -8.0, seed=1)
+    assert max(np.abs(out.real).max(), np.abs(out.imag).max()) <= 0.9 + 1e-6
+
+
+async def test_sensitivity_sweep_is_clean_at_the_top_and_rendered(report):
+    assert {r.decoder for r in report.sensitivity} == {"ais", "adsb", "rs41"}
+    for r in report.sensitivity:
+        if not r.passes:  # honestly unavailable, same rule as the AIS case
+            assert r.detail
+            continue
+        assert r.passes[max(r.passes)] == r.trials, r
+        assert r.threshold_db is not None
+    assert "## Sensitivity (synthetic AWGN sweep)" in render_markdown(report)

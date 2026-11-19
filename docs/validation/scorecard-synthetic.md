@@ -7,7 +7,7 @@ analyzer/decoder code paths behave correctly on a *known* synthetic signal.
 Field validation (a real off-air capture) is tracked separately --
 see `docs/validation/corpus.md` and `tests/corpus/manifest.json`.
 
-Generated: 2026-10-13T15:02:48.359541+00:00
+Generated: 2026-11-19T22:10:25.510178+00:00
 
 ## Detectors
 
@@ -75,3 +75,13 @@ Failing cells:
 - adsb / drops: 0 event(s), error=None
 - adsb / lost_frame: 0 event(s), error=None
 - rs41 / drops: 0 event(s)
+
+## Sensitivity (synthetic AWGN sweep)
+
+Each decoder's known burst with white noise added, 5 noise seeds per level; a cell is how many seeds still recovered the expected payload with a passed integrity check. `threshold` = lowest level at which every seed decoded and every higher level did too. SNR is active-signal power over noise power across the decoder's whole input sample rate, so compare a decoder with its own earlier runs, not with another decoder or an on-air reading. Synthetic only -- not off-air validation.
+
+| decoder | threshold | 20 dB | 18 dB | 16 dB | 14 dB | 12 dB | 10 dB | 8 dB | 6 dB | 4 dB | 2 dB | 0 dB | -2 dB | -4 dB | -6 dB | -8 dB |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| ais | 8 dB | 5 | 5 | 5 | 5 | 5 | 5 | 5 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| adsb | 10 dB | 5 | 5 | 5 | 5 | 5 | 5 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| rs41 | 12 dB | 5 | 5 | 5 | 5 | 5 | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
